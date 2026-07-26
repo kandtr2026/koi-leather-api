@@ -2,14 +2,14 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import serverless from 'serverless-http';
 import { AppModule } from './app.module';
-import type { Request, Response } from 'express';
 
-let cachedApp: any;
+let handlerFn: any;
 
-export async function handler(req: Request, res: Response) {
-  if (!cachedApp) {
-    const app = await NestFactory.create(AppModule);
+export async function handler(req: any, res: any) {
+  if (!handlerFn) {
+    const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
 
     app.useGlobalPipes(
       new ValidationPipe({
@@ -47,8 +47,8 @@ export async function handler(req: Request, res: Response) {
     });
 
     await app.init();
-    cachedApp = app.getHttpAdapter().getInstance();
+    handlerFn = serverless(app.getHttpAdapter().getInstance());
   }
 
-  cachedApp(req, res);
+  return handlerFn(req, res);
 }

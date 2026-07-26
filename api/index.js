@@ -1,10 +1,11 @@
+const mod = require('../dist/src/serverless');
+
 module.exports = async (req, res) => {
   try {
-    const mod = require('../dist/src/serverless');
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ handlerType: typeof mod.handler, keys: Object.keys(mod) }));
+    await mod.handler(req, res);
   } catch (e) {
+    console.error('HANDLER_ERROR:', e);
     res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: e.message, stack: e.stack }));
+    res.end(JSON.stringify({ error: e.message, stack: e.stack, name: e.name }));
   }
 };
