@@ -1,0 +1,233 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { InventoryService } from '../inventory/inventory.service';
+
+interface SyncPayload {
+  materialId: string;
+  externalId: string;
+  quantity: number;
+  action: 'UPDATE' | 'DEDUCT' | 'RESTOCK';
+}
+
+interface WebhookPayload {
+  event: 'stock.updated' | 'stock.received' | 'product.updated';
+  data: {
+    externalId: string;
+    quantity: number;
+    unitCost?: number;
+    name?: string;
+    [key: string]: any;
+  };
+  timestamp: string;
+  signature?: string;
+}
+
+@Injectable()
+export class InventorySyncService {
+  private readonly logger = new Logger(InventorySyncService.name);
+  private readonly apiBaseUrl: string;
+  private readonly apiKey: string;
+
+  constructor(
+    private prisma: PrismaService,
+    private inventoryService: InventoryService,
+  ) {
+    this.apiBaseUrl = process.env.KITLEATHER_API_BASE_URL || 'https://kitleather.vn/api';
+    this.apiKey = process.env.KITLEATHER_API_KEY || '';
+  }
+
+  /**
+   * Push inventory update to kitleather.vn
+   */
+  async pushUpdate(materialId: string): Promise<boolean> {
+    const material = await this.prisma.rawMaterial.findUnique({
+      where: { id: materialId },
+    });
+    if (!material) {
+      this.logger.warn(`Material ${materialId} not found, cannot sync`);
+      return false;
+    }
+
+    if (!material.externalId) {
+      this.logger.warn(`Material ${material.name} has no externalId, skipping sync`);
+      await this.markSyncStatus(materialId, 'FAILED');
+      return false;
+    }
+
+    const payload: SyncPayload = {
+      materialId: material.id,
+      externalId: material.externalId,
+      quantity: Number(material.totalQuantity),
+      action: 'UPDATE',
+    };
+
+    try {
+      // In production, this would be an HTTP call to kitleather.vn API
+      // const response = await fetch(`${this.apiBaseUrl}/inventory/sync`, {
+      //   method: 'POST',
+      //   headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(payload),
+      // });
+
+      this.logger.log(`[MOCK] Synced ${material.name} to kitleather.vn: ${payload.quantity} ${material.unit}`);
+      await this.markSyncStatus(materialId, 'SYNCED');
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to sync ${material.name} to kitleather.vn`, error.message);
+      await this.markSyncStatus(materialId, 'FAILED');
+      return false;
+    }
+  }
+
+  /**
+   * Handle incoming webhook from kitleather.vn
+   */
+  async handleWebhook(payload: WebhookPayload): Promise<{ received: boolean }> {
+    this.logger.log(`Received webhook: ${payload.event}`);
+
+    switch (payload.event) {
+      case 'stock.updated':
+      case 'stock.received':
+        await this.handleStockUpdate(payload);
+        break;
+      case 'product.updated':
+        await this.handleProductUpdate(payload);
+        break;
+      default:
+        this.logger.warn(`Unknown webhook event: ${payload.event}`);
+    }
+
+    return { received: true };
+  }
+
+  private async handleStockUpdate(payload: WebhookPayload) {
+    const { externalId, quantity, unitCost } = payload.data;
+    if (!externalId) return;
+
+    const material = await this.prisma.rawMaterial.findFirst({
+      where: { externalId },
+    });
+    if (!material) {
+      this.logger.warn(`Unknown externalId: ${externalId}`);
+      return;
+    }
+
+    const updateData: any = {
+      lastSyncedAt: new Date(),
+      syncStatus: 'SYNCED',
+    };
+
+    if (quantity !== undefined) {
+      const newTotal = Number(material.totalQuantity) + quantity;
+      updateData.totalQuantity = Math.max(0, newTotal);
+      updateData.availableQuantity = Math.max(0, newTotal - Number(material.reservedQuantity));
+    }
+    if (unitCost !== undefined) {
+      updateData.unitCost = unitCost;
+    }
+
+    await this.prisma.rawMaterial.update({
+      where: { id: material.id },
+      data: updateData,
+    });
+
+    // Record transaction
+    if (quantity !== undefined && quantity > 0) {
+      await this.prisma.inventoryTransaction.create({
+        data: {
+          materialId: material.id,
+          transactionType: 'RECEIPT',
+          quantity,
+          costAtTransaction: material.unitCost,
+          notes: `Synced from kitleather.vn (${payload.event})`,
+        },
+      });
+    }
+
+    this.logger.log(`Updated stock for ${material.name} from kitleather.vn webhook`);
+  }
+
+  private async handleProductUpdate(payload: WebhookPayload) {
+    const { externalId, name, unitCost } = payload.data;
+    if (!externalId) return;
+
+    const material = await this.prisma.rawMaterial.findFirst({
+      where: { externalId },
+    });
+    if (!material) return;
+
+    await this.prisma.rawMaterial.update({
+      where: { id: material.id },
+      data: {
+        ...(name ? { name } : {}),
+        ...(unitCost ? { unitCost } : {}),
+        lastSyncedAt: new Date(),
+        syncStatus: 'SYNCED',
+      },
+    });
+  }
+
+  /**
+   * Auto-deduct raw materials when a production order is completed
+   */
+  async onOrderCompleted(orderId: string) {
+    this.logger.log(`Order ${orderId} completed — auto-deducting raw materials`);
+
+    const order = await this.prisma.productionOrder.findUnique({
+      where: { id: orderId },
+    });
+    if (!order) return;
+
+    const allocations = order.materialsAllocated as unknown as any[];
+    for (const alloc of allocations) {
+      if (!alloc.material_id) continue;
+
+      const material = await this.prisma.rawMaterial.findUnique({
+        where: { id: alloc.material_id },
+      });
+      if (!material || !material.externalId) continue;
+
+      const deductPayload: SyncPayload = {
+        materialId: alloc.material_id,
+        externalId: material.externalId,
+        quantity: -alloc.qty_consumed,
+        action: 'DEDUCT',
+      };
+
+      try {
+        // In production: POST to kitleather.vn
+        this.logger.log(`[MOCK] Deducted ${alloc.qty_consumed} ${alloc.unit} of ${material.name} from kitleather.vn`);
+      } catch (error) {
+        this.logger.error(`Failed to sync deduction to kitleather.vn`, error.message);
+      }
+    }
+  }
+
+  private async markSyncStatus(materialId: string, status: string) {
+    await this.prisma.rawMaterial.update({
+      where: { id: materialId },
+      data: {
+        syncStatus: status,
+        lastSyncedAt: status === 'SYNCED' ? new Date() : undefined,
+      },
+    });
+  }
+
+  /**
+   * Sync all pending materials
+   */
+  async syncPending() {
+    const pending = await this.prisma.rawMaterial.findMany({
+      where: { syncStatus: 'PENDING', externalId: { not: null } },
+    });
+
+    const results = await Promise.allSettled(
+      pending.map(m => this.pushUpdate(m.id)),
+    );
+
+    const succeeded = results.filter(r => r.status === 'fulfilled' && r.value).length;
+    const failed = results.filter(r => r.status === 'rejected' || !r.value).length;
+
+    return { total: pending.length, succeeded, failed };
+  }
+}

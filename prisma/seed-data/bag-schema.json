@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Thông số Túi / Balo / Clutch",
+  "description": "Quy cách kỹ thuật túi da thủ công",
+  "properties": {
+    "bag_type": {
+      "type": "string",
+      "title": "Loại túi",
+      "description": "Phân loại túi",
+      "enum": ["tote", "crossbody", "backpack", "clutch", "messenger", "duffle", "briefcase", "bucket", "shoulder", "boston"],
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Tote", "value": "tote" },
+          { "label": "Crossbody", "value": "crossbody" },
+          { "label": "Backpack (Balo)", "value": "backpack" },
+          { "label": "Clutch (Ví cầm tay)", "value": "clutch" },
+          { "label": "Messenger", "value": "messenger" },
+          { "label": "Duffle (Túi du lịch)", "value": "duffle" },
+          { "label": "Briefcase (Cặp)", "value": "briefcase" },
+          { "label": "Bucket", "value": "bucket" },
+          { "label": "Shoulder", "value": "shoulder" },
+          { "label": "Boston", "value": "boston" }
+        ],
+        "group": "Kiểu dáng"
+      }
+    },
+    "length_cm": {
+      "type": "number",
+      "minimum": 10.0,
+      "maximum": 80.0,
+      "title": "Length (cm)",
+      "description": "Chiều dài túi",
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "width_cm": {
+      "type": "number",
+      "minimum": 2.0,
+      "maximum": 40.0,
+      "title": "Width / Depth (cm)",
+      "description": "Chiều rộng / độ dày túi",
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "height_cm": {
+      "type": "number",
+      "minimum": 5.0,
+      "maximum": 60.0,
+      "title": "Height (cm)",
+      "description": "Chiều cao túi",
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "hardware_material": {
+      "type": "string",
+      "title": "Chất liệu Hardware",
+      "description": "Chất liệu kim loại trên túi",
+      "enum": ["brass", "stainless_steel_316l", "zinc_alloy", "copper"],
+      "default": "brass",
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Brass (Đồng thau)", "value": "brass" },
+          { "label": "Inox 316L", "value": "stainless_steel_316l" },
+          { "label": "Zinc Alloy", "value": "zinc_alloy" },
+          { "label": "Copper (Đồng đỏ)", "value": "copper" }
+        ],
+        "group": "Phụ kiện"
+      }
+    },
+    "hardware_finish": {
+      "type": "string",
+      "title": "Màu Hardware",
+      "description": "Màu hoàn thiện kim loại",
+      "enum": ["silver", "gold", "antique_brass", "gunmetal", "black"],
+      "default": "silver",
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Silver", "value": "silver" },
+          { "label": "Gold", "value": "gold" },
+          { "label": "Antique Brass", "value": "antique_brass" },
+          { "label": "Gunmetal", "value": "gunmetal" },
+          { "label": "Black", "value": "black" }
+        ],
+        "group": "Phụ kiện"
+      }
+    },
+    "strap_type": {
+      "type": "string",
+      "title": "Loại dây đeo",
+      "description": "Kiểu dây đeo",
+      "enum": ["leather", "chain", "fabric", "removable", "none"],
+      "default": "leather",
+      "koi:ui": {
+        "component": "select",
+        "group": "Dây đeo"
+      }
+    },
+    "strap_drop_cm": {
+      "type": "number",
+      "title": "Strap Drop (cm)",
+      "description": "Chiều dài dây đeo từ đỉnh túi đến vai",
+      "minimum": 20.0,
+      "maximum": 80.0,
+      "multipleOf": 0.5,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Dây đeo"
+      }
+    },
+    "fits_laptop": {
+      "type": "boolean",
+      "title": "Chứa vừa Laptop",
+      "description": "Có thể chứa laptop không",
+      "default": false,
+      "koi:ui": {
+        "component": "switch",
+        "group": "Tính năng"
+      }
+    },
+    "fits_laptop_size": {
+      "type": "string",
+      "title": "Kích thước Laptop tối đa",
+      "description": "Kích thước laptop tối đa có thể chứa (inch)",
+      "enum": ["11", "13", "14", "15.6", "16", "17"],
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "11\"", "value": "11" },
+          { "label": "13\"", "value": "13" },
+          { "label": "14\"", "value": "14" },
+          { "label": "15.6\"", "value": "15.6" },
+          { "label": "16\"", "value": "16" },
+          { "label": "17\"", "value": "17" }
+        ],
+        "group": "Tính năng"
+      }
+    },
+    "internal_pockets": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "title": "Số ngăn trong",
+      "description": "Số ngăn bên trong túi",
+      "koi:ui": {
+        "component": "number",
+        "group": "Ngăn"
+      }
+    },
+    "zipper_closure": {
+      "type": "boolean",
+      "title": "Có khóa kéo",
+      "description": "Có khóa kéo đóng/mở chính không",
+      "default": true,
+      "koi:ui": {
+        "component": "switch",
+        "group": "Tính năng"
+      }
+    },
+    "magnetic_closure": {
+      "type": "boolean",
+      "title": "Có nam châm",
+      "description": "Có khóa nam châm không",
+      "default": false,
+      "koi:ui": {
+        "component": "switch",
+        "group": "Tính năng"
+      }
+    }
+  },
+  "required": [
+    "bag_type",
+    "length_cm",
+    "width_cm",
+    "height_cm",
+    "hardware_material"
+  ],
+  "koi:groups": [
+    { "key": "Kiểu dáng", "label": "Kiểu dáng", "order": 1 },
+    { "key": "Kích thước", "label": "Kích thước", "order": 2 },
+    { "key": "Dây đeo", "label": "Dây đeo", "order": 3 },
+    { "key": "Phụ kiện", "label": "Phụ kiện (Hardware)", "order": 4 },
+    { "key": "Tính năng", "label": "Tính năng", "order": 5 },
+    { "key": "Ngăn", "label": "Ngăn", "order": 6 }
+  ]
+}

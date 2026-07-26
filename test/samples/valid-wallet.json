@@ -1,0 +1,25 @@
+{
+  "name": { "vi": "Ví Bifold Test 10 ngăn thẻ", "en": "Test Bifold Wallet 10 Slots" },
+  "productType": "WALLET",
+  "sku": "WL-TEST-BIFOLD-001",
+  "categoryId": "WALLET",
+  "technicalSpecs": {
+    "wallet_style": "bifold",
+    "folded_width_cm": 12,
+    "folded_height_cm": 9.5,
+    "unfolded_width_cm": 24,
+    "card_slots": 10,
+    "cash_pockets": 2,
+    "hidden_pockets": 1,
+    "coin_pocket": true,
+    "id_window": false,
+    "thread_pitch_mm": 3.85,
+    "edge_paint": "Fenice Brown"
+  },
+  "basePrice": 2200000,
+  "status": "DRAFT",
+  "seo": {
+    "metaTitle": "Test Bifold Wallet | Koi Leather",
+    "metaDescription": "Test wallet for Ajv validation"
+  }
+}

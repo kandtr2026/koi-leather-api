@@ -1,0 +1,53 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
+
+  app.enableCors({
+    origin: ['http://localhost:3000', 'http://localhost:5173', 'https://koileather.vn', 'https://admin.koileather.vn'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
+    credentials: true,
+  });
+
+  const config = new DocumentBuilder()
+    .setTitle('Koi Leather API')
+    .setDescription('Headless Backend API for Koi Leather — Handcrafted Leather Goods Management System')
+    .setVersion('1.0')
+    .addTag('Products', 'Quản lý sản phẩm & thông số kỹ thuật JSONB')
+    .addTag('Media', 'Quản lý ảnh sản phẩm (Cloudinary CDN)')
+    .addTag('Raw Materials', 'Quản lý nguyên liệu (da, chỉ, khóa) & đồng bộ tồn kho')
+    .addTag('Production Orders', 'Lệnh sản xuất & snapshot chi phí nguyên liệu')
+    .addTag('SEO', 'Slug, JSON-LD Schema.org, OpenGraph, XML Sitemap')
+    .addTag('Inventory Sync (kitleather.vn)', 'Webhook 2-way sync with kitleather.vn')
+    .addServer('http://localhost:3000', 'Local development')
+    .addServer('https://api.koileather.vn', 'Production')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: { defaultModelsExpandDepth: -1, docExpansion: 'list' },
+  });
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  console.log(`\nKoi Leather API running on http://localhost:${port}`);
+  console.log(`Swagger docs: http://localhost:${port}/api/docs\n`);
+}
+
+export { bootstrap };
+
+if (process.env.NODE_ENV !== 'vercel') {
+  bootstrap();
+}

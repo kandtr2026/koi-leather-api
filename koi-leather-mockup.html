@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Koi Leather - Hệ thống Quản lý Sản xuất</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #f3f4f6; height: 100vh; overflow: hidden; }
+    .sidebar-item { cursor: pointer; transition: all 0.2s; }
+    .sidebar-item:hover { background: rgba(255,255,255,0.08); }
+    .sidebar-item.active { background: rgba(255,255,255,0.12); border-left: 3px solid #f59e0b; }
+    .content-panel { display: none; }
+    .content-panel.active { display: block; }
+    .tab-btn { cursor: pointer; transition: all 0.2s; }
+    .tab-btn.active { border-bottom: 2px solid #f59e0b; color: #f59e0b; font-weight: 600; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-content { max-height: 90vh; overflow-y: auto; }
+    .fade-in { animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .snapshot-badge { background: #fef3c7; color: #92400e; }
+    .empty-state { color: #9ca3af; text-align: center; padding: 3rem 1rem; }
+    .product-spec-field { transition: all 0.2s; }
+    input, select, textarea { outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: #f59e0b; ring: 2px solid #f59e0b; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 100; background: #1f2937; color: white; padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transform: translateY(80px); opacity: 0; transition: all 0.3s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .stat-card { transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-2px); }
+  </style>
+</head>
+<body>
+
+<div class="flex h-screen">
+  <!-- ====== SIDEBAR ====== -->
+  <aside class="w-64 bg-gray-900 text-white flex flex-col shrink-0">
+    <div class="p-5 border-b border-gray-700">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center font-bold text-gray-900 text-lg">KL</div>
+        <div>
+          <div class="font-bold text-base">Koi Leather</div>
+          <div class="text-xs text-gray-400">Quản lý Sản xuất</div>
+        </div>
+      </div>
+    </div>
+    <nav class="flex-1 p-3 space-y-1">
+      <div class="sidebar-item active flex items-center gap-3 px-4 py-3 rounded-lg" data-tab="products">
+        <i class="fas fa-box w-5 text-center text-amber-400"></i>
+        <span class="text-sm font-medium">Sản phẩm</span>
+      </div>
+      <div class="sidebar-item flex items-center gap-3 px-4 py-3 rounded-lg" data-tab="materials">
+        <i class="fas fa-database w-5 text-center text-amber-400"></i>
+        <span class="text-sm font-medium">Nguyên liệu</span>
+      </div>
+      <div class="sidebar-item flex items-center gap-3 px-4 py-3 rounded-lg" data-tab="orders">
+        <i class="fas fa-clipboard-list w-5 text-center text-amber-400"></i>
+        <span class="text-sm font-medium">Lệnh sản xuất</span>
+      </div>
+    </nav>
+    <div class="p-4 border-t border-gray-700 text-xs text-gray-500">
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+        Mock Prototype v1.0
+      </div>
+    </div>
+  </aside>
+
+  <!-- ====== MAIN ====== -->
+  <main class="flex-1 overflow-hidden flex flex-col">
+
+    <!-- Top bar -->
+    <header class="bg-white border-b px-6 py-3 flex items-center justify-between shrink-0">
+      <h1 id="pageTitle" class="text-lg font-bold text-gray-800">Quản lý Sản phẩm</h1>
+      <div class="flex items-center gap-3 text-sm text-gray-500">
+        <i class="fas fa-sync-alt text-amber-500"></i>
+        <span>Koi Leather Mockup</span>
+      </div>
+    </header>
+
+    <!-- Content area -->
+    <div class="flex-1 overflow-y-auto p-6">
+
+      <!-- ====== PRODUCTS PANEL ====== -->
+      <div class="content-panel active" id="panel-products">
+
+        <div class="flex items-center justify-between mb-6">
+          <p class="text-sm text-gray-500">Quản lý danh sách sản phẩm và thông số kỹ thuật (JSONB linh hoạt)</p>
+          <button onclick="openProductModal()" class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+            <i class="fas fa-plus"></i> Thêm sản phẩm
+          </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Tổng sản phẩm</div>
+            <div class="text-2xl font-bold text-gray-800" id="statsTotalProducts">0</div>
+          </div>
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Loại sản phẩm</div>
+            <div class="text-2xl font-bold text-gray-800" id="statsProductTypes">0</div>
+          </div>
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Sản phẩm đang hoạt động</div>
+            <div class="text-2xl font-bold text-green-600" id="statsActiveProducts">0</div>
+          </div>
+        </div>
+
+        <!-- Product Table -->
+        <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th class="px-5 py-3">Sản phẩm</th>
+                  <th class="px-5 py-3">Loại</th>
+                  <th class="px-5 py-3">SKU</th>
+                  <th class="px-5 py-3">Website ID</th>
+                  <th class="px-5 py-3">Thông số</th>
+                  <th class="px-5 py-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="productTableBody" class="divide-y divide-gray-100 text-sm">
+              </tbody>
+            </table>
+          </div>
+          <div id="productEmpty" class="empty-state hidden">
+            <i class="fas fa-box-open text-4xl mb-3"></i>
+            <p>Chưa có sản phẩm nào. Nhấn "Thêm sản phẩm" để bắt đầu.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== MATERIALS PANEL ====== -->
+      <div class="content-panel" id="panel-materials">
+        <div class="flex items-center justify-between mb-6">
+          <p class="text-sm text-gray-500">Quản lý nguyên liệu đầu vào — thay đổi giá sẽ ảnh hưởng đến lệnh sản xuất mới</p>
+          <button onclick="openMaterialModal()" class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+            <i class="fas fa-plus"></i> Thêm nguyên liệu
+          </button>
+        </div>
+
+        <div class="grid grid-cols-4 gap-4 mb-6">
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Tổng nguyên liệu</div>
+            <div class="text-2xl font-bold text-gray-800" id="statsMaterials">0</div>
+          </div>
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Tổng giá trị kho</div>
+            <div class="text-2xl font-bold text-gray-800" id="statsInventoryValue">0</div>
+          </div>
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Nguyên liệu cần nhập</div>
+            <div class="text-2xl font-bold text-red-600" id="statsLowStock">0</div>
+          </div>
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Đồng bộ kitleather.vn</div>
+            <div class="text-2xl font-bold text-green-600" id="statsSyncStatus">
+              <i class="fas fa-check-circle"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th class="px-5 py-3">Nguyên liệu</th>
+                  <th class="px-5 py-3">Loại</th>
+                  <th class="px-5 py-3">Nhà cung cấp</th>
+                  <th class="px-5 py-3">Tồn kho</th>
+                  <th class="px-5 py-3">Đơn vị</th>
+                  <th class="px-5 py-3">Giá nhập</th>
+                  <th class="px-5 py-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="materialTableBody" class="divide-y divide-gray-100 text-sm">
+              </tbody>
+            </table>
+          </div>
+          <div id="materialEmpty" class="empty-state hidden">
+            <i class="fas fa-database text-4xl mb-3"></i>
+            <p>Chưa có nguyên liệu nào trong kho.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== ORDERS PANEL ====== -->
+      <div class="content-panel" id="panel-orders">
+        <div class="flex items-center justify-between mb-6">
+          <p class="text-sm text-gray-500">Tạo lệnh sản xuất — chi phí nguyên liệu được snapshot tại thời điểm chốt</p>
+          <button onclick="openOrderModal()" class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+            <i class="fas fa-plus"></i> Tạo lệnh mới
+          </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Tổng lệnh</div>
+            <div class="text-2xl font-bold text-gray-800" id="statsOrders">0</div>
+          </div>
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Đã chốt</div>
+            <div class="text-2xl font-bold text-green-600" id="statsSnappedOrders">0</div>
+          </div>
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Tổng chi phí sản xuất</div>
+            <div class="text-2xl font-bold text-gray-800" id="statsTotalCost">0</div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th class="px-5 py-3">Mã lệnh</th>
+                  <th class="px-5 py-3">Sản phẩm</th>
+                  <th class="px-5 py-3">Số lượng</th>
+                  <th class="px-5 py-3">Trạng thái</th>
+                  <th class="px-5 py-3">Chi phí (Snapshot)</th>
+                  <th class="px-5 py-3">Ngày tạo</th>
+                  <th class="px-5 py-3 text-right">Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody id="orderTableBody" class="divide-y divide-gray-100 text-sm">
+              </tbody>
+            </table>
+          </div>
+          <div id="orderEmpty" class="empty-state hidden">
+            <i class="fas fa-clipboard-list text-4xl mb-3"></i>
+            <p>Chưa có lệnh sản xuất nào.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ====== PRODUCT MODAL ====== -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 fade-in">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h2 class="text-lg font-bold text-gray-800" id="productModalTitle">Thêm sản phẩm mới</h2>
+      <button onclick="closeModal('productModal')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="p-5 space-y-4">
+      <input type="hidden" id="editProductId">
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm</label>
+          <input id="prodName" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví đứng Epsom Navy">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Loại sản phẩm</label>
+          <select id="prodType" onchange="onProductTypeChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="Ví">Ví</option>
+            <option value="Thắt lưng">Thắt lưng</option>
+            <option value="Watch Strap">Watch Strap</option>
+            <option value="Túi">Túi</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">SKU</label>
+          <input id="prodSku" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="WD-EPS-NAVY-001">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Website ID (externalId)</label>
+          <input id="prodWebsiteId" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="KL-001">
+        </div>
+      </div>
+
+      <!-- Dynamic Specs (JSONB simulation) -->
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fas fa-cog text-amber-500 text-xs"></i>
+          <label class="text-sm font-medium text-gray-700">Thông số kỹ thuật (JSONB)</label>
+          <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">động theo loại</span>
+        </div>
+        <div id="dynamicSpecs" class="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-lg border">
+        </div>
+      </div>
+
+      <!-- SEO Tab inside modal -->
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fas fa-search text-amber-500 text-xs"></i>
+          <label class="text-sm font-medium text-gray-700">SEO & Metadata</label>
+          <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">polymorphic</span>
+        </div>
+        <div class="space-y-3 p-3 bg-gray-50 rounded-lg border">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">SEO Title</label>
+            <input id="prodSeoTitle" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Ví đứng Epsom Navy | Koi Leather">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">SEO Description</label>
+            <textarea id="prodSeoDesc" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" rows="2" placeholder="Ví da cao cấp từ nhà máy Haas..."></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Canonical URL</label>
+            <input id="prodCanonical" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="/san-pham/vi-dung-epsom-navy">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 p-5 border-t bg-gray-50 rounded-b-2xl">
+      <button onclick="closeModal('productModal')" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium">Huỷ</button>
+      <button onclick="saveProduct()" class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition">
+        <i class="fas fa-save"></i> Lưu sản phẩm
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== MATERIAL MODAL ====== -->
+<div class="modal-overlay" id="materialModal">
+  <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 fade-in">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h2 class="text-lg font-bold text-gray-800" id="materialModalTitle">Thêm nguyên liệu</h2>
+      <button onclick="closeModal('materialModal')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="p-5 space-y-4">
+      <input type="hidden" id="editMaterialId">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Tên nguyên liệu</label>
+          <input id="matName" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Da Epsom Navy">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Loại</label>
+          <select id="matType" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="Da ngoài">Da ngoài</option>
+            <option value="Da lót">Da lót</option>
+            <option value="Độn">Độn</option>
+            <option value="Chỉ">Chỉ</option>
+            <option value="Khóa">Khóa</option>
+            <option value="Phụ kiện">Phụ kiện</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nhà cung cấp</label>
+          <input id="matSupplier" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Haas">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Đơn vị</label>
+          <select id="matUnit" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="sqft">sqft (Pia da)</option>
+            <option value="m">mét</option>
+            <option value="cái">cái</option>
+            <option value="cuộn">cuộn</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Số lượng tồn kho</label>
+          <input id="matStock" type="number" step="0.1" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="10">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Giá nhập (VNĐ)</label>
+          <input id="matPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="450000">
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 p-5 border-t bg-gray-50 rounded-b-2xl">
+      <button onclick="closeModal('materialModal')" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium">Huỷ</button>
+      <button onclick="saveMaterial()" class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition">
+        <i class="fas fa-save"></i> Lưu nguyên liệu
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ORDER MODAL ====== -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 fade-in">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h2 class="text-lg font-bold text-gray-800">Tạo lệnh sản xuất mới</h2>
+      <button onclick="closeModal('orderModal')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Chọn sản phẩm</label>
+          <select id="orderProduct" onchange="onOrderProductChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="">-- Chọn sản phẩm --</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Số lượng</label>
+          <input id="orderQty" type="number" min="1" value="1" onchange="onOrderProductChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+      </div>
+
+      <!-- Material Snapshot Preview -->
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fas fa-camera text-amber-500 text-xs"></i>
+          <label class="text-sm font-medium text-gray-700">Nguyên liệu dự kiến & Giá snapshot</label>
+          <span class="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full font-medium border border-amber-200">giá hiện tại từ kho</span>
+        </div>
+        <div id="materialSnapshotPreview" class="space-y-2 p-3 bg-gray-50 rounded-lg border min-h-[100px]">
+          <p class="text-sm text-gray-400 text-center py-6">Chọn sản phẩm để xem nguyên liệu dự kiến</p>
+        </div>
+      </div>
+
+      <!-- Total -->
+      <div class="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+        <span class="text-sm font-medium text-gray-700">Tổng chi phí dự kiến (theo giá hiện tại):</span>
+        <span id="orderEstimatedCost" class="text-lg font-bold text-amber-700">0 VNĐ</span>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 p-5 border-t bg-gray-50 rounded-b-2xl">
+      <button onclick="closeModal('orderModal')" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium">Huỷ</button>
+      <button onclick="snapshotOrder()" class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition">
+        <i class="fas fa-camera"></i> Chốt lệnh & tạo Snapshot
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ORDER DETAIL MODAL ====== -->
+<div class="modal-overlay" id="orderDetailModal">
+  <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 fade-in">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h2 class="text-lg font-bold text-gray-800" id="detailModalTitle">Chi tiết lệnh</h2>
+      <button onclick="closeModal('orderDetailModal')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="orderDetailContent" class="p-5 space-y-3">
+    </div>
+    <div class="flex justify-end p-5 border-t bg-gray-50 rounded-b-2xl">
+      <button onclick="closeModal('orderDetailModal')" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ======================== MOCK DATA ========================
+
+const productMaterialMap = {
+  'Ví': [
+    { materialName: 'Da cá sấu Epsom Navy', materialType: 'Da ngoài', qtyPerUnit: 0.8, unit: 'sqft' },
+    { materialName: 'Da lót Zermatt Beige', materialType: 'Da lót', qtyPerUnit: 0.5, unit: 'sqft' },
+    { materialName: 'Độn Salpa 1.0mm', materialType: 'Độn', qtyPerUnit: 0.4, unit: 'sqft' },
+    { materialName: 'Chỉ Meisi 0.45mm', materialType: 'Chỉ', qtyPerUnit: 2.0, unit: 'm' },
+  ],
+  'Thắt lưng': [
+    { materialName: 'Da bò Buttero Havana', materialType: 'Da ngoài', qtyPerUnit: 2.5, unit: 'sqft' },
+    { materialName: 'Khóa inox mờ 3.4cm', materialType: 'Khóa', qtyPerUnit: 1, unit: 'cái' },
+    { materialName: 'Chỉ Lin Hasard 0.55mm', materialType: 'Chỉ', qtyPerUnit: 3.0, unit: 'm' },
+    { materialName: 'Độn Velodon 0.8mm', materialType: 'Độn', qtyPerUnit: 0.6, unit: 'sqft' },
+  ],
+  'Watch Strap': [
+    { materialName: 'Da Epsom Navy', materialType: 'Da ngoài', qtyPerUnit: 0.4, unit: 'sqft' },
+    { materialName: 'Da lót Chevre Alran', materialType: 'Da lót', qtyPerUnit: 0.25, unit: 'sqft' },
+    { materialName: 'Chỉ Meisi 0.35mm', materialType: 'Chỉ', qtyPerUnit: 1.5, unit: 'm' },
+    { materialName: 'Khoá tang 20mm inox', materialType: 'Phụ kiện', qtyPerUnit: 1, unit: 'cái' },
+  ],
+  'Túi': [
+    { materialName: 'Da bò Pueblo', materialType: 'Da ngoài', qtyPerUnit: 4.0, unit: 'sqft' },
+    { materialName: 'Da lót Chevre Alran', materialType: 'Da lót', qtyPerUnit: 2.5, unit: 'sqft' },
+    { materialName: 'Độn Microfiber 2mm', materialType: 'Độn', qtyPerUnit: 2.0, unit: 'sqft' },
+    { materialName: 'Chỉ Lin Hasard 0.55mm', materialType: 'Chỉ', qtyPerUnit: 8.0, unit: 'm' },
+    { materialName: 'Khóa kéo YKK vàng', materialType: 'Phụ kiện', qtyPerUnit: 1, unit: 'cái' },
+  ],
+};
+
+let products = [
+  { id: 1, name: 'Ví đứng Epsom Navy', type: 'Ví', sku: 'WD-EPS-NAVY-001', websiteId: 'KL-001',
+    specs: { cardSlots: 8, cashPockets: 2, foldedW: '11cm', foldedH: '9cm' },
+    seo: { title: 'Ví đứng cao cấp Epsom Navy | Koi Leather', desc: 'Ví da cao cấp từ nhà máy Haas, 8 ngăn thẻ, 2 ngăn tiền.', canonical: '/san-pham/vi-dung-epsom-navy' },
+    createdAt: '2026-07-01', active: true },
+  { id: 2, name: 'Thắt lưng da bò Buttero Havana', type: 'Thắt lưng', sku: 'TL-BUT-HAV-002', websiteId: 'KL-002',
+    specs: { strapWidth: '3.4cm', buckleType: 'Pin buckle', length: '110cm', holeCount: 7, holeSpacing: '2.5cm' },
+    seo: { title: 'Thắt lưng da bò Buttero Havana | Koi Leather', desc: 'Thắt lưng da bò Ý, khóa inox mờ, 7 lỗ điều chỉnh.', canonical: '/san-pham/that-lung-buttero-havana' },
+    createdAt: '2026-07-05', active: true },
+  { id: 3, name: 'Watch Strap Epsom 20-18mm', type: 'Watch Strap', sku: 'WS-EPS-20-18-003', websiteId: 'KL-003',
+    specs: { lugWidth: 20, buckleWidth: 18, shortLength: 115, longLength: 75, taperFrom: 4.0, taperTo: 2.0 },
+    seo: { title: 'Watch Strap Da Epsom 20-18mm | Koi Leather', desc: 'Dây đồng hồ da Epsom, Lug 20mm, khóa 18mm, táp từ 4mm xuống 2mm.', canonical: '/san-pham/watch-strap-epsom-20-18' },
+    createdAt: '2026-07-10', active: false },
+  { id: 4, name: 'Túi tote Pueblo Mini', type: 'Túi', sku: 'TT-PUE-MINI-004', websiteId: 'KL-004',
+    specs: { foldedW: '28cm', foldedH: '22cm', depth: '10cm', handleDrop: '12cm' },
+    seo: { title: 'Túi Tote Pueblo Mini | Koi Leather', desc: 'Túi tote mini da Pueblo Ý, phù hợp hàng ngày.', canonical: '/san-pham/tui-tote-pueblo-mini' },
+    createdAt: '2026-07-15', active: true },
+];
+
+let materials = [
+  { id: 1, name: 'Da cá sấu Epsom Navy', type: 'Da ngoài', supplier: 'Haas', stock: 12.5, unit: 'sqft', price: 450000 },
+  { id: 2, name: 'Da lót Zermatt Beige', type: 'Da lót', supplier: 'Haas', stock: 8.0, unit: 'sqft', price: 280000 },
+  { id: 3, name: 'Da bò Buttero Havana', type: 'Da ngoài', supplier: 'Walpier', stock: 15.0, unit: 'sqft', price: 380000 },
+  { id: 4, name: 'Da bò Pueblo', type: 'Da ngoài', supplier: 'Badalassi Carlo', stock: 10.0, unit: 'sqft', price: 320000 },
+  { id: 5, name: 'Da lót Chevre Alran', type: 'Da lót', supplier: 'Alran', stock: 6.0, unit: 'sqft', price: 350000 },
+  { id: 6, name: 'Chỉ Meisi 0.45mm', type: 'Chỉ', supplier: 'Meisi', stock: 50.0, unit: 'm', price: 12000 },
+  { id: 7, name: 'Chỉ Lin Hasard 0.55mm', type: 'Chỉ', supplier: 'Lin Hasard', stock: 30.0, unit: 'm', price: 15000 },
+  { id: 8, name: 'Chỉ Meisi 0.35mm', type: 'Chỉ', supplier: 'Meisi', stock: 40.0, unit: 'm', price: 10000 },
+  { id: 9, name: 'Khóa inox mờ 3.4cm', type: 'Khóa', supplier: 'Craft Supplies', stock: 20, unit: 'cái', price: 85000 },
+  { id: 10, name: 'Khóa tang 20mm inox', type: 'Phụ kiện', supplier: 'Craft Supplies', stock: 15, unit: 'cái', price: 65000 },
+  { id: 11, name: 'Độn Salpa 1.0mm', type: 'Độn', supplier: 'Salamander', stock: 25.0, unit: 'sqft', price: 95000 },
+  { id: 12, name: 'Độn Velodon 0.8mm', type: 'Độn', supplier: 'Salamander', stock: 18.0, unit: 'sqft', price: 85000 },
+  { id: 13, name: 'Độn Microfiber 2mm', type: 'Độn', supplier: 'Salamander', stock: 12.0, unit: 'sqft', price: 120000 },
+  { id: 14, name: 'Khóa kéo YKK vàng', type: 'Phụ kiện', supplier: 'YKK', stock: 30, unit: 'cái', price: 25000 },
+  { id: 15, name: 'Da Epsom Navy', type: 'Da ngoài', supplier: 'Haas', stock: 20.0, unit: 'sqft', price: 420000 },
+];
+
+let orders = [
+  { id: 'PO-001', productId: 1, qty: 2, status: 'snapped', createdAt: '2026-07-16',
+    snapshot: [
+      { materialName: 'Da cá sấu Epsom Navy', qtyNeeded: 0.8, unit: 'sqft', price: 450000, cost: 360000 },
+      { materialName: 'Da lót Zermatt Beige', qtyNeeded: 0.5, unit: 'sqft', price: 280000, cost: 140000 },
+      { materialName: 'Độn Salpa 1.0mm', qtyNeeded: 0.4, unit: 'sqft', price: 95000, cost: 38000 },
+      { materialName: 'Chỉ Meisi 0.45mm', qtyNeeded: 2.0, unit: 'm', price: 12000, cost: 24000 },
+    ],
+    totalCost: 562000 },
+  { id: 'PO-002', productId: 2, qty: 1, status: 'snapped', createdAt: '2026-07-18',
+    snapshot: [
+      { materialName: 'Da bò Buttero Havana', qtyNeeded: 2.5, unit: 'sqft', price: 380000, cost: 950000 },
+      { materialName: 'Khóa inox mờ 3.4cm', qtyNeeded: 1, unit: 'cái', price: 85000, cost: 85000 },
+      { materialName: 'Chỉ Lin Hasard 0.55mm', qtyNeeded: 3.0, unit: 'm', price: 15000, cost: 45000 },
+      { materialName: 'Độn Velodon 0.8mm', qtyNeeded: 0.6, unit: 'sqft', price: 85000, cost: 51000 },
+    ],
+    totalCost: 1131000 },
+];
+
+let nextProductId = 5;
+let nextMaterialId = 16;
+let nextOrderNum = 3;
+
+// ======================== UTILITY ========================
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._hide);
+  t._hide = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function formatMoney(n) {
+  return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ';
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ======================== SIDEBAR ========================
+
+document.querySelectorAll('.sidebar-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+    this.classList.add('active');
+    const tab = this.dataset.tab;
+    document.querySelectorAll('.content-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+    const titles = { products: 'Quản lý Sản phẩm', materials: 'Quản lý Nguyên liệu', orders: 'Quản lý Lệnh sản xuất' };
+    document.getElementById('pageTitle').textContent = titles[tab] || tab;
+    renderAll();
+  });
+});
+
+// ======================== PRODUCTS ========================
+
+function getSpecFields(type) {
+  const fields = {
+    'Ví': [
+      { key: 'cardSlots', label: 'Số ngăn thẻ', type: 'number', placeholder: '8' },
+      { key: 'cashPockets', label: 'Số ngăn tiền', type: 'number', placeholder: '2' },
+      { key: 'foldedW', label: 'Kích thước đóng (Rộng)', type: 'text', placeholder: '11cm' },
+      { key: 'foldedH', label: 'Kích thước đóng (Cao)', type: 'text', placeholder: '9cm' },
+    ],
+    'Thắt lưng': [
+      { key: 'strapWidth', label: 'Độ rộng mặt', type: 'text', placeholder: '3.4cm' },
+      { key: 'buckleType', label: 'Loại khóa', type: 'text', placeholder: 'Pin buckle' },
+      { key: 'length', label: 'Chiều dài', type: 'text', placeholder: '110cm' },
+      { key: 'holeCount', label: 'Số lỗ', type: 'number', placeholder: '7' },
+      { key: 'holeSpacing', label: 'Khoảng cách lỗ', type: 'text', placeholder: '2.5cm' },
+    ],
+    'Watch Strap': [
+      { key: 'lugWidth', label: 'Lug width (mm)', type: 'number', placeholder: '20' },
+      { key: 'buckleWidth', label: 'Buckle width (mm)', type: 'number', placeholder: '18' },
+      { key: 'shortLength', label: 'Short strap (mm)', type: 'number', placeholder: '115' },
+      { key: 'longLength', label: 'Long strap (mm)', type: 'number', placeholder: '75' },
+      { key: 'taperFrom', label: 'Taper từ (mm)', type: 'number', step: '0.1', placeholder: '4.0' },
+      { key: 'taperTo', label: 'Taper đến (mm)', type: 'number', step: '0.1', placeholder: '2.0' },
+    ],
+    'Túi': [
+      { key: 'foldedW', label: 'Rộng (cm)', type: 'number', placeholder: '28' },
+      { key: 'foldedH', label: 'Cao (cm)', type: 'number', placeholder: '22' },
+      { key: 'depth', label: 'Sâu (cm)', type: 'number', placeholder: '10' },
+      { key: 'handleDrop', label: 'Handle drop (cm)', type: 'number', placeholder: '12' },
+    ],
+  };
+  return fields[type] || fields['Ví'];
+}
+
+function onProductTypeChange() {
+  const type = document.getElementById('prodType').value;
+  const fields = getSpecFields(type);
+  const container = document.getElementById('dynamicSpecs');
+  container.innerHTML = fields.map(f => `
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">${f.label}</label>
+      <input type="${f.type}" step="${f.step || '1'}" id="spec_${f.key}" class="product-spec-field w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="${f.placeholder}">
+    </div>
+  `).join('');
+}
+
+function openProductModal(editId) {
+  document.getElementById('productModalTitle').textContent = editId ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới';
+  document.getElementById('editProductId').value = editId || '';
+  document.getElementById('prodName').value = '';
+  document.getElementById('prodSku').value = '';
+  document.getElementById('prodWebsiteId').value = '';
+  document.getElementById('prodSeoTitle').value = '';
+  document.getElementById('prodSeoDesc').value = '';
+  document.getElementById('prodCanonical').value = '';
+  document.getElementById('prodType').value = 'Ví';
+  onProductTypeChange();
+
+  if (editId) {
+    const p = products.find(x => x.id === editId);
+    if (!p) return;
+    document.getElementById('prodName').value = p.name;
+    document.getElementById('prodType').value = p.type;
+    document.getElementById('prodSku').value = p.sku;
+    document.getElementById('prodWebsiteId').value = p.websiteId;
+    document.getElementById('prodSeoTitle').value = p.seo.title;
+    document.getElementById('prodSeoDesc').value = p.seo.desc;
+    document.getElementById('prodCanonical').value = p.seo.canonical;
+    onProductTypeChange();
+    const fields = getSpecFields(p.type);
+    fields.forEach(f => {
+      const el = document.getElementById('spec_' + f.key);
+      if (el && p.specs[f.key] !== undefined) el.value = p.specs[f.key];
+    });
+  }
+  document.getElementById('productModal').classList.add('open');
+}
+
+function saveProduct() {
+  const id = document.getElementById('editProductId').value;
+  const name = document.getElementById('prodName').value.trim();
+  const type = document.getElementById('prodType').value;
+  const sku = document.getElementById('prodSku').value.trim();
+  const websiteId = document.getElementById('prodWebsiteId').value.trim();
+
+  if (!name || !sku) { toast('Vui lòng nhập tên và SKU sản phẩm'); return; }
+
+  const fields = getSpecFields(type);
+  const specs = {};
+  fields.forEach(f => {
+    const el = document.getElementById('spec_' + f.key);
+    if (el) specs[f.key] = f.type === 'number' ? (el.value ? Number(el.value) : '') : el.value;
+  });
+
+  const seo = {
+    title: document.getElementById('prodSeoTitle').value.trim(),
+    desc: document.getElementById('prodSeoDesc').value.trim(),
+    canonical: document.getElementById('prodCanonical').value.trim(),
+  };
+
+  if (id) {
+    const p = products.find(x => x.id === Number(id));
+    if (p) { Object.assign(p, { name, type, sku, websiteId, specs, seo }); toast('Đã cập nhật sản phẩm'); }
+  } else {
+    products.push({
+      id: nextProductId++, name, type, sku, websiteId, specs, seo,
+      createdAt: new Date().toISOString().slice(0, 10), active: true,
+    });
+    toast('Đã thêm sản phẩm mới');
+  }
+  closeModal('productModal');
+  renderProducts();
+}
+
+function deleteProduct(id) {
+  if (!confirm('Xoá sản phẩm này?')) return;
+  products = products.filter(p => p.id !== id);
+  toast('Đã xoá sản phẩm');
+  renderProducts();
+}
+
+function toggleProductStatus(id) {
+  const p = products.find(x => x.id === id);
+  if (p) { p.active = !p.active; renderProducts(); }
+}
+
+// ======================== MATERIALS ========================
+
+function openMaterialModal(editId) {
+  document.getElementById('materialModalTitle').textContent = editId ? 'Chỉnh sửa nguyên liệu' : 'Thêm nguyên liệu';
+  document.getElementById('editMaterialId').value = editId || '';
+  document.getElementById('matName').value = '';
+  document.getElementById('matType').value = 'Da ngoài';
+  document.getElementById('matSupplier').value = '';
+  document.getElementById('matUnit').value = 'sqft';
+  document.getElementById('matStock').value = '';
+  document.getElementById('matPrice').value = '';
+
+  if (editId) {
+    const m = materials.find(x => x.id === editId);
+    if (!m) return;
+    document.getElementById('matName').value = m.name;
+    document.getElementById('matType').value = m.type;
+    document.getElementById('matSupplier').value = m.supplier;
+    document.getElementById('matUnit').value = m.unit;
+    document.getElementById('matStock').value = m.stock;
+    document.getElementById('matPrice').value = m.price;
+  }
+  document.getElementById('materialModal').classList.add('open');
+}
+
+function saveMaterial() {
+  const id = document.getElementById('editMaterialId').value;
+  const name = document.getElementById('matName').value.trim();
+  const type = document.getElementById('matType').value;
+  const supplier = document.getElementById('matSupplier').value.trim();
+  const unit = document.getElementById('matUnit').value;
+  const stock = parseFloat(document.getElementById('matStock').value) || 0;
+  const price = parseInt(document.getElementById('matPrice').value) || 0;
+
+  if (!name) { toast('Vui lòng nhập tên nguyên liệu'); return; }
+
+  if (id) {
+    const m = materials.find(x => x.id === Number(id));
+    if (m) {
+      const oldPrice = m.price;
+      Object.assign(m, { name, type, supplier, unit, stock, price });
+      if (oldPrice !== price) toast(`Đã cập nhật giá "${name}": ${formatMoney(oldPrice)} → ${formatMoney(price)}`);
+      else toast('Đã cập nhật nguyên liệu');
+    }
+  } else {
+    materials.push({ id: nextMaterialId++, name, type, supplier, unit, stock, price });
+    toast('Đã thêm nguyên liệu mới');
+  }
+  closeModal('materialModal');
+  renderMaterials();
+}
+
+function deleteMaterial(id) {
+  if (!confirm('Xoá nguyên liệu này?')) return;
+  materials = materials.filter(m => m.id !== id);
+  toast('Đã xoá nguyên liệu');
+  renderMaterials();
+}
+
+// ======================== ORDERS ========================
+
+function openOrderModal() {
+  document.getElementById('orderProduct').innerHTML = '<option value="">-- Chọn sản phẩm --</option>' +
+    products.filter(p => p.active).map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('');
+  document.getElementById('orderQty').value = 1;
+  document.getElementById('materialSnapshotPreview').innerHTML = '<p class="text-sm text-gray-400 text-center py-6">Chọn sản phẩm để xem nguyên liệu dự kiến</p>';
+  document.getElementById('orderEstimatedCost').textContent = '0 VNĐ';
+  document.getElementById('orderModal').classList.add('open');
+}
+
+function onOrderProductChange() {
+  const productId = parseInt(document.getElementById('orderProduct').value);
+  const qty = parseInt(document.getElementById('orderQty').value) || 1;
+  const container = document.getElementById('materialSnapshotPreview');
+  const costEl = document.getElementById('orderEstimatedCost');
+
+  if (!productId) {
+    container.innerHTML = '<p class="text-sm text-gray-400 text-center py-6">Chọn sản phẩm để xem nguyên liệu dự kiến</p>';
+    costEl.textContent = '0 VNĐ';
+    return;
+  }
+
+  const product = products.find(p => p.id === productId);
+  if (!product) return;
+
+  const requiredMaterials = productMaterialMap[product.type] || [];
+  if (requiredMaterials.length === 0) {
+    container.innerHTML = '<p class="text-sm text-gray-400 text-center py-6">Không có dữ liệu nguyên liệu cho loại sản phẩm này</p>';
+    costEl.textContent = '0 VNĐ';
+    return;
+  }
+
+  let totalCost = 0;
+  let html = requiredMaterials.map(rm => {
+    // Find matching material in inventory by name or type
+    const inv = materials.find(m => m.name === rm.materialName || (m.type === rm.materialType));
+    const currentPrice = inv ? inv.price : 0;
+    const cost = currentPrice * rm.qtyPerUnit * qty;
+    totalCost += cost;
+    return `
+      <div class="flex items-center justify-between p-2 bg-white rounded-lg border text-sm">
+        <div class="flex items-center gap-3">
+          <div class="w-2 h-2 rounded-full ${inv ? 'bg-green-500' : 'bg-gray-300'}"></div>
+          <div>
+            <span class="font-medium text-gray-800">${rm.materialName}</span>
+            <span class="text-xs text-gray-400 ml-2">${rm.qtyPerUnit} ${rm.unit}/sp</span>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="font-medium text-gray-800">${inv ? formatMoney(currentPrice) : 'Chưa có'}</div>
+          <div class="text-xs ${inv ? 'text-gray-400' : 'text-red-400'}">× ${rm.qtyPerUnit * qty} ${rm.unit} = ${formatMoney(cost)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = html;
+  costEl.textContent = formatMoney(totalCost);
+}
+
+function snapshotOrder() {
+  const productId = parseInt(document.getElementById('orderProduct').value);
+  const qty = parseInt(document.getElementById('orderQty').value) || 1;
+
+  if (!productId) { toast('Vui lòng chọn sản phẩm'); return; }
+  if (qty < 1) { toast('Số lượng phải >= 1'); return; }
+
+  const product = products.find(p => p.id === productId);
+  if (!product) return;
+
+  const requiredMaterials = productMaterialMap[product.type] || [];
+  const snap = requiredMaterials.map(rm => {
+    const inv = materials.find(m => m.name === rm.materialName || (m.type === rm.materialType));
+    const currentPrice = inv ? inv.price : 0;
+    const qtyNeeded = rm.qtyPerUnit * qty;
+    return {
+      materialName: rm.materialName,
+      qtyNeeded,
+      unit: rm.unit,
+      price: currentPrice,
+      cost: currentPrice * qtyNeeded,
+    };
+  });
+
+  const totalCost = snap.reduce((sum, s) => sum + s.cost, 0);
+
+  orders.push({
+    id: 'PO-00' + nextOrderNum++,
+    productId,
+    qty,
+    status: 'snapped',
+    createdAt: new Date().toISOString().slice(0, 10),
+    snapshot: snap,
+    totalCost,
+  });
+
+  closeModal('orderModal');
+  toast(`Đã chốt lệnh sản xuất với ${snap.length} nguyên liệu — tổng chi phí được snapshot: ${formatMoney(totalCost)}`);
+  renderOrders();
+}
+
+function viewOrderDetail(id) {
+  const order = orders.find(o => o.id === id);
+  if (!order) return;
+
+  const product = products.find(p => p.id === order.productId);
+  document.getElementById('detailModalTitle').textContent = `Chi tiết lệnh ${order.id}`;
+  document.getElementById('orderDetailContent').innerHTML = `
+    <div class="grid grid-cols-2 gap-3 text-sm">
+      <div><span class="text-gray-500">Sản phẩm:</span> <span class="font-medium">${product ? product.name : 'N/A'}</span></div>
+      <div><span class="text-gray-500">Số lượng:</span> <span class="font-medium">${order.qty}</span></div>
+      <div><span class="text-gray-500">Trạng thái:</span> <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Đã chốt snapshot</span></div>
+      <div><span class="text-gray-500">Ngày tạo:</span> <span class="font-medium">${order.createdAt}</span></div>
+    </div>
+    <div class="border-t pt-3 mt-3">
+      <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Nguyên liệu (Snapshot)</div>
+      ${order.snapshot.map(s => `
+        <div class="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 last:border-0">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-lock text-gray-300 text-xs"></i>
+            <span>${s.materialName}</span>
+            <span class="text-xs text-gray-400">× ${s.qtyNeeded} ${s.unit}</span>
+          </div>
+          <div class="text-right">
+            <div class="font-medium">${formatMoney(s.cost)}</div>
+            <div class="text-xs text-gray-400">@ ${formatMoney(s.price)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200 mt-3">
+      <span class="text-sm font-medium text-gray-700">Tổng chi phí snapshot:</span>
+      <span class="text-lg font-bold text-amber-700">${formatMoney(order.totalCost)}</span>
+    </div>
+  `;
+  document.getElementById('orderDetailModal').classList.add('open');
+}
+
+// ======================== RENDER ========================
+
+function renderAll() {
+  renderProducts();
+  renderMaterials();
+  renderOrders();
+}
+
+function renderProducts() {
+  const tbody = document.getElementById('productTableBody');
+  const empty = document.getElementById('productEmpty');
+
+  if (products.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    document.getElementById('statsTotalProducts').textContent = '0';
+    document.getElementById('statsProductTypes').textContent = '0';
+    document.getElementById('statsActiveProducts').textContent = '0';
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const types = new Set(products.map(p => p.type));
+  document.getElementById('statsTotalProducts').textContent = products.length;
+  document.getElementById('statsProductTypes').textContent = types.size;
+  document.getElementById('statsActiveProducts').textContent = products.filter(p => p.active).length;
+
+  tbody.innerHTML = products.map(p => {
+    const specSummary = Object.entries(p.specs).slice(0, 2).map(([k, v]) => `${v}`).join(' | ');
+    return `<tr>
+      <td class="px-5 py-3">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full ${p.active ? 'bg-green-500' : 'bg-gray-300'}"></div>
+          <span class="font-medium text-gray-800">${p.name}</span>
+        </div>
+      </td>
+      <td class="px-5 py-3"><span class="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-600">${p.type}</span></td>
+      <td class="px-5 py-3 text-gray-600 font-mono text-xs">${p.sku}</td>
+      <td class="px-5 py-3 text-gray-600 font-mono text-xs">${p.websiteId}</td>
+      <td class="px-5 py-3 text-gray-500 text-xs max-w-[150px] truncate">${specSummary}</td>
+      <td class="px-5 py-3 text-right">
+        <div class="flex items-center justify-end gap-2">
+          <button onclick="toggleProductStatus(${p.id})" class="text-${p.active ? 'gray-400 hover:text-amber-500' : 'green-400 hover:text-green-600'} transition text-sm" title="${p.active ? 'Vô hiệu hoá' : 'Kích hoạt'}">
+            <i class="fas ${p.active ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+          </button>
+          <button onclick="openProductModal(${p.id})" class="text-gray-400 hover:text-amber-500 transition text-sm"><i class="fas fa-edit"></i></button>
+          <button onclick="deleteProduct(${p.id})" class="text-gray-400 hover:text-red-500 transition text-sm"><i class="fas fa-trash-alt"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMaterials() {
+  const tbody = document.getElementById('materialTableBody');
+  const empty = document.getElementById('materialEmpty');
+
+  if (materials.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    document.getElementById('statsMaterials').textContent = '0';
+    document.getElementById('statsInventoryValue').textContent = '0 VNĐ';
+    document.getElementById('statsLowStock').textContent = '0';
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const totalValue = materials.reduce((sum, m) => sum + (m.price * m.stock), 0);
+  const lowStock = materials.filter(m => m.stock < 10).length;
+
+  document.getElementById('statsMaterials').textContent = materials.length;
+  document.getElementById('statsInventoryValue').textContent = formatMoney(totalValue);
+  document.getElementById('statsLowStock').textContent = lowStock;
+
+  const typeIcons = { 'Da ngoài': 'fa-solid fa-cow', 'Da lót': 'fa-solid fa-layer-group', 'Độn': 'fa-solid fa-cube', 'Chỉ': 'fa-solid fa-spool', 'Khóa': 'fa-solid fa-lock', 'Phụ kiện': 'fa-solid fa-cog' };
+
+  tbody.innerHTML = materials.map(m => `
+    <tr>
+      <td class="px-5 py-3">
+        <div class="flex items-center gap-2">
+          <i class="${typeIcons[m.type] || 'fa-solid fa-cube'} text-gray-300 text-xs"></i>
+          <span class="font-medium text-gray-800">${m.name}</span>
+        </div>
+      </td>
+      <td class="px-5 py-3"><span class="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-600">${m.type}</span></td>
+      <td class="px-5 py-3 text-gray-600 text-xs">${m.supplier}</td>
+      <td class="px-5 py-3">
+        <span class="font-medium ${m.stock < 10 ? 'text-red-600' : 'text-gray-800'}">${m.stock}</span>
+        ${m.stock < 5 ? '<i class="fas fa-exclamation-triangle text-red-500 text-xs ml-1"></i>' : ''}
+      </td>
+      <td class="px-5 py-3 text-gray-500 text-xs">${m.unit}</td>
+      <td class="px-5 py-3 font-medium text-gray-800" id="matPrice_${m.id}">${formatMoney(m.price)}</td>
+      <td class="px-5 py-3 text-right">
+        <button onclick="openMaterialModal(${m.id})" class="text-gray-400 hover:text-amber-500 transition text-sm"><i class="fas fa-edit"></i></button>
+        <button onclick="deleteMaterial(${m.id})" class="text-gray-400 hover:text-red-500 transition text-sm ml-2"><i class="fas fa-trash-alt"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderOrders() {
+  const tbody = document.getElementById('orderTableBody');
+  const empty = document.getElementById('orderEmpty');
+
+  if (orders.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    document.getElementById('statsOrders').textContent = '0';
+    document.getElementById('statsSnappedOrders').textContent = '0';
+    document.getElementById('statsTotalCost').textContent = '0 VNĐ';
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const snapped = orders.filter(o => o.status === 'snapped').length;
+  const totalCost = orders.reduce((sum, o) => sum + o.totalCost, 0);
+
+  document.getElementById('statsOrders').textContent = orders.length;
+  document.getElementById('statsSnappedOrders').textContent = snapped;
+  document.getElementById('statsTotalCost').textContent = formatMoney(totalCost);
+
+  tbody.innerHTML = orders.map(o => {
+    const product = products.find(p => p.id === o.productId);
+    return `<tr>
+      <td class="px-5 py-3 font-mono text-xs font-medium text-gray-800">${o.id}</td>
+      <td class="px-5 py-3 text-sm text-gray-800">${product ? product.name : 'N/A'}</td>
+      <td class="px-5 py-3 font-medium">${o.qty}</td>
+      <td class="px-5 py-3">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+          <i class="fas fa-camera text-xs"></i> Đã chốt
+        </span>
+      </td>
+      <td class="px-5 py-3 font-medium text-gray-800">${formatMoney(o.totalCost)}</td>
+      <td class="px-5 py-3 text-sm text-gray-500">${o.createdAt}</td>
+      <td class="px-5 py-3 text-right">
+        <button onclick="viewOrderDetail('${o.id}')" class="text-gray-400 hover:text-amber-500 transition text-sm"><i class="fas fa-eye"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ======================== INIT ========================
+
+renderAll();
+onProductTypeChange();
+
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { SpecsValidatorService } from '../common/specs-validator.service';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { Prisma } from '@prisma/client';
+import slugify from 'slugify';
+
+@Injectable()
+export class ProductService {
+  constructor(
+    private prisma: PrismaService,
+    private specsValidator: SpecsValidatorService,
+  ) {}
+
+  private generateSlug(nameVi: string): string {
+    let slug = slugify(nameVi, { lower: true, strict: true, locale: 'vi' });
+    if (!slug) slug = `product-${Date.now()}`;
+    return slug;
+  }
+
+  private async ensureUniqueSlug(baseSlug: string, excludeId?: string): Promise<string> {
+    let slug = baseSlug;
+    let counter = 0;
+    while (true) {
+      const existing = await this.prisma.product.findUnique({ where: { slug } });
+      if (!existing || (excludeId && existing.id === excludeId)) return slug;
+      counter++;
+      slug = `${baseSlug}-${counter}`;
+    }
+  }
+
+  private async validateTechnicalSpecs(categoryId: string | undefined, technicalSpecs: Record<string, any>) {
+    if (!categoryId || !technicalSpecs || Object.keys(technicalSpecs).length === 0) return;
+
+    const category = await this.prisma.category.findUnique({ where: { id: categoryId } });
+    if (!category) throw new BadRequestException(`Category ${categoryId} not found`);
+
+    const schema = category.specsSchema as unknown as Record<string, any>;
+    if (!schema || Object.keys(schema).length === 0) return;
+
+    const { valid, errors } = this.specsValidator.validate(schema, technicalSpecs);
+    if (!valid) {
+      throw new BadRequestException(
+        `Technical specs validation failed: ${errors.join('; ')}`,
+      );
+    }
+  }
+
+  async create(dto: CreateProductDto) {
+    const existing = await this.prisma.product.findFirst({
+      where: { sku: dto.sku },
+    });
+    if (existing) throw new ConflictException('Product with this SKU already exists');
+
+    const slug = await this.ensureUniqueSlug(this.generateSlug(dto.name.vi));
+    const technicalSpecs = dto.technicalSpecs || dto.specs || {};
+
+    await this.validateTechnicalSpecs(dto.categoryId, technicalSpecs);
+
+    return this.prisma.product.create({
+      data: {
+        name: dto.name as any,
+        slug,
+        productType: dto.productType,
+        sku: dto.sku,
+        categoryId: dto.categoryId,
+        description: (dto.description || {}) as any,
+        basePrice: dto.basePrice ?? undefined,
+        status: dto.status ?? 'DRAFT',
+        externalId: dto.externalId,
+        technicalSpecs: technicalSpecs as any,
+        metaTitle: dto.seo?.metaTitle,
+        metaDescription: dto.seo?.metaDescription,
+        canonicalUrl: dto.seo?.canonicalUrl || slug,
+      },
+      include: {
+        images: { orderBy: { displayOrder: 'asc' } },
+        variants: true,
+        category: true,
+      },
+    });
+  }
+
+  async findAll(page = 1, limit = 20, type?: string, status?: string, categoryId?: string) {
+    const where: Prisma.ProductWhereInput = {};
+    if (type) where.productType = type as any;
+    if (status) where.status = status as any;
+    if (categoryId) where.categoryId = categoryId;
+
+    const [data, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          category: { select: { id: true, code: true, name: true } },
+          images: { where: { isPrimary: true }, take: 1 },
+          _count: { select: { variants: true, images: true } },
+        },
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async findById(id: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        images: { orderBy: { displayOrder: 'asc' } },
+        variants: { include: { images_rel: { orderBy: { displayOrder: 'asc' } } } },
+        craftSpecs: true,
+        seoRecords: true,
+      },
+    });
+    if (!product) throw new NotFoundException('Product not found');
+    return product;
+  }
+
+  async findBySlug(slug: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { slug },
+      include: {
+        category: true,
+        images: { orderBy: { displayOrder: 'asc' } },
+        variants: true,
+      },
+    });
+    if (!product) throw new NotFoundException('Product not found');
+    return product;
+  }
+
+  async update(id: string, dto: UpdateProductDto) {
+    await this.findById(id);
+
+    const technicalSpecs = dto.technicalSpecs || dto.specs;
+    if (technicalSpecs) {
+      const catId = dto.categoryId || (await this.prisma.product.findUnique({ where: { id }, select: { categoryId: true } }))?.categoryId;
+      await this.validateTechnicalSpecs(catId || undefined, technicalSpecs);
+    }
+
+    const data: any = {};
+    if (dto.name) data.name = dto.name;
+    if (dto.productType) data.productType = dto.productType;
+    if (dto.categoryId !== undefined) data.categoryId = dto.categoryId;
+    if (dto.description) data.description = dto.description;
+    if (dto.basePrice !== undefined) data.basePrice = dto.basePrice;
+    if (dto.status) data.status = dto.status;
+    if (dto.externalId !== undefined) data.externalId = dto.externalId;
+    if (technicalSpecs) data.technicalSpecs = technicalSpecs;
+
+    if (dto.name?.vi && !dto.seo?.canonicalUrl) {
+      data.slug = await this.ensureUniqueSlug(this.generateSlug(dto.name.vi), id);
+    } else if (dto.seo?.canonicalUrl) {
+      data.slug = await this.ensureUniqueSlug(dto.seo.canonicalUrl, id);
+      data.canonicalUrl = dto.seo.canonicalUrl;
+    }
+
+    if (dto.seo) {
+      if (dto.seo.metaTitle) data.metaTitle = dto.seo.metaTitle;
+      if (dto.seo.metaDescription) data.metaDescription = dto.seo.metaDescription;
+      if (dto.seo.canonicalUrl) {
+        data.canonicalUrl = dto.seo.canonicalUrl;
+      }
+    }
+
+    return this.prisma.product.update({
+      where: { id },
+      data,
+      include: { images: { orderBy: { displayOrder: 'asc' } }, variants: true, category: true },
+    });
+  }
+
+  async remove(id: string) {
+    await this.findById(id);
+    return this.prisma.product.delete({ where: { id } });
+  }
+
+  async toggleStatus(id: string) {
+    const product = await this.findById(id);
+    const newStatus = product.status === 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
+    return this.prisma.product.update({
+      where: { id },
+      data: { status: newStatus },
+    });
+  }
+}

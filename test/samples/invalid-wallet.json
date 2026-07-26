@@ -1,0 +1,15 @@
+{
+  "name": { "vi": "Ví Test INVALID", "en": "Test Invalid Wallet" },
+  "productType": "WALLET",
+  "sku": "WL-TEST-INVALID-001",
+  "categoryId": "WALLET",
+  "technicalSpecs": {
+    "wallet_style": "nonexistent",
+    "folded_width_cm": 50,
+    "folded_height_cm": -1,
+    "card_slots": 100,
+    "cash_pockets": 10
+  },
+  "basePrice": 999000,
+  "status": "DRAFT"
+}

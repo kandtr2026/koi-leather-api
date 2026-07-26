@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Thông số Phụ kiện da",
+  "description": "Quy cách kỹ thuật phụ kiện da nhỏ",
+  "properties": {
+    "accessory_type": {
+      "type": "string",
+      "title": "Loại phụ kiện",
+      "description": "Phân loại phụ kiện",
+      "enum": ["keychain", "zippo_case", "car_key_case", "mouse_mat", "coaster", "pen_case", "glasses_case", "card_dispenser", "airpods_case", "phone_case"],
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Móc khóa (Keychain)", "value": "keychain" },
+          { "label": "Bao da Zippo", "value": "zippo_case" },
+          { "label": "Bao da chìa khóa ô tô", "value": "car_key_case" },
+          { "label": "Lót chuột (Mouse Pad)", "value": "mouse_mat" },
+          { "label": "Lót cốc (Coaster)", "value": "coaster" },
+          { "label": "Hộp bút (Pen Case)", "value": "pen_case" },
+          { "label": "Hộp kính (Glasses Case)", "value": "glasses_case" },
+          { "label": "Card Dispenser", "value": "card_dispenser" },
+          { "label": "Bao da AirPods", "value": "airpods_case" },
+          { "label": "Bao da điện thoại", "value": "phone_case" }
+        ],
+        "group": "Kiểu dáng"
+      }
+    },
+    "length_cm": {
+      "type": "number",
+      "title": "Length (cm)",
+      "description": "Chiều dài sản phẩm",
+      "minimum": 2.0,
+      "maximum": 30.0,
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "width_cm": {
+      "type": "number",
+      "title": "Width (cm)",
+      "description": "Chiều rộng sản phẩm",
+      "minimum": 1.0,
+      "maximum": 25.0,
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "height_cm": {
+      "type": "number",
+      "title": "Height (cm)",
+      "description": "Chiều cao / độ dày sản phẩm",
+      "minimum": 0.1,
+      "maximum": 15.0,
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "hardware_type": {
+      "type": "string",
+      "title": "Loại Hardware",
+      "description": "Phụ kiện kim loại đi kèm",
+      "enum": ["key_hook", "rivet", "snap_button", "magnetic", "zipper", "d-ring", "none"],
+      "default": "none",
+      "koi:ui": {
+        "component": "select",
+        "group": "Phụ kiện"
+      }
+    },
+    "hardware_finish": {
+      "type": "string",
+      "title": "Màu Hardware",
+      "description": "Màu hoàn thiện kim loại",
+      "enum": ["silver", "gold", "antique_brass", "gunmetal", "black", "none"],
+      "default": "none",
+      "koi:ui": {
+        "component": "select",
+        "group": "Phụ kiện"
+      }
+    },
+    "stitching": {
+      "type": "string",
+      "title": "Kiểu may",
+      "description": "Kiểu chỉ khâu",
+      "enum": ["edge", "full", "none"],
+      "default": "edge",
+      "koi:ui": {
+        "component": "select",
+        "group": "Kỹ thuật may"
+      }
+    },
+    "emboss_text": {
+      "type": "string",
+      "title": "Chữ dập nổi",
+      "description": "Chữ/họa tiết dập nổi trên sản phẩm",
+      "koi:ui": {
+        "component": "text",
+        "placeholder": "VD: KOI LEATHER",
+        "group": "Tùy chọn"
+      }
+    }
+  },
+  "required": [
+    "accessory_type",
+    "length_cm",
+    "width_cm"
+  ],
+  "koi:groups": [
+    { "key": "Kiểu dáng", "label": "Kiểu dáng", "order": 1 },
+    { "key": "Kích thước", "label": "Kích thước", "order": 2 },
+    { "key": "Phụ kiện", "label": "Phụ kiện (Hardware)", "order": 3 },
+    { "key": "Kỹ thuật may", "label": "Kỹ thuật may", "order": 4 },
+    { "key": "Tùy chọn", "label": "Tùy chọn", "order": 5 }
+  ]
+}

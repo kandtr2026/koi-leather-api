@@ -1,0 +1,180 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Thông số Thắt lưng",
+  "description": "Quy cách kỹ thuật thắt lưng da thủ công",
+  "properties": {
+    "belt_width_cm": {
+      "type": "number",
+      "title": "Belt Width (cm)",
+      "description": "Bản rộng dây thắt lưng",
+      "enum": [2.8, 3.0, 3.2, 3.4, 3.8, 4.0],
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "2.8 cm (Thắt lưng âu)", "value": 2.8 },
+          { "label": "3.0 cm", "value": 3.0 },
+          { "label": "3.2 cm (Bản vừa)", "value": 3.2 },
+          { "label": "3.4 cm (Bản to)", "value": 3.4 },
+          { "label": "3.8 cm", "value": 3.8 },
+          { "label": "4.0 cm (Bản lớn)", "value": 4.0 }
+        ],
+        "group": "Kích thước"
+      }
+    },
+    "leather_thickness_mm": {
+      "type": "number",
+      "title": "Độ dày da (mm)",
+      "description": "Độ dày dây da",
+      "enum": [3.0, 3.5, 4.0, 4.5, 5.0],
+      "default": 4.0,
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "3.0 mm", "value": 3.0 },
+          { "label": "3.5 mm", "value": 3.5 },
+          { "label": "4.0 mm", "value": 4.0 },
+          { "label": "4.5 mm", "value": 4.5 },
+          { "label": "5.0 mm", "value": 5.0 }
+        ],
+        "group": "Kích thước"
+      }
+    },
+    "buckle_type": {
+      "type": "string",
+      "title": "Loại khóa",
+      "description": "Kiểu khóa thắt lưng",
+      "enum": ["pin_buckle", "automatic", "roller_buckle", "canvas_buckle", "military"],
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Khóa xỏ kim (Pin buckle)", "value": "pin_buckle" },
+          { "label": "Khóa tự động (Automatic)", "value": "automatic" },
+          { "label": "Khóa lăn (Roller buckle)", "value": "roller_buckle" },
+          { "label": "Khóa canvas", "value": "canvas_buckle" },
+          { "label": "Khóa quân đội", "value": "military" }
+        ],
+        "group": "Khóa"
+      }
+    },
+    "buckle_finish": {
+      "type": "string",
+      "title": "Màu khóa",
+      "description": "Màu hoàn thiện của khóa",
+      "enum": ["silver", "gold", "antique-brass", "black", "bronze"],
+      "default": "silver",
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Silver", "value": "silver" },
+          { "label": "Gold", "value": "gold" },
+          { "label": "Antique Brass", "value": "antique-brass" },
+          { "label": "Black", "value": "black" },
+          { "label": "Bronze", "value": "bronze" }
+        ],
+        "group": "Khóa"
+      }
+    },
+    "strap_length_cm": {
+      "type": "integer",
+      "minimum": 70,
+      "maximum": 140,
+      "title": "Strap Length (cm)",
+      "description": "Chiều dài dây (từ đầu khóa đến lỗ cuối)",
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "hole_count": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 9,
+      "title": "Số lỗ",
+      "description": "Số lỗ trên dây",
+      "default": 7,
+      "koi:ui": {
+        "component": "number",
+        "group": "Kích thước"
+      }
+    },
+    "hole_spacing_cm": {
+      "type": "number",
+      "minimum": 2.0,
+      "maximum": 3.5,
+      "title": "Khoảng cách lỗ (cm)",
+      "description": "Khoảng cách giữa các lỗ",
+      "default": 2.5,
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "keeper_type": {
+      "type": "string",
+      "title": "Kiểu keeper",
+      "description": "Kiểu vòng giữ dây",
+      "enum": ["fixed", "removable", "none"],
+      "default": "fixed",
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Fixed (Cố định)", "value": "fixed" },
+          { "label": "Removable (Có thể tháo)", "value": "removable" },
+          { "label": "None (Không có)", "value": "none" }
+        ],
+        "group": "Kiểu dáng"
+      }
+    },
+    "tip_shape": {
+      "type": "string",
+      "title": "Đầu dây",
+      "description": "Hình dạng đầu dây thắt lưng",
+      "enum": ["rounded", "pointed", "square", "tapered"],
+      "default": "rounded",
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Rounded (Bo tròn)", "value": "rounded" },
+          { "label": "Pointed (Nhọn)", "value": "pointed" },
+          { "label": "Square (Vuông)", "value": "square" },
+          { "label": "Tapered (Vát)", "value": "tapered" }
+        ],
+        "group": "Kiểu dáng"
+      }
+    },
+    "stitching": {
+      "type": "string",
+      "title": "Kiểu may",
+      "description": "Kiểu chỉ khâu trên dây",
+      "enum": ["edge", "dual_edge", "center", "none"],
+      "default": "edge",
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Edge (Một cạnh)", "value": "edge" },
+          { "label": "Dual Edge (Hai cạnh)", "value": "dual_edge" },
+          { "label": "Center (Giữa)", "value": "center" },
+          { "label": "None (Không chỉ)", "value": "none" }
+        ],
+        "group": "Kỹ thuật may"
+      }
+    }
+  },
+  "required": [
+    "belt_width_cm",
+    "leather_thickness_mm",
+    "buckle_type",
+    "strap_length_cm",
+    "hole_count"
+  ],
+  "koi:groups": [
+    { "key": "Kích thước", "label": "Kích thước", "order": 1 },
+    { "key": "Khóa", "label": "Khóa", "order": 2 },
+    { "key": "Kiểu dáng", "label": "Kiểu dáng", "order": 3 },
+    { "key": "Kỹ thuật may", "label": "Kỹ thuật may", "order": 4 }
+  ]
+}

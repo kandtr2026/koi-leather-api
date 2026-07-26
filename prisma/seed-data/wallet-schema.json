@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Thông số Ví / Bóp / Cardholder",
+  "description": "Quy cách kỹ thuật ví da thủ công",
+  "properties": {
+    "wallet_style": {
+      "type": "string",
+      "title": "Dáng ví",
+      "description": "Kiểu dáng của ví",
+      "enum": ["standing", "horizontal", "bifold", "trifold", "cardholder"],
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Ví đứng (Standing)", "value": "standing" },
+          { "label": "Ví ngang (Horizontal)", "value": "horizontal" },
+          { "label": "Bifold (Gập đôi)", "value": "bifold" },
+          { "label": "Trifold (Gập ba)", "value": "trifold" },
+          { "label": "Cardholder", "value": "cardholder" }
+        ],
+        "group": "Kiểu dáng"
+      }
+    },
+    "folded_width_cm": {
+      "type": "number",
+      "minimum": 5.0,
+      "maximum": 20.0,
+      "title": "Folded Width (cm)",
+      "description": "Chiều rộng khi gập (tính bằng cm)",
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "folded_height_cm": {
+      "type": "number",
+      "minimum": 5.0,
+      "maximum": 20.0,
+      "title": "Folded Height (cm)",
+      "description": "Chiều cao khi gập (tính bằng cm)",
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "unfolded_width_cm": {
+      "type": "number",
+      "minimum": 10.0,
+      "maximum": 40.0,
+      "title": "Unfolded Width (cm)",
+      "description": "Chiều rộng khi mở hoàn toàn",
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "cm",
+        "group": "Kích thước"
+      }
+    },
+    "card_slots": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 24,
+      "title": "Số ngăn thẻ",
+      "description": "Tổng số ngăn chứa thẻ",
+      "koi:ui": {
+        "component": "number",
+        "group": "Ngăn"
+      }
+    },
+    "cash_pockets": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6,
+      "title": "Số ngăn tiền",
+      "description": "Số ngăn đựng tiền mặt",
+      "koi:ui": {
+        "component": "number",
+        "group": "Ngăn"
+      }
+    },
+    "hidden_pockets": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4,
+      "title": "Số ngăn ẩn",
+      "description": "Số ngăn bí mật (thường dưới ngăn thẻ)",
+      "koi:ui": {
+        "component": "number",
+        "group": "Ngăn"
+      }
+    },
+    "coin_pocket": {
+      "type": "boolean",
+      "title": "Có ngăn xu",
+      "description": "Có ngăn đựng xu / tiền lẻ không",
+      "default": false,
+      "koi:ui": {
+        "component": "switch",
+        "group": "Ngăn"
+      }
+    },
+    "id_window": {
+      "type": "boolean",
+      "title": "Có cửa sổ CMND/ID",
+      "description": "Có ngăn trong suốt để thẻ căn cước không",
+      "default": false,
+      "koi:ui": {
+        "component": "switch",
+        "group": "Ngăn"
+      }
+    },
+    "thread_pitch_mm": {
+      "type": "number",
+      "title": "Thread Pitch (mm)",
+      "description": "Bước đục lỗ chỉ khâu",
+      "enum": [3.38, 3.85],
+      "default": 3.38,
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "3.38 mm (Fine)", "value": 3.38 },
+          { "label": "3.85 mm (Standard)", "value": 3.85 }
+        ],
+        "group": "Kỹ thuật may"
+      }
+    },
+    "edge_paint": {
+      "type": "string",
+      "title": "Edge Paint",
+      "description": "Màu sơn cạnh",
+      "koi:ui": {
+        "component": "text",
+        "group": "Kỹ thuật may"
+      }
+    }
+  },
+  "required": [
+    "wallet_style",
+    "folded_width_cm",
+    "folded_height_cm",
+    "card_slots",
+    "cash_pockets"
+  ],
+  "koi:groups": [
+    { "key": "Kiểu dáng", "label": "Kiểu dáng", "order": 1 },
+    { "key": "Kích thước", "label": "Kích thước", "order": 2 },
+    { "key": "Ngăn", "label": "Ngăn", "order": 3 },
+    { "key": "Kỹ thuật may", "label": "Kỹ thuật may", "order": 4 }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": { "vi": "Dây đồng hồ Test 22-20mm Padded", "en": "Test Watch Strap 22-20mm Padded" },
+  "productType": "WATCH_STRAP",
+  "sku": "WS-TEST-2220-001",
+  "categoryId": "WATCH_STRAP",
+  "technicalSpecs": {
+    "lug_width_mm": 22,
+    "buckle_width_mm": 20,
+    "size_designation": "22-20",
+    "short_strap_mm": 120,
+    "long_strap_mm": 80,
+    "taper_from_mm": 4.5,
+    "taper_to_mm": 2.5,
+    "padding_type": "padded",
+    "strap_shape": "straight",
+    "thread_pitch_mm": 3.38,
+    "edge_paint": "Fenice Navy",
+    "hardware_color": "silver"
+  },
+  "description": { "vi": "Dây đồng hồ test - Padded 22-20mm", "en": "Test padded watch strap 22-20mm" },
+  "basePrice": 1500000,
+  "status": "DRAFT",
+  "seo": {
+    "metaTitle": "Test Watch Strap | Koi Leather",
+    "metaDescription": "Test product for Ajv validation"
+  }
+}

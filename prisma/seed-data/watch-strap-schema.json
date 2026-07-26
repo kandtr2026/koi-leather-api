@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Thông số Dây đồng hồ",
+  "description": "Quy cách kỹ thuật dây đồng hồ da thủ công",
+  "properties": {
+    "lug_width_mm": {
+      "type": "integer",
+      "minimum": 14,
+      "maximum": 26,
+      "title": "Lug Width (mm)",
+      "description": "Kích thước chốt gắn với đồng hồ (20mm cho hầu hết đồng hồ nam)",
+      "koi:ui": {
+        "component": "select",
+        "options": [14, 16, 18, 19, 20, 21, 22, 24, 26],
+        "group": "Kích thước"
+      }
+    },
+    "buckle_width_mm": {
+      "type": "integer",
+      "minimum": 12,
+      "maximum": 24,
+      "title": "Buckle Width (mm)",
+      "description": "Kích thước đầu khóa cài",
+      "koi:ui": {
+        "component": "select",
+        "options": [14, 16, 18, 19, 20, 22],
+        "group": "Kích thước"
+      }
+    },
+    "size_designation": {
+      "type": "string",
+      "title": "Size Designation",
+      "description": "Ký hiệu size (VD: 20-18, 22-20, 19-16)",
+      "pattern": "^\\d{2}-\\d{2}$",
+      "examples": ["20-18", "22-20", "19-16"],
+      "koi:ui": {
+        "component": "text",
+        "placeholder": "VD: 20-18",
+        "group": "Kích thước"
+      }
+    },
+    "short_strap_mm": {
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 140,
+      "title": "Short Strap (mm)",
+      "description": "Chiều dài dây ngắn (mặt có lỗ)",
+      "default": 115,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "mm",
+        "group": "Kích thước"
+      }
+    },
+    "long_strap_mm": {
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 150,
+      "title": "Long Strap (mm)",
+      "description": "Chiều dài dây dài (mặt có khóa)",
+      "default": 75,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "mm",
+        "group": "Kích thước"
+      }
+    },
+    "taper_from_mm": {
+      "type": "number",
+      "minimum": 2.0,
+      "maximum": 6.0,
+      "title": "Taper From (mm)",
+      "description": "Độ dày tại vị trí chốt đồng hồ",
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "mm",
+        "group": "Độ dày"
+      }
+    },
+    "taper_to_mm": {
+      "type": "number",
+      "minimum": 1.0,
+      "maximum": 4.0,
+      "title": "Taper To (mm)",
+      "description": "Độ dày tại đầu khóa cài",
+      "multipleOf": 0.1,
+      "koi:ui": {
+        "component": "number",
+        "suffix": "mm",
+        "group": "Độ dày"
+      }
+    },
+    "padding_type": {
+      "type": "string",
+      "title": "Padding Type",
+      "description": "Kiểu độn dây",
+      "enum": ["flat", "padded"],
+      "koi:ui": {
+        "component": "radio",
+        "options": [
+          { "label": "Flat (Không độn)", "value": "flat" },
+          { "label": "Padded (Có độn)", "value": "padded" }
+        ],
+        "group": "Kiểu dáng"
+      }
+    },
+    "strap_shape": {
+      "type": "string",
+      "title": "Strap Shape",
+      "description": "Hình dạng dây",
+      "enum": ["straight", "curved"],
+      "default": "straight",
+      "koi:ui": {
+        "component": "radio",
+        "options": [
+          { "label": "Straight (Thẳng)", "value": "straight" },
+          { "label": "Curved (Cong)", "value": "curved" }
+        ],
+        "group": "Kiểu dáng"
+      }
+    },
+    "thread_pitch_mm": {
+      "type": "number",
+      "title": "Thread Pitch (mm)",
+      "description": "Bước đục lỗ chỉ khâu",
+      "enum": [3.38, 3.85, 4.0],
+      "default": 3.38,
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "3.38 mm (Fine)", "value": 3.38 },
+          { "label": "3.85 mm (Standard)", "value": 3.85 },
+          { "label": "4.0 mm (Rugged)", "value": 4.0 }
+        ],
+        "group": "Kỹ thuật may"
+      }
+    },
+    "edge_paint": {
+      "type": "string",
+      "title": "Edge Paint",
+      "description": "Màu sơn cạnh",
+      "default": "Fenice",
+      "koi:ui": {
+        "component": "text",
+        "placeholder": "VD: Fenice Navy / Uniters",
+        "group": "Kỹ thuật may"
+      }
+    },
+    "hardware_color": {
+      "type": "string",
+      "title": "Hardware Color",
+      "description": "Màu kim loại (khóa, đinh tán)",
+      "enum": ["silver", "gold", "black", "gunmetal", "antique-brass"],
+      "default": "silver",
+      "koi:ui": {
+        "component": "select",
+        "options": [
+          { "label": "Silver", "value": "silver" },
+          { "label": "Gold", "value": "gold" },
+          { "label": "Black", "value": "black" },
+          { "label": "Gunmetal", "value": "gunmetal" },
+          { "label": "Antique Brass", "value": "antique-brass" }
+        ],
+        "group": "Phụ kiện"
+      }
+    }
+  },
+  "required": [
+    "lug_width_mm",
+    "buckle_width_mm",
+    "size_designation",
+    "short_strap_mm",
+    "long_strap_mm",
+    "taper_from_mm",
+    "taper_to_mm",
+    "padding_type"
+  ],
+  "koi:groups": [
+    { "key": "Kích thước", "label": "Kích thước", "order": 1 },
+    { "key": "Độ dày", "label": "Độ dày Taper", "order": 2 },
+    { "key": "Kiểu dáng", "label": "Kiểu dáng", "order": 3 },
+    { "key": "Kỹ thuật may", "label": "Kỹ thuật may", "order": 4 },
+    { "key": "Phụ kiện", "label": "Phụ kiện", "order": 5 }
+  ]
+}
