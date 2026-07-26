@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "framework": null,
   "buildCommand": "npx prisma generate && npm run build",
   "installCommand": "npm install",
+  "outputDirectory": "dist",
   "functions": {
     "api/index.js": {
       "memory": 512,
