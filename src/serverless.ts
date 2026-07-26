@@ -1,11 +1,13 @@
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import type { Request, Response } from 'express';
 
 let cachedApp: any;
 
-export async function handler(req: any, res: any) {
+export async function handler(req: Request, res: Response) {
   if (!cachedApp) {
     const app = await NestFactory.create(AppModule);
 
