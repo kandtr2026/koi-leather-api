@@ -1,9 +1,5 @@
 node_modules/
 dist/
 .env
-uploads/original/
-uploads/thumbnail/
-uploads/medium/
-uploads/webp/
+uploads/
 *.log
-!.env.example
