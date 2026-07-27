@@ -549,24 +549,49 @@ async function api(path, options = {}) {
   if (options.headers) Object.assign(headers, options.headers);
   if (token) headers['Authorization'] = 'Bearer ' + token;
 
+  // Retry GETs on transient failures (serverless cold-start 5xx / network blips)
+  // so a single hiccup never leaves a tab stuck on its loading skeleton.
+  const maxAttempts = method === 'GET' ? 3 : 1;
   try {
-    const res = await fetch(API + path, {
-      ...options,
-      headers,
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      // 401 on mutation: prompt login
-      if (res.status === 401 && method !== 'GET') {
-        if (confirm('Phiên đăng nhập hết hạn. Đăng nhập lại?')) logout();
-        throw new Error('Unauthorized');
+    let lastErr;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const res = await fetch(API + path, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          // 401 on mutation: prompt login
+          if (res.status === 401 && method !== 'GET') {
+            if (confirm('Phiên đăng nhập hết hạn. Đăng nhập lại?')) logout();
+            throw new Error('Unauthorized');
+          }
+          const err = await res.json().catch(() => ({message:res.statusText}));
+          const e = new Error(err.message || 'API error');
+          e.status = res.status;
+          // Retry only on server-side (5xx) errors for GET; 4xx is not transient.
+          if (method === 'GET' && res.status >= 500 && attempt < maxAttempts) {
+            lastErr = e;
+            await new Promise(r => setTimeout(r, 400 * attempt));
+            continue;
+          }
+          throw e;
+        }
+        const data = res.status === 204 ? null : await res.json();
+        if (method === 'GET' && data !== null) swrCache.set(cacheKey, data);
+        return data;
+      } catch (err) {
+        // Network/abort error — retry for GET, else bubble up.
+        if (method === 'GET' && attempt < maxAttempts && err.name !== 'AbortError') {
+          lastErr = err;
+          await new Promise(r => setTimeout(r, 400 * attempt));
+          continue;
+        }
+        throw err;
       }
-      const err = await res.json().catch(() => ({message:res.statusText}));
-      throw new Error(err.message || 'API error');
     }
-    const data = res.status === 204 ? null : await res.json();
-    if (method === 'GET' && data !== null) swrCache.set(cacheKey, data);
-    return data;
+    throw lastErr;
   } catch (err) {
     if (method === 'GET') {
       const cached = swrCache.get(cacheKey);

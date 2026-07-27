@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as express from 'express';
 
 let cachedServer: any;
+let bootstrapPromise: Promise<any> | null = null;
 
 async function bootstrapServer() {
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] });
@@ -67,7 +68,17 @@ async function bootstrapServer() {
 
 export async function handler(req: any, res: any) {
   if (!cachedServer) {
-    cachedServer = await bootstrapServer();
+    // Cache the in-flight bootstrap promise so concurrent cold-start requests
+    // all await the SAME initialization instead of each spinning up its own
+    // Nest app + Prisma client (which caused intermittent 500s under load).
+    if (!bootstrapPromise) {
+      bootstrapPromise = bootstrapServer().catch((e) => {
+        // Reset on failure so the next request can retry a clean bootstrap.
+        bootstrapPromise = null;
+        throw e;
+      });
+    }
+    cachedServer = await bootstrapPromise;
   }
   return cachedServer(req, res);
 }
