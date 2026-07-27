@@ -41,6 +41,20 @@
     body.authenticated .requires-auth-block { display: block !important; }
     .g_id_signout { cursor: pointer; }
     .g_id_signout:hover { opacity: 0.7; }
+    /* Lightbox */
+    .lightbox-container { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .lightbox-close { position: fixed; top: 16px; right: 20px; z-index: 70; background: none; border: none; color: #fff; font-size: 32px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; line-height: 1; padding: 4px; }
+    .lightbox-close:hover { opacity: 1; }
+    .lightbox-nav { position: fixed; top: 50%; transform: translateY(-50%); z-index: 70; background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 28px; cursor: pointer; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; backdrop-filter: blur(4px); }
+    .lightbox-nav:hover { background: rgba(255,255,255,0.2); }
+    .lightbox-nav:disabled { opacity: 0.25; cursor: default; background: transparent; }
+    .lightbox-prev { left: 20px; }
+    .lightbox-next { right: 20px; }
+    .lightbox-image-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 60px 80px; }
+    .lightbox-image-wrapper img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); user-select: none; -webkit-user-drag: none; }
+    .lightbox-counter { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 70; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: #fff; font-size: 13px; font-weight: 500; padding: 6px 18px; border-radius: 20px; letter-spacing: 0.5px; white-space: nowrap; }
+    .lightbox-loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 65; color: rgba(255,255,255,0.5); font-size: 14px; }
+    #lightboxModal.modal-overlay { background: rgba(0,0,0,0.92); z-index: 60; }
   </style>
 </head>
 <body>
@@ -422,6 +436,20 @@
     <div class="flex justify-end mt-5 pt-4 border-t">
       <button onclick="closeModal('detailModal')" class="px-4 py-2 text-sm text-gray-600 font-medium">Đóng</button>
     </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX MODAL -->
+<div class="modal-overlay" id="lightboxModal">
+  <div class="lightbox-container">
+    <button class="lightbox-close" onclick="closeLightbox()" title="Đóng (Esc)">&times;</button>
+    <button class="lightbox-nav lightbox-prev" id="lightboxPrev" onclick="prevLightboxImage()" title="Trước (&larr;)"><i class="fas fa-chevron-left"></i></button>
+    <div class="lightbox-image-wrapper">
+      <img id="lightboxImage" src="" alt="">
+      <div class="lightbox-loading" id="lightboxLoading">Đang tải...</div>
+    </div>
+    <button class="lightbox-nav lightbox-next" id="lightboxNext" onclick="nextLightboxImage()" title="Sau (&rarr;)"><i class="fas fa-chevron-right"></i></button>
+    <div class="lightbox-counter" id="lightboxCounter"></div>
   </div>
 </div>
 
@@ -837,6 +865,69 @@ async function setPrimaryImage(imageId) {
   } catch(e) { toast('Lỗi: ' + e.message); }
 }
 
+// ========== LIGHTBOX ==========
+let _lbImages = [];
+let _lbIndex = 0;
+
+function openLightbox(images, startIndex) {
+  if (!images || !images.length) return;
+  _lbImages = images;
+  _lbIndex = Math.min(startIndex, images.length - 1);
+  renderLightboxImage();
+  openModal('lightboxModal');
+  document.getElementById('lightboxPrev').disabled = _lbIndex <= 0;
+  document.getElementById('lightboxNext').disabled = _lbIndex >= _lbImages.length - 1;
+}
+
+function renderLightboxImage() {
+  const img = _lbImages[_lbIndex];
+  const el = document.getElementById('lightboxImage');
+  const loading = document.getElementById('lightboxLoading');
+  const prev = document.getElementById('lightboxPrev');
+  const next = document.getElementById('lightboxNext');
+  loading.style.display = 'block';
+  el.style.opacity = '0';
+  el.onload = () => { loading.style.display = 'none'; el.style.opacity = '1'; };
+  el.onerror = () => { loading.style.display = 'none'; el.style.opacity = '1'; };
+  el.src = img.mediumUrl || img.url;
+  el.alt = img.altText || 'Koi Leather product image';
+  el.title = img.altText || '';
+  document.getElementById('lightboxCounter').textContent = `${_lbIndex + 1} / ${_lbImages.length}`;
+  prev.disabled = _lbIndex <= 0;
+  next.disabled = _lbIndex >= _lbImages.length - 1;
+}
+
+function nextLightboxImage() {
+  if (_lbIndex < _lbImages.length - 1) { _lbIndex++; renderLightboxImage(); }
+}
+
+function prevLightboxImage() {
+  if (_lbIndex > 0) { _lbIndex--; renderLightboxImage(); }
+}
+
+function closeLightbox() {
+  closeModal('lightboxModal');
+  _lbImages = [];
+  _lbIndex = 0;
+  document.getElementById('lightboxImage').src = '';
+}
+
+async function openLightboxFromProduct(productId, startIndex) {
+  try {
+    const images = await api(`/products/${productId}/images`);
+    if (!images || !images.length) { toast('Sản phẩm chưa có ảnh'); return; }
+    openLightbox(images, startIndex);
+  } catch(e) { toast('Lỗi tải ảnh: ' + e.message); }
+}
+
+// Keyboard navigation for lightbox
+document.addEventListener('keydown', function(e) {
+  if (!document.getElementById('lightboxModal').classList.contains('open')) return;
+  if (e.key === 'Escape') { closeLightbox(); e.preventDefault(); }
+  else if (e.key === 'ArrowRight') { nextLightboxImage(); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft') { prevLightboxImage(); e.preventDefault(); }
+});
+
 // ========== PRODUCTS ==========
 async function loadProducts() {
   document.getElementById('headerStatus').textContent = 'Đang tải sản phẩm...';
@@ -846,7 +937,7 @@ async function loadProducts() {
   renderProducts();
 }
 
-function renderThumbnails(thumbs) {
+function renderThumbnails(thumbs, productId) {
   const items = thumbs?.items;
   if (!items || !items.length) return '<span class="text-gray-300 text-xs">--</span>';
   const maxShow = 3;
@@ -856,9 +947,9 @@ function renderThumbnails(thumbs) {
     const alt = esc(img.alt || `Ảnh sản phẩm Koi Leather`);
     const isPrimary = img.isPrimary ? ' ring-1 ring-amber-400' : '';
     const z = i === 0 ? 'z-10' : (i === 1 ? 'z-0 -ml-3' : 'z-0 -ml-3');
-    return `<img src="${esc(img.url)}" alt="${alt}" loading="lazy" class="relative w-9 h-9 rounded-md object-cover border border-gray-200 bg-white${isPrimary} ${z}">`;
+    return `<img src="${esc(img.url)}" alt="${alt}" loading="lazy" onclick="openLightboxFromProduct('${productId}', ${i})" class="relative w-9 h-9 rounded-md object-cover border border-gray-200 bg-white${isPrimary} ${z} cursor-pointer hover:opacity-80 transition-opacity">`;
   }).join('');
-  const badge = remaining > 0 ? `<span class="relative z-0 -ml-2 inline-flex items-center justify-center w-9 h-9 rounded-md bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-500">+${remaining}</span>` : '';
+  const badge = remaining > 0 ? `<span onclick="openLightboxFromProduct('${productId}', 0)" class="relative z-0 -ml-2 inline-flex items-center justify-center w-9 h-9 rounded-md bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-500 cursor-pointer hover:bg-gray-200 transition-colors">+${remaining}</span>` : '';
   return `<div class="flex items-center" style="min-width:112px">${html}${badge}</div>`;
 }
 
@@ -875,7 +966,7 @@ function renderProducts() {
     const catBadges = cats.length
       ? cats.map(c => `<span class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1">${esc(c.name)}</span>`).join('')
       : `<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-xs">Chưa phân loại</span>`;
-    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails, p.id)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
