@@ -5,6 +5,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Prisma } from '@prisma/client';
 import slugify from 'slugify';
+import { generateProductSeo } from '../seo/seo-generator.helper';
 
 @Injectable()
 export class ProductService {
@@ -76,6 +77,22 @@ export class ProductService {
 
     await this.validateTechnicalSpecs(dto.categoryId, technicalSpecs);
 
+    const providedTitle = dto.metaTitle ?? dto.seo?.metaTitle;
+    const providedDesc = dto.metaDescription ?? dto.seo?.metaDescription;
+
+    if (providedTitle && providedDesc) {
+      // Both provided — use as-is
+    } else {
+      let categoryName: string | undefined;
+      if (dto.categoryId) {
+        const cat = await this.prisma.koiCategory.findUnique({ where: { id: dto.categoryId } });
+        categoryName = cat?.name;
+      }
+      const generated = generateProductSeo(dto.name?.vi || '', categoryName, dto.basePrice);
+      if (!providedTitle) dto.metaTitle = generated.metaTitle;
+      if (!providedDesc) dto.metaDescription = generated.metaDescription;
+    }
+
     return this.prisma.koiProduct.create({
       data: {
         name: dto.name as any,
@@ -126,12 +143,31 @@ export class ProductService {
           categoryId: true,
           category: { select: { id: true, code: true, name: true, specsSchema: true } },
           _count: { select: { variants: true, images: true } },
+          images: {
+            orderBy: { displayOrder: 'asc' },
+            select: { id: true, thumbnailUrl: true, url: true, altText: true, isPrimary: true },
+          },
         },
       }),
       this.prisma.koiProduct.count({ where }),
     ]);
 
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    const productsWithThumbnails = data.map(({ images, ...product }) => {
+      const top = (images || []).slice(0, 3).map((img) => ({
+        id: img.id,
+        url: img.thumbnailUrl || img.url,
+        alt: img.altText,
+        isPrimary: img.isPrimary,
+      }));
+      const totalImages = images?.length || 0;
+      const remaining = totalImages > 3 ? totalImages - 3 : 0;
+      return {
+        ...product,
+        thumbnails: { items: top, remaining },
+      };
+    });
+
+    return { data: productsWithThumbnails, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(id: string) {
@@ -163,7 +199,7 @@ export class ProductService {
   }
 
   async update(id: string, dto: UpdateProductDto) {
-    await this.findById(id);
+    const existing = await this.findById(id);
 
     const technicalSpecs = dto.technicalSpecs || dto.specs;
     if (technicalSpecs) {
@@ -189,11 +225,36 @@ export class ProductService {
       data.canonicalUrl = dto.seo.canonicalUrl;
     }
 
-    if (dto.metaTitle !== undefined) data.metaTitle = dto.metaTitle;
-    else if (dto.seo?.metaTitle) data.metaTitle = dto.seo.metaTitle;
+    const nameVi = dto.name?.vi || (existing.name as any)?.vi || '';
+    let categoryName: string | undefined;
+    const catId = dto.categoryId || existing.categoryId;
+    if (catId) {
+      const cat = await this.prisma.koiCategory.findUnique({ where: { id: catId } });
+      categoryName = cat?.name;
+    }
+    const price = dto.basePrice ?? existing.basePrice ?? undefined;
 
-    if (dto.metaDescription !== undefined) data.metaDescription = dto.metaDescription;
-    else if (dto.seo?.metaDescription) data.metaDescription = dto.seo.metaDescription;
+    // Resolve metaTitle: explicit DTO > seo sub-object > existing DB > auto-generate
+    if (dto.metaTitle !== undefined) {
+      data.metaTitle = dto.metaTitle;
+    } else if (dto.seo?.metaTitle !== undefined) {
+      data.metaTitle = dto.seo.metaTitle;
+    } else if (existing.metaTitle) {
+      data.metaTitle = existing.metaTitle;
+    } else {
+      data.metaTitle = generateProductSeo(nameVi, categoryName, price).metaTitle;
+    }
+
+    // Resolve metaDescription: explicit DTO > seo sub-object > existing DB > auto-generate
+    if (dto.metaDescription !== undefined) {
+      data.metaDescription = dto.metaDescription;
+    } else if (dto.seo?.metaDescription !== undefined) {
+      data.metaDescription = dto.seo.metaDescription;
+    } else if (existing.metaDescription) {
+      data.metaDescription = existing.metaDescription;
+    } else {
+      data.metaDescription = generateProductSeo(nameVi, categoryName, price).metaDescription;
+    }
 
     return this.prisma.koiProduct.update({
       where: { id },

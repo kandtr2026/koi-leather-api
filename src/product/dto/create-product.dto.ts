@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsObject, IsNumber, ValidateNested, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { KoiProductType, KoiProductStatus } from '../../common/enums';
 
 export class SeoMetadataDto {
@@ -21,6 +21,22 @@ export class CreateProductDto {
 
   @ApiProperty({ enum: KoiProductType, description: 'Loại sản phẩm' })
   @IsEnum(KoiProductType)
+  @Transform(({ value }) => {
+    if (typeof value !== 'string') return value;
+    const upper = value.trim().toUpperCase().replace(/\s+/g, '_');
+    const valid = Object.values(KoiProductType) as string[];
+    if (valid.includes(upper)) return upper as KoiProductType;
+    // Sanitize: map tên hiển thị / slug / code không chuẩn về enum
+    const map = {
+      'ví': 'WALLET', 'wallet': 'WALLET', 'ví/bóp/cardholder': 'WALLET',
+      'thắt lưng': 'BELT', 'belt': 'BELT',
+      'watch strap': 'WATCH_STRAP', 'dây đồng hồ': 'WATCH_STRAP', 'dây da đồng hồ': 'WATCH_STRAP',
+      'túi': 'BAG', 'bag': 'BAG', 'túi/balo/clutch': 'BAG',
+      'phụ kiện': 'ACCESSORY', 'accessory': 'ACCESSORY', 'phụ kiện da': 'ACCESSORY',
+    };
+    const key = value.trim().toLowerCase().replace(/[-\s]+/g, ' ');
+    return map[key] || value;
+  })
   productType: KoiProductType;
 
   @ApiPropertyOptional({ description: 'SKU duy nhất (tự động generate nếu không cung cấp)' })

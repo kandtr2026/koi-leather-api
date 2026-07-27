@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { generateCategorySeo } from '../seo/seo-generator.helper';
 
 @Injectable()
 export class CategoryService {
@@ -52,6 +53,12 @@ export class CategoryService {
     });
     if (existing) throw new ConflictException(`Category with code "${dto.code}" already exists`);
 
+    if (!dto.metaTitle || !dto.metaDescription) {
+      const generated = generateCategorySeo(dto.name);
+      if (!dto.metaTitle) dto.metaTitle = generated.metaTitle;
+      if (!dto.metaDescription) dto.metaDescription = generated.metaDescription;
+    }
+
     return this.prisma.koiCategory.create({
       data: {
         code: dto.code,
@@ -77,10 +84,24 @@ export class CategoryService {
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.code !== undefined) data.code = dto.code;
     if (dto.specsSchema !== undefined) data.specsSchema = JSON.stringify(dto.specsSchema);
-    if (dto.metaTitle !== undefined) data.metaTitle = dto.metaTitle;
-    if (dto.metaDescription !== undefined) data.metaDescription = dto.metaDescription;
     if (dto.displayOrder !== undefined) data.displayOrder = dto.displayOrder;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
+
+    // Auto-generate SEO if not explicitly provided and no existing value
+    const name = dto.name ?? category.name;
+    if (dto.metaTitle !== undefined) {
+      data.metaTitle = dto.metaTitle;
+    } else if (!category.metaTitle) {
+      const generated = generateCategorySeo(name);
+      data.metaTitle = generated.metaTitle;
+    }
+
+    if (dto.metaDescription !== undefined) {
+      data.metaDescription = dto.metaDescription;
+    } else if (!category.metaDescription) {
+      const generated = generateCategorySeo(name);
+      data.metaDescription = generated.metaDescription;
+    }
 
     return this.prisma.koiCategory.update({ where: { id }, data });
   }
