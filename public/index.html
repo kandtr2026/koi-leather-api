@@ -1674,7 +1674,9 @@ async function init() {
     history.replaceState({ tab: urlTab }, '', url);
   }
 
-  setupDragDrop();
+  // NB: drag-drop is wired by a self-executing IIFE at parse time. It is NOT a
+  // callable in this scope — calling setupDragDrop() here throws ReferenceError
+  // and aborts init(), leaving every tab stuck on its loading skeleton.
   loadDeployInfo();
   fetchAuthConfig();
   checkAuth();
