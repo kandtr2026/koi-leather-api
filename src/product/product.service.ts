@@ -19,6 +19,20 @@ export class ProductService {
     return slug;
   }
 
+  private generateSku(productType: string, slug: string): string {
+    const prefixMap: Record<string, string> = {
+      WALLET: 'WD',
+      BELT: 'TL',
+      WATCH_STRAP: 'WS',
+      BAG: 'TT',
+      ACCESSORY: 'PK',
+    };
+    const prefix = prefixMap[productType] || 'SP';
+    const shortSlug = slug.split('-').slice(0, 3).join('-');
+    const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `${prefix}-${shortSlug}-${suffix}`;
+  }
+
   private async ensureUniqueSlug(baseSlug: string, excludeId?: string): Promise<string> {
     let slug = baseSlug;
     let counter = 0;
@@ -48,12 +62,16 @@ export class ProductService {
   }
 
   async create(dto: CreateProductDto) {
-    const existing = await this.prisma.koiProduct.findFirst({
-      where: { sku: dto.sku },
-    });
-    if (existing) throw new ConflictException('Product with this SKU already exists');
-
     const slug = await this.ensureUniqueSlug(this.generateSlug(dto.name.vi));
+
+    if (dto.sku) {
+      const existing = await this.prisma.koiProduct.findFirst({
+        where: { sku: dto.sku },
+      });
+      if (existing) throw new ConflictException('Product with this SKU already exists');
+    }
+
+    const sku = dto.sku || this.generateSku(dto.productType, slug);
     const technicalSpecs = dto.technicalSpecs || dto.specs || {};
 
     await this.validateTechnicalSpecs(dto.categoryId, technicalSpecs);
@@ -63,7 +81,7 @@ export class ProductService {
         name: dto.name as any,
         slug,
         productType: dto.productType,
-        sku: dto.sku,
+        sku,
         categoryId: dto.categoryId,
         description: (dto.description || {}) as any,
         basePrice: dto.basePrice ?? undefined,

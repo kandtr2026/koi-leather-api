@@ -208,11 +208,9 @@
     <div class="space-y-3">
       <input type="hidden" id="editProductId">
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="block text-xs font-medium text-gray-600 mb-1">Tên (VI)</label><input id="pNameVi" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví đứng Epsom Navy"></div>
-        <div><label class="block text-xs font-medium text-gray-600 mb-1">Tên (EN)</label><input id="pNameEn" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Bifold Wallet"></div>
+        <div class="col-span-2"><label class="block text-xs font-medium text-gray-600 mb-1">Tên sản phẩm</label><input id="pNameVi" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví đứng Epsom Navy"></div>
       </div>
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="block text-xs font-medium text-gray-600 mb-1">SKU</label><input id="pSku" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="WD-EPS-001"></div>
         <div><label class="block text-xs font-medium text-gray-600 mb-1">Loại</label>
           <select id="pType" onchange="onProductTypeChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
             <option value="WALLET">Ví</option><option value="BELT">Thắt lưng</option>
@@ -220,9 +218,9 @@
             <option value="ACCESSORY">Phụ kiện</option>
           </select>
         </div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2500000"></div>
       </div>
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2500000"></div>
         <div><label class="block text-xs font-medium text-gray-600 mb-1">Website ID</label><input id="pExtId" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="KL-001"></div>
       </div>
       <div>
@@ -936,7 +934,7 @@ function onProductTypeChange() {
 
 function openCreateProduct() {
   document.getElementById('productModalTitle').textContent = 'Thêm sản phẩm';
-  ['editProductId','pNameVi','pNameEn','pSku','pPrice','pExtId','pSeo'].forEach(id => document.getElementById(id).value = '');
+  ['editProductId','pNameVi','pPrice','pExtId','pSeo'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('pType').value = 'WALLET';
   currentProductId = null;
   document.getElementById('imageGallery').innerHTML = '<p class="text-gray-400 text-sm py-6 w-full text-center">Lưu sản phẩm trước để upload ảnh</p>';
@@ -955,8 +953,6 @@ async function editProduct(id) {
   document.getElementById('productModalTitle').textContent = 'Sửa sản phẩm';
   document.getElementById('editProductId').value = id;
   document.getElementById('pNameVi').value = p.name?.vi || '';
-  document.getElementById('pNameEn').value = p.name?.en || '';
-  document.getElementById('pSku').value = p.sku || '';
   document.getElementById('pType').value = p.productType;
   document.getElementById('pPrice').value = p.basePrice || '';
   document.getElementById('pExtId').value = p.externalId || '';
@@ -975,8 +971,7 @@ async function editProduct(id) {
 async function saveProduct() {
   const id = document.getElementById('editProductId').value;
   const body = {
-    name: { vi: document.getElementById('pNameVi').value, en: document.getElementById('pNameEn').value },
-    sku: document.getElementById('pSku').value,
+    name: { vi: document.getElementById('pNameVi').value },
     productType: document.getElementById('pType').value,
     basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
     externalId: document.getElementById('pExtId').value || undefined,
@@ -1460,7 +1455,10 @@ async function loadDeployInfo() {
     document.getElementById('ddCommit').textContent = d.commit || '-';
     document.getElementById('ddBranch').textContent = d.branch || '-';
     document.getElementById('ddMsg').textContent = d.message || '-';
-    const deployDate = d.deployedAt ? new Date(d.deployedAt) : null;
+    // Try to get accurate build time from build-meta.json (static asset)
+    let buildTime = d.deployedAt;
+    try { const meta = await (await fetch('/build-meta.json')).json(); if (meta.buildTime) buildTime = meta.buildTime; } catch {}
+    const deployDate = buildTime ? new Date(buildTime) : null;
     document.getElementById('ddTime').textContent = deployDate ? deployDate.toLocaleString('vi-VN') : '-';
     // Show deploy time in badge
     if (deployDate) {

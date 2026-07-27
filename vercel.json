@@ -7,7 +7,7 @@
     "api/index.js": {
       "memory": 512,
       "maxDuration": 30,
-      "includeFiles": "{dist/src/**,dist/build-meta.json,public/**}"
+      "includeFiles": "{dist/src/**,public/**}"
     }
   },
   "rewrites": [

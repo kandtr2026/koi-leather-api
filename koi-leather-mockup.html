@@ -28,6 +28,13 @@
     input:focus, select:focus, textarea:focus { border-color: #f59e0b; ring: 2px solid #f59e0b; }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .tag-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; background: #fef3c7; color: #92400e; border-radius: 9999px; font-size: 12px; font-weight: 500; }
+    .tag-badge button { color: #92400e; opacity: 0.6; font-size: 10px; }
+    .tag-badge button:hover { opacity: 1; }
+    .tag-input { min-height: 38px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 4px 8px; }
+    .tag-input input { border: none; outline: none; flex: 1; min-width: 100px; font-size: 13px; background: transparent; }
+    .spec-field-card { transition: all 0.2s; }
+    .spec-field-card:hover { border-color: #f59e0b; }
     .toast { position: fixed; bottom: 24px; right: 24px; z-index: 100; background: #1f2937; color: white; padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transform: translateY(80px); opacity: 0; transition: all 0.3s; }
     .toast.show { transform: translateY(0); opacity: 1; }
     .stat-card { transition: transform 0.2s; }
@@ -345,25 +352,33 @@
         </div>
       </div>
 
-      <!-- SEO Tab inside modal -->
+      <!-- SEO & Metadata -->
       <div>
         <div class="flex items-center gap-2 mb-2">
           <i class="fas fa-search text-amber-500 text-xs"></i>
           <label class="text-sm font-medium text-gray-700">SEO & Metadata</label>
-          <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">polymorphic</span>
+          <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">tiêu đề, mô tả, từ khóa</span>
         </div>
         <div class="space-y-3 p-3 bg-gray-50 rounded-lg border">
           <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">SEO Title</label>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Meta Title</label>
             <input id="prodSeoTitle" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Ví đứng Epsom Navy | Koi Leather">
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">SEO Description</label>
-            <textarea id="prodSeoDesc" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" rows="2" placeholder="Ví da cao cấp từ nhà máy Haas..."></textarea>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Meta Description</label>
+            <textarea id="prodSeoDesc" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" rows="2" placeholder="Ví da cao cấp từ nhà máy Haas, 8 ngăn thẻ, 2 ngăn tiền."></textarea>
           </div>
           <div>
             <label class="block text-xs font-medium text-gray-600 mb-1">Canonical URL</label>
             <input id="prodCanonical" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="/san-pham/vi-dung-epsom-navy">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Keywords (từ khóa)</label>
+            <div class="tag-input border border-gray-200 rounded-lg bg-white" onclick="document.getElementById('seoKeywordInput').focus()">
+              <div id="seoKeywordsContainer" class="flex flex-wrap gap-1"></div>
+              <input id="seoKeywordInput" type="text" placeholder="Nhập từ khóa, Enter để thêm" onkeydown="if(event.key==='Enter'){event.preventDefault();addSeoKeyword(this);}">
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Enter để thêm từ khóa — click × để xóa</p>
           </div>
         </div>
       </div>
@@ -631,20 +646,24 @@ const productMaterialMap = {
 
 let products = [
   { id: 1, name: 'Ví đứng Epsom Navy', type: 'Ví', sku: 'WD-EPS-NAVY-001', websiteId: 'KL-001',
-    specs: { cardSlots: 8, cashPockets: 2, foldedW: '11cm', foldedH: '9cm' },
-    seo: { title: 'Ví đứng cao cấp Epsom Navy | Koi Leather', desc: 'Ví da cao cấp từ nhà máy Haas, 8 ngăn thẻ, 2 ngăn tiền.', canonical: '/san-pham/vi-dung-epsom-navy' },
+    technicalSpecs: { wallet_style: 'standing', card_slots: 8, cash_pockets: 2, thread_pitch_mm: 3.38 },
+    specs: { wallet_style: 'standing', card_slots: 8, cash_pockets: 2, thread_pitch_mm: 3.38 },
+    seo: { title: 'Ví đứng cao cấp Epsom Navy | Koi Leather', desc: 'Ví da cao cấp từ nhà máy Haas, 8 ngăn thẻ, 2 ngăn tiền.', canonical: '/san-pham/vi-dung-epsom-navy', keywords: ['ví da', 'epsom navy', 'cardholder', 'quà tặng'] },
     createdAt: '2026-07-01', active: true },
   { id: 2, name: 'Thắt lưng da bò Buttero Havana', type: 'Thắt lưng', sku: 'TL-BUT-HAV-002', websiteId: 'KL-002',
-    specs: { strapWidth: '3.4cm', buckleType: 'Pin buckle', length: '110cm', holeCount: 7, holeSpacing: '2.5cm' },
-    seo: { title: 'Thắt lưng da bò Buttero Havana | Koi Leather', desc: 'Thắt lưng da bò Ý, khóa inox mờ, 7 lỗ điều chỉnh.', canonical: '/san-pham/that-lung-buttero-havana' },
+    technicalSpecs: { belt_width_cm: 3.4, buckle_type: 'pin_buckle', strap_length_cm: 110, hole_count: 7 },
+    specs: { belt_width_cm: 3.4, buckle_type: 'pin_buckle', strap_length_cm: 110, hole_count: 7 },
+    seo: { title: 'Thắt lưng da bò Buttero Havana | Koi Leather', desc: 'Thắt lưng da bò Ý, khóa inox mờ, 7 lỗ điều chỉnh.', canonical: '/san-pham/that-lung-buttero-havana', keywords: ['thắt lưng da', 'buttero havana', 'da bò ý'] },
     createdAt: '2026-07-05', active: true },
   { id: 3, name: 'Watch Strap Epsom 20-18mm', type: 'Watch Strap', sku: 'WS-EPS-20-18-003', websiteId: 'KL-003',
-    specs: { lugWidth: 20, buckleWidth: 18, shortLength: 115, longLength: 75, taperFrom: 4.0, taperTo: 2.0 },
-    seo: { title: 'Watch Strap Da Epsom 20-18mm | Koi Leather', desc: 'Dây đồng hồ da Epsom, Lug 20mm, khóa 18mm, táp từ 4mm xuống 2mm.', canonical: '/san-pham/watch-strap-epsom-20-18' },
+    technicalSpecs: { lug_width_mm: 20, buckle_width_mm: 18, short_strap_mm: 115, long_strap_mm: 75, padding_type: 'padded' },
+    specs: { lug_width_mm: 20, buckle_width_mm: 18, short_strap_mm: 115, long_strap_mm: 75, padding_type: 'padded' },
+    seo: { title: 'Watch Strap Da Epsom 20-18mm | Koi Leather', desc: 'Dây đồng hồ da Epsom, Lug 20mm, khóa 18mm.', canonical: '/san-pham/watch-strap-epsom-20-18', keywords: ['dây đồng hồ da', 'epsom', 'watch strap 20mm'] },
     createdAt: '2026-07-10', active: false },
   { id: 4, name: 'Túi tote Pueblo Mini', type: 'Túi', sku: 'TT-PUE-MINI-004', websiteId: 'KL-004',
-    specs: { foldedW: '28cm', foldedH: '22cm', depth: '10cm', handleDrop: '12cm' },
-    seo: { title: 'Túi Tote Pueblo Mini | Koi Leather', desc: 'Túi tote mini da Pueblo Ý, phù hợp hàng ngày.', canonical: '/san-pham/tui-tote-pueblo-mini' },
+    technicalSpecs: { bag_type: 'tote', length_cm: 28, width_cm: 10, height_cm: 22 },
+    specs: { bag_type: 'tote', length_cm: 28, width_cm: 10, height_cm: 22 },
+    seo: { title: 'Túi Tote Pueblo Mini | Koi Leather', desc: 'Túi tote mini da Pueblo Ý, phù hợp hàng ngày.', canonical: '/san-pham/tui-tote-pueblo-mini', keywords: ['túi tote', 'pueblo', 'túi da mini'] },
     createdAt: '2026-07-15', active: true },
 ];
 
@@ -873,50 +892,170 @@ document.querySelectorAll('.sidebar-item').forEach(item => {
 
 // ======================== PRODUCTS ========================
 
-function getSpecFields(type) {
-  const fields = {
-    'Ví': [
-      { key: 'cardSlots', label: 'Số ngăn thẻ', type: 'number', placeholder: '8' },
-      { key: 'cashPockets', label: 'Số ngăn tiền', type: 'number', placeholder: '2' },
-      { key: 'foldedW', label: 'Kích thước đóng (Rộng)', type: 'text', placeholder: '11cm' },
-      { key: 'foldedH', label: 'Kích thước đóng (Cao)', type: 'text', placeholder: '9cm' },
-    ],
-    'Thắt lưng': [
-      { key: 'strapWidth', label: 'Độ rộng mặt', type: 'text', placeholder: '3.4cm' },
-      { key: 'buckleType', label: 'Loại khóa', type: 'text', placeholder: 'Pin buckle' },
-      { key: 'length', label: 'Chiều dài', type: 'text', placeholder: '110cm' },
-      { key: 'holeCount', label: 'Số lỗ', type: 'number', placeholder: '7' },
-      { key: 'holeSpacing', label: 'Khoảng cách lỗ', type: 'text', placeholder: '2.5cm' },
-    ],
-    'Watch Strap': [
-      { key: 'lugWidth', label: 'Lug width (mm)', type: 'number', placeholder: '20' },
-      { key: 'buckleWidth', label: 'Buckle width (mm)', type: 'number', placeholder: '18' },
-      { key: 'shortLength', label: 'Short strap (mm)', type: 'number', placeholder: '115' },
-      { key: 'longLength', label: 'Long strap (mm)', type: 'number', placeholder: '75' },
-      { key: 'taperFrom', label: 'Taper từ (mm)', type: 'number', step: '0.1', placeholder: '4.0' },
-      { key: 'taperTo', label: 'Taper đến (mm)', type: 'number', step: '0.1', placeholder: '2.0' },
-    ],
-    'Túi': [
-      { key: 'foldedW', label: 'Rộng (cm)', type: 'number', placeholder: '28' },
-      { key: 'foldedH', label: 'Cao (cm)', type: 'number', placeholder: '22' },
-      { key: 'depth', label: 'Sâu (cm)', type: 'number', placeholder: '10' },
-      { key: 'handleDrop', label: 'Handle drop (cm)', type: 'number', placeholder: '12' },
-    ],
-  };
-  return fields[type] || fields['Ví'];
+// ======================== SPECS SCHEMA-DRIVEN RENDERER ========================
+
+function getTypeToCode(type) {
+  return ({ 'Ví': 'WALLET', 'Thắt lưng': 'BELT', 'Watch Strap': 'WATCH_STRAP', 'Túi': 'BAG', 'Phụ kiện': 'ACCESSORY' })[type] || 'WALLET';
+}
+
+function getCodeToType(code) {
+  return ({ 'WALLET': 'Ví', 'BELT': 'Thắt lưng', 'WATCH_STRAP': 'Watch Strap', 'BAG': 'Túi', 'ACCESSORY': 'Phụ kiện' })[code] || 'Ví';
+}
+
+function getSchemaForType(type) {
+  const code = getTypeToCode(type);
+  const cat = categories.find(c => c.code === code);
+  return cat ? cat.specsSchema : defaultSpecsSchemas[code];
 }
 
 function onProductTypeChange() {
   const type = document.getElementById('prodType').value;
-  const fields = getSpecFields(type);
-  const container = document.getElementById('dynamicSpecs');
-  container.innerHTML = fields.map(f => `
-    <div>
-      <label class="block text-xs font-medium text-gray-600 mb-1">${f.label}</label>
-      <input type="${f.type}" step="${f.step || '1'}" id="spec_${f.key}" class="product-spec-field w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="${f.placeholder}">
-    </div>
-  `).join('');
+  renderDynamicSpecs(getSchemaForType(type), null);
 }
+
+function renderDynamicSpecs(schema, data) {
+  const container = document.getElementById('dynamicSpecs');
+  if (!schema || !schema.properties) {
+    container.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Chưa có schema cho loại sản phẩm này</p>';
+    return;
+  }
+  const groups = schema['koi:groups'] || [];
+  const properties = schema.properties;
+  const dataObj = data || {};
+  const grouped = {};
+  const ungrouped = [];
+
+  Object.entries(properties).forEach(([key, prop]) => {
+    const ui = prop['koi:ui'] || { component: 'text' };
+    const groupKey = ui.group || '';
+    const raw = dataObj[key] !== undefined && dataObj[key] !== null ? dataObj[key] : prop.default;
+    const field = { key, prop, ui, value: raw };
+    if (groupKey) {
+      if (!grouped[groupKey]) grouped[groupKey] = [];
+      grouped[groupKey].push(field);
+    } else {
+      ungrouped.push(field);
+    }
+  });
+
+  const escHtml = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+
+  const renderField = (f) => {
+    const ui = f.ui, key = f.key, prop = f.prop;
+    const value = f.value;
+    const suffix = ui.suffix || '';
+    const placeholder = escHtml(ui.placeholder || prop.title || '');
+    const label = prop.title || key;
+    const id = 'spec_' + key;
+
+    switch (ui.component) {
+      case 'number': {
+        const v = value !== undefined && value !== null ? value : '';
+        return `<div><label class="block text-xs font-medium text-gray-600 mb-1" for="${id}">${escHtml(label)}</label><div class="flex">` +
+          `<input type="number" id="${id}" value="${escHtml(String(v))}"` +
+          (prop.minimum !== undefined ? ` min="${prop.minimum}"` : '') +
+          (prop.maximum !== undefined ? ` max="${prop.maximum}"` : '') +
+          ` step="${prop.type === 'integer' ? '1' : '0.01'}"` +
+          ` class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="${placeholder}">` +
+          (suffix ? `<span class="inline-flex items-center px-2.5 text-xs text-gray-500 bg-gray-100 border border-l-0 border-gray-200 rounded-r-lg">${escHtml(suffix)}</span>` : '') +
+          `</div></div>`;
+      }
+      case 'select': {
+        const opts = ui.options || [];
+        const sel = (v) => value !== undefined && value !== null && String(value) === String(v) ? 'selected' : '';
+        return `<div><label class="block text-xs font-medium text-gray-600 mb-1" for="${id}">${escHtml(label)}</label>` +
+          `<select id="${id}" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">` +
+          `<option value="">-- Chọn --</option>` +
+          opts.map(o => {
+            const ov = typeof o === 'object' ? o.value : o;
+            return `<option value="${escHtml(String(ov))}" ${sel(ov)}>${escHtml(typeof o === 'object' ? o.label : o)}</option>`;
+          }).join('') + `</select></div>`;
+      }
+      case 'radio': {
+        const ropts = ui.options || [];
+        return `<div><label class="block text-xs font-medium text-gray-600 mb-1">${escHtml(label)}</label><div class="flex flex-wrap gap-2">` +
+          ropts.map(o => {
+            const ov = typeof o === 'object' ? o.value : o;
+            const ol = typeof o === 'object' ? o.label : o;
+            const chk = value !== undefined && value !== null && String(value) === String(ov);
+            return `<label class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm ${chk ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-gray-200 bg-white text-gray-600'}">` +
+              `<input type="radio" name="${id}" value="${escHtml(String(ov))}" ${chk ? 'checked' : ''}` +
+              ` onchange="this.closest('.flex-wrap').querySelectorAll('label').forEach(l=>l.className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 cursor-pointer text-sm');this.parentElement.className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-500 bg-amber-50 text-amber-700 cursor-pointer text-sm'">` +
+              ` ${escHtml(ol)}</label>`;
+          }).join('') + `</div></div>`;
+      }
+      case 'switch':
+        return `<div><label class="flex items-center gap-2 cursor-pointer">` +
+          `<input type="checkbox" id="${id}" ${value ? 'checked' : ''} class="w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500">` +
+          `<span class="text-sm text-gray-600">${escHtml(label)}</span></label></div>`;
+      default:
+        return `<div><label class="block text-xs font-medium text-gray-600 mb-1" for="${id}">${escHtml(label)}</label>` +
+          `<input type="text" id="${id}" value="${escHtml(String(value !== undefined && value !== null ? value : ''))}" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="${placeholder}"></div>`;
+    }
+  };
+
+  let html = '';
+  groups.sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(group => {
+    const fields = grouped[group.key];
+    if (!fields || fields.length === 0) return;
+    html += `<div class="col-span-2"><div class="flex items-center gap-2 mb-2 mt-1"><div class="h-px flex-1 bg-gray-200"></div><span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">${escHtml(group.label)}</span><div class="h-px flex-1 bg-gray-200"></div></div></div>`;
+    fields.forEach(f => { html += renderField(f); });
+  });
+  ungrouped.forEach(f => { html += renderField(f); });
+  container.innerHTML = html;
+}
+
+function collectSpecsData(schema) {
+  const data = {};
+  if (!schema || !schema.properties) return data;
+  Object.entries(schema.properties).forEach(([key, prop]) => {
+    const ui = prop['koi:ui'] || { component: 'text' };
+    if (ui.component === 'radio') {
+      const el = document.querySelector(`input[name="spec_${key}"]:checked`);
+      if (el) data[key] = el.value;
+    } else if (ui.component === 'switch') {
+      const el = document.getElementById('spec_' + key);
+      if (el) data[key] = el.checked;
+    } else {
+      const el = document.getElementById('spec_' + key);
+      if (!el) return;
+      if (ui.component === 'number' || prop.type === 'integer' || prop.type === 'number') {
+        data[key] = el.value !== '' ? (prop.type === 'integer' ? parseInt(el.value) : parseFloat(el.value)) : null;
+      } else if (ui.component === 'select') {
+        data[key] = el.value || null;
+      } else {
+        data[key] = el.value || '';
+      }
+    }
+  });
+  return data;
+}
+
+// ======================== SEO KEYWORDS TAG INPUT ========================
+
+let seoKeywords = [];
+
+function addSeoKeyword(input) {
+  const kw = input.value.trim();
+  if (!kw || seoKeywords.includes(kw)) { input.value = ''; return; }
+  seoKeywords.push(kw);
+  input.value = '';
+  renderSeoKeywords();
+  input.focus();
+}
+
+function removeSeoKeyword(kw) {
+  seoKeywords = seoKeywords.filter(k => k !== kw);
+  renderSeoKeywords();
+}
+
+function renderSeoKeywords() {
+  document.getElementById('seoKeywordsContainer').innerHTML = seoKeywords.map(k =>
+    `<span class="tag-badge">${k} <button onclick="removeSeoKeyword('${k.replace(/'/g, "\\'")}')"><i class="fas fa-times"></i></button></span>`
+  ).join('');
+}
+
+// ======================== PRODUCTS ========================
 
 function openProductModal(editId) {
   document.getElementById('productModalTitle').textContent = editId ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới';
@@ -927,7 +1066,9 @@ function openProductModal(editId) {
   document.getElementById('prodSeoTitle').value = '';
   document.getElementById('prodSeoDesc').value = '';
   document.getElementById('prodCanonical').value = '';
+  seoKeywords = [];
   document.getElementById('prodType').value = 'Ví';
+  renderSeoKeywords();
   onProductTypeChange();
 
   if (editId) {
@@ -940,12 +1081,9 @@ function openProductModal(editId) {
     document.getElementById('prodSeoTitle').value = p.seo.title;
     document.getElementById('prodSeoDesc').value = p.seo.desc;
     document.getElementById('prodCanonical').value = p.seo.canonical;
-    onProductTypeChange();
-    const fields = getSpecFields(p.type);
-    fields.forEach(f => {
-      const el = document.getElementById('spec_' + f.key);
-      if (el && p.specs[f.key] !== undefined) el.value = p.specs[f.key];
-    });
+    if (p.seo.keywords) seoKeywords = [...p.seo.keywords];
+    renderSeoKeywords();
+    renderDynamicSpecs(getSchemaForType(p.type), p.technicalSpecs || p.specs || {});
   }
   document.getElementById('productModal').classList.add('open');
 }
@@ -959,25 +1097,21 @@ function saveProduct() {
 
   if (!name || !sku) { toast('Vui lòng nhập tên và SKU sản phẩm'); return; }
 
-  const fields = getSpecFields(type);
-  const specs = {};
-  fields.forEach(f => {
-    const el = document.getElementById('spec_' + f.key);
-    if (el) specs[f.key] = f.type === 'number' ? (el.value ? Number(el.value) : '') : el.value;
-  });
+  const technicalSpecs = collectSpecsData(getSchemaForType(type));
 
   const seo = {
     title: document.getElementById('prodSeoTitle').value.trim(),
     desc: document.getElementById('prodSeoDesc').value.trim(),
     canonical: document.getElementById('prodCanonical').value.trim(),
+    keywords: seoKeywords,
   };
 
   if (id) {
     const p = products.find(x => x.id === Number(id));
-    if (p) { Object.assign(p, { name, type, sku, websiteId, specs, seo }); toast('Đã cập nhật sản phẩm'); }
+    if (p) { Object.assign(p, { name, type, sku, websiteId, specs: technicalSpecs, technicalSpecs, seo }); toast('Đã cập nhật sản phẩm'); }
   } else {
     products.push({
-      id: nextProductId++, name, type, sku, websiteId, specs, seo,
+      id: nextProductId++, name, type, sku, websiteId, specs: technicalSpecs, technicalSpecs, seo,
       createdAt: new Date().toISOString().slice(0, 10), active: true,
     });
     toast('Đã thêm sản phẩm mới');

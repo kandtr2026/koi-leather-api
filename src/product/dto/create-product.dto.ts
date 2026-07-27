@@ -23,9 +23,10 @@ export class CreateProductDto {
   @IsEnum(KoiProductType)
   productType: KoiProductType;
 
-  @ApiProperty({ description: 'SKU duy nhất' })
+  @ApiPropertyOptional({ description: 'SKU duy nhất (tự động generate nếu không cung cấp)' })
+  @IsOptional()
   @IsString()
-  sku: string;
+  sku?: string;
 
   @ApiPropertyOptional({ description: 'Category ID để validate technical_specs theo specs_schema' })
   @IsOptional()
