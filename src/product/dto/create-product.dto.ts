@@ -1,7 +1,7 @@
 import { IsString, IsOptional, IsEnum, IsObject, IsNumber, ValidateNested, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ProductType, ProductStatus } from '../../common/enums';
+import { KoiProductType, KoiProductStatus } from '../../common/enums';
 
 export class SeoMetadataDto {
   @ApiPropertyOptional({ description: 'Meta title' })
@@ -19,9 +19,9 @@ export class CreateProductDto {
   @IsObject()
   name: { vi: string; en?: string };
 
-  @ApiProperty({ enum: ProductType, description: 'Loại sản phẩm' })
-  @IsEnum(ProductType)
-  productType: ProductType;
+  @ApiProperty({ enum: KoiProductType, description: 'Loại sản phẩm' })
+  @IsEnum(KoiProductType)
+  productType: KoiProductType;
 
   @ApiProperty({ description: 'SKU duy nhất' })
   @IsString()
@@ -47,10 +47,10 @@ export class CreateProductDto {
   @IsNumber()
   basePrice?: number;
 
-  @ApiPropertyOptional({ enum: ProductStatus })
+  @ApiPropertyOptional({ enum: KoiProductStatus })
   @IsOptional()
-  @IsEnum(ProductStatus)
-  status?: ProductStatus;
+  @IsEnum(KoiProductStatus)
+  status?: KoiProductStatus;
 
   @ApiPropertyOptional({ description: 'Thông số kỹ thuật (JSONB - validated against category specsSchema)' })
   @IsOptional()
@@ -61,6 +61,16 @@ export class CreateProductDto {
   @IsOptional()
   @IsObject()
   specs?: Record<string, any>;
+
+  @ApiPropertyOptional({ description: 'Meta title for SEO' })
+  @IsOptional()
+  @IsString()
+  metaTitle?: string;
+
+  @ApiPropertyOptional({ description: 'Meta description for SEO' })
+  @IsOptional()
+  @IsString()
+  metaDescription?: string;
 
   @ApiPropertyOptional({ type: SeoMetadataDto })
   @IsOptional()

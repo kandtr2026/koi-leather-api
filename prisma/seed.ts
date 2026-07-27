@@ -1,3 +1,4 @@
+
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -5,18 +6,18 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding Koi Leather database (SQLite)...');
 
-  await prisma.inventoryTransaction.deleteMany();
-  await prisma.productionOrder.deleteMany();
-  await prisma.productImage.deleteMany();
-  await prisma.productVariant.deleteMany();
-  await prisma.craftingSpec.deleteMany();
-  await prisma.sEORecord.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.rawMaterial.deleteMany();
-  await prisma.category.deleteMany();
+  await prisma.koiInventoryTransaction.deleteMany();
+  await prisma.koiProductionOrder.deleteMany();
+  await prisma.koiProductImage.deleteMany();
+  await prisma.koiProductVariant.deleteMany();
+  await prisma.koiCraftingSpec.deleteMany();
+  await prisma.koiSEORecord.deleteMany();
+  await prisma.koiProduct.deleteMany();
+  await prisma.koiRawMaterial.deleteMany();
+  await prisma.koiCategory.deleteMany();
 
   // === CATEGORIES ===
-  const watchStrapCat = await prisma.category.create({
+  const watchStrapCat = await prisma.koiCategory.create({
     data: {
       code: 'WATCH_STRAP', name: 'Watch Strap', slug: 'watch-strap',
       specsSchema: JSON.stringify({
@@ -33,7 +34,7 @@ async function main() {
     },
   });
 
-  await prisma.category.create({
+  await prisma.koiCategory.create({
     data: {
       code: 'WALLET', name: 'Ví', slug: 'vi',
       specsSchema: JSON.stringify({
@@ -47,7 +48,7 @@ async function main() {
     },
   });
 
-  await prisma.category.create({
+  await prisma.koiCategory.create({
     data: {
       code: 'BELT', name: 'Thắt lưng', slug: 'that-lung',
       specsSchema: JSON.stringify({
@@ -62,10 +63,20 @@ async function main() {
     },
   });
 
+  // === IMAGE CATEGORIES ===
+  await prisma.koiImageCategory.createMany({
+    data: [
+      { code: 'STUDIO', name: 'Studio', description: 'Ảnh chụp studio — nền sạch, ánh sáng chuẩn', sortOrder: 1 },
+      { code: 'LIFESTYLE', name: 'Lifestyle', description: 'Ảnh phong cách sống — sản phẩm trong bối cảnh thực tế', sortOrder: 2 },
+      { code: 'INVENTORY', name: 'Lưu kho', description: 'Ảnh lưu kho — phục vụ kiểm kê, quản lý', sortOrder: 3 },
+    ],
+  });
+  console.log('  Image categories created');
+
   console.log('  Categories created');
 
   // === RAW MATERIALS ===
-  await prisma.rawMaterial.createMany({
+  await prisma.koiRawMaterial.createMany({
     data: [
       { id: 'mat-epsom-navy', name: 'Da Epsom Navy - Haas', materialType: 'OUTER_LEATHER', supplier: 'Haas', unit: 'SQFT', color: 'Navy', totalQuantity: 20, availableQuantity: 20, unitCost: 450000, externalId: 'MAT-EPS-NAVY-001', syncStatus: 'SYNCED' },
       { id: 'mat-zermatt', name: 'Da lót Zermatt Beige - Haas', materialType: 'LINING_LEATHER', supplier: 'Haas', unit: 'SQFT', color: 'Beige', totalQuantity: 15, availableQuantity: 15, unitCost: 280000, externalId: 'MAT-ZER-BGE-002', syncStatus: 'SYNCED' },
@@ -83,10 +94,10 @@ async function main() {
   console.log('  Raw materials created');
 
   // === PRODUCTS ===
-  const wallet = await prisma.product.create({
+  const wallet = await prisma.koiProduct.create({
     data: {
       name: JSON.stringify({ vi: 'Ví đứng Epsom Navy', en: 'Epsom Navy Bifold Wallet' }),
-      slug: 'vi-dung-epsom-navy', productType: 'WALLET', categoryId: (await prisma.category.findUnique({ where: { code: 'WALLET' } }))!.id,
+      slug: 'vi-dung-epsom-navy', productType: 'WALLET', categoryId: (await prisma.koiCategory.findUnique({ where: { code: 'WALLET' } }))!.id,
       basePrice: 2500000, status: 'ACTIVE', externalId: 'KL-001', sku: 'WD-EPS-NAVY-001',
       technicalSpecs: JSON.stringify({ card_slots: 8, cash_pockets: 2, folded_size: '11x9cm' }),
       metaTitle: 'Ví đứng cao cấp Epsom Navy | Koi Leather',
@@ -95,10 +106,10 @@ async function main() {
     },
   });
 
-  const belt = await prisma.product.create({
+  const belt = await prisma.koiProduct.create({
     data: {
       name: JSON.stringify({ vi: 'Thắt lưng da bò Buttero Havana', en: 'Buttero Havana Leather Belt' }),
-      slug: 'that-lung-da-bo-buttero-havana', productType: 'BELT', categoryId: (await prisma.category.findUnique({ where: { code: 'BELT' } }))!.id,
+      slug: 'that-lung-da-bo-buttero-havana', productType: 'BELT', categoryId: (await prisma.koiCategory.findUnique({ where: { code: 'BELT' } }))!.id,
       basePrice: 1800000, status: 'ACTIVE', externalId: 'KL-002', sku: 'TL-BUT-HAV-002',
       technicalSpecs: JSON.stringify({ belt_width_cm: 3.4, buckle_type: 'Pin buckle', strap_length_cm: 110, hole_count: 7 }),
       metaTitle: 'Thắt lưng da bò Buttero Havana | Koi Leather',
@@ -107,7 +118,7 @@ async function main() {
     },
   });
 
-  const watchStrap = await prisma.product.create({
+  const watchStrap = await prisma.koiProduct.create({
     data: {
       name: JSON.stringify({ vi: 'Watch Strap Epsom 20-18mm', en: 'Epsom Watch Strap 20-18mm' }),
       slug: 'watch-strap-epsom-20-18mm', productType: 'WATCH_STRAP', categoryId: watchStrapCat.id,
@@ -122,7 +133,7 @@ async function main() {
   console.log('  Products created');
 
   // === CRAFTING SPECS ===
-  const walletSpec = await prisma.craftingSpec.create({
+  const walletSpec = await prisma.koiCraftingSpec.create({
     data: {
       productId: wallet.id,
       patternFiles: JSON.stringify([{ version: 'v2.1', url: '/patterns/wallet-epsom-v21.pdf', pieceCount: 7, format: 'PDF' }]),
@@ -135,7 +146,7 @@ async function main() {
     },
   });
 
-  const beltSpec = await prisma.craftingSpec.create({
+  const beltSpec = await prisma.koiCraftingSpec.create({
     data: {
       productId: belt.id,
       patternFiles: JSON.stringify([{ version: 'v1.0', url: '/patterns/belt-buttero-v10.pdf', pieceCount: 3, format: 'PDF' }]),
@@ -146,7 +157,7 @@ async function main() {
     },
   });
 
-  const strapSpec = await prisma.craftingSpec.create({
+  const strapSpec = await prisma.koiCraftingSpec.create({
     data: {
       productId: watchStrap.id,
       patternFiles: JSON.stringify([{ version: 'v3.0', url: '/patterns/strap-epsom-v30.dxf', pieceCount: 4, format: 'DXF' }]),
@@ -160,7 +171,7 @@ async function main() {
   console.log('  Crafting specs created');
 
   // === VARIANTS ===
-  const walletVar = await prisma.productVariant.create({
+  const walletVar = await prisma.koiProductVariant.create({
     data: {
       productId: wallet.id, sku: 'WD-EPS-NAVY-001', price: 2500000,
       stockStatus: 'MADE_TO_ORDER', isDefault: true,
@@ -169,7 +180,7 @@ async function main() {
     },
   });
 
-  await prisma.productVariant.create({
+  await prisma.koiProductVariant.create({
     data: {
       productId: belt.id, sku: 'TL-BUT-HAV-002', price: 1800000,
       stockStatus: 'MADE_TO_ORDER', isDefault: true,
@@ -178,7 +189,7 @@ async function main() {
     },
   });
 
-  await prisma.productVariant.create({
+  await prisma.koiProductVariant.create({
     data: {
       productId: watchStrap.id, sku: 'WS-EPS-20-18-003', price: 1200000,
       stockStatus: 'MADE_TO_ORDER', isDefault: true,
@@ -190,7 +201,7 @@ async function main() {
   console.log('  Variants created');
 
   // === SEO ===
-  await prisma.sEORecord.create({
+  await prisma.koiSEORecord.create({
     data: {
       entityType: 'PRODUCT', entityId: wallet.id,
       slug: 'san-pham/vi-dung-epsom-navy',
@@ -202,7 +213,7 @@ async function main() {
   });
 
   // === PRODUCTION ORDER ===
-  await prisma.productionOrder.create({
+  await prisma.koiProductionOrder.create({
     data: {
       id: 'PO-001', variantId: walletVar.id, quantity: 2, status: 'COMPLETED',
       materialsAllocated: JSON.stringify([

@@ -53,6 +53,10 @@
         <i class="fas fa-box w-5 text-center text-amber-400"></i>
         <span class="text-sm font-medium">Sản phẩm</span>
       </div>
+      <div class="sidebar-item flex items-center gap-3 px-4 py-3 rounded-lg" data-tab="categories">
+        <i class="fas fa-tags w-5 text-center text-amber-400"></i>
+        <span class="text-sm font-medium">Loại sản phẩm</span>
+      </div>
       <div class="sidebar-item flex items-center gap-3 px-4 py-3 rounded-lg" data-tab="materials">
         <i class="fas fa-database w-5 text-center text-amber-400"></i>
         <span class="text-sm font-medium">Nguyên liệu</span>
@@ -132,6 +136,55 @@
           <div id="productEmpty" class="empty-state hidden">
             <i class="fas fa-box-open text-4xl mb-3"></i>
             <p>Chưa có sản phẩm nào. Nhấn "Thêm sản phẩm" để bắt đầu.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== CATEGORIES PANEL ====== -->
+      <div class="content-panel" id="panel-categories">
+        <div class="flex items-center justify-between mb-6">
+          <p class="text-sm text-gray-500">Quản lý loại sản phẩm — định nghĩa specs schema JSON cho từng loại</p>
+          <button onclick="openCategoryModal()" class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+            <i class="fas fa-plus"></i> Thêm loại sản phẩm
+          </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Tổng loại sản phẩm</div>
+            <div class="text-2xl font-bold text-gray-800" id="statsCategories">0</div>
+          </div>
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Đang hoạt động</div>
+            <div class="text-2xl font-bold text-green-600" id="statsActiveCategories">0</div>
+          </div>
+          <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+            <div class="text-xs text-gray-400 mb-1">Tổng số field specs</div>
+            <div class="text-2xl font-bold text-gray-800" id="statsSpecFields">0</div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th class="px-5 py-3">Loại sản phẩm</th>
+                  <th class="px-5 py-3">Code</th>
+                  <th class="px-5 py-3">Slug</th>
+                  <th class="px-5 py-3">Specs fields</th>
+                  <th class="px-5 py-3">Số SP</th>
+                  <th class="px-5 py-3">Trạng thái</th>
+                  <th class="px-5 py-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="categoryTableBody" class="divide-y divide-gray-100 text-sm">
+              </tbody>
+            </table>
+          </div>
+          <div id="categoryEmpty" class="empty-state hidden">
+            <i class="fas fa-tags text-4xl mb-3"></i>
+            <p>Chưa có loại sản phẩm nào. Nhấn "Thêm loại sản phẩm" để bắt đầu.</p>
           </div>
         </div>
       </div>
@@ -320,6 +373,100 @@
       <button onclick="saveProduct()" class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition">
         <i class="fas fa-save"></i> Lưu sản phẩm
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== CATEGORY MODAL ====== -->
+<div class="modal-overlay" id="categoryModal">
+  <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 fade-in">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h2 class="text-lg font-bold text-gray-800" id="categoryModalTitle">Thêm loại sản phẩm</h2>
+      <button onclick="closeModal('categoryModal')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+      <input type="hidden" id="editCategoryId">
+
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Mã loại <span class="text-red-500">*</span></label>
+          <select id="catCode" onchange="onCategoryCodeChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="">-- Chọn mã --</option>
+            <option value="WALLET">WALLET (Ví/Bóp)</option>
+            <option value="BELT">BELT (Thắt lưng)</option>
+            <option value="WATCH_STRAP">WATCH_STRAP (Dây đồng hồ)</option>
+            <option value="BAG">BAG (Túi)</option>
+            <option value="ACCESSORY">ACCESSORY (Phụ kiện)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Tên hiển thị <span class="text-red-500">*</span></label>
+          <input id="catName" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví / Bóp / Cardholder">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Slug</label>
+          <input id="catSlug" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="vi-bop-cardholder">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+        <input id="catDesc" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Mô tả ngắn về loại sản phẩm này">
+      </div>
+
+      <!-- Specs Schema Editor -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-cog text-amber-500 text-xs"></i>
+            <label class="text-sm font-medium text-gray-700">Specs Schema (JSON Schema fields)</label>
+            <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">khai báo trường con</span>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="addSpecField()" class="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition">
+              <i class="fas fa-plus"></i> Thêm field
+            </button>
+            <button onclick="editGroups()" class="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition">
+              <i class="fas fa-layer-group"></i> Nhóm
+            </button>
+          </div>
+        </div>
+        <div id="specFieldsContainer" class="space-y-2 p-3 bg-gray-50 rounded-lg border min-h-[80px]">
+          <p class="text-sm text-gray-400 text-center py-4">Chưa có field nào. Nhấn "Thêm field" để bắt đầu.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">SEO Title</label>
+          <input id="catMetaTitle" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Ví da thủ công | Koi Leather">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">SEO Description</label>
+          <input id="catMetaDesc" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Các loại ví da thủ công cao cấp">
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 p-5 border-t bg-gray-50 rounded-b-2xl">
+      <button onclick="closeModal('categoryModal')" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium">Huỷ</button>
+      <button onclick="saveCategory()" class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition">
+        <i class="fas fa-save"></i> Lưu loại sản phẩm
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== GROUPS MODAL ====== -->
+<div class="modal-overlay" id="groupsModal">
+  <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 fade-in">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h2 class="text-lg font-bold text-gray-800">Quản lý nhóm field</h2>
+      <button onclick="closeModal('groupsModal')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="p-5 space-y-3 max-h-[60vh] overflow-y-auto" id="groupsContainer">
+    </div>
+    <div class="flex justify-end gap-3 p-5 border-t bg-gray-50 rounded-b-2xl">
+      <button onclick="closeModal('groupsModal')" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium">Đóng</button>
     </div>
   </div>
 </div>
@@ -542,6 +689,155 @@ let nextProductId = 5;
 let nextMaterialId = 16;
 let nextOrderNum = 3;
 
+// ======================== CATEGORIES (MOCK + SEED DATA) ========================
+
+const defaultSpecsSchemas = {
+  WALLET: {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    type: "object",
+    title: "Thông số Ví / Bóp / Cardholder",
+    properties: {
+      wallet_style: {
+        type: "string", title: "Dáng ví",
+        enum: ["standing","horizontal","bifold","trifold","cardholder"],
+        "koi:ui": { component: "select", options: [
+          {label:"Ví đứng",value:"standing"},{label:"Ví ngang",value:"horizontal"},
+          {label:"Bifold",value:"bifold"},{label:"Trifold",value:"trifold"},{label:"Cardholder",value:"cardholder"}
+        ], group: "Kiểu dáng" }
+      },
+      card_slots: { type: "integer", title: "Số ngăn thẻ", minimum: 0, maximum: 24, "koi:ui": { component: "number", group: "Ngăn" } },
+      cash_pockets: { type: "integer", title: "Số ngăn tiền", minimum: 0, maximum: 6, "koi:ui": { component: "number", group: "Ngăn" } },
+      thread_pitch_mm: {
+        type: "number", title: "Thread Pitch (mm)", enum: [3.38, 3.85], default: 3.38,
+        "koi:ui": { component: "select", options: [
+          {label:"3.38 mm (Fine)",value:3.38},{label:"3.85 mm (Standard)",value:3.85}
+        ], group: "Kỹ thuật may" }
+      },
+    },
+    required: ["wallet_style","card_slots","cash_pockets"],
+    "koi:groups": [
+      {key:"Kiểu dáng",label:"Kiểu dáng",order:1},
+      {key:"Ngăn",label:"Ngăn",order:2},
+      {key:"Kỹ thuật may",label:"Kỹ thuật may",order:3}
+    ]
+  },
+  BELT: {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    type: "object",
+    title: "Thông số Thắt lưng",
+    properties: {
+      belt_width_cm: {
+        type: "number", title: "Belt Width (cm)", enum: [2.8,3.0,3.2,3.4,3.8,4.0],
+        "koi:ui": { component: "select", options: [
+          {label:"2.8 cm",value:2.8},{label:"3.0 cm",value:3.0},{label:"3.2 cm",value:3.2},
+          {label:"3.4 cm",value:3.4},{label:"3.8 cm",value:3.8},{label:"4.0 cm",value:4.0}
+        ], group: "Kích thước" }
+      },
+      buckle_type: {
+        type: "string", title: "Loại khóa",
+        enum: ["pin_buckle","automatic","roller_buckle","canvas_buckle","military"],
+        "koi:ui": { component: "select", options: [
+          {label:"Pin buckle",value:"pin_buckle"},{label:"Automatic",value:"automatic"},
+          {label:"Roller buckle",value:"roller_buckle"},{label:"Canvas",value:"canvas_buckle"},{label:"Military",value:"military"}
+        ], group: "Khóa" }
+      },
+      strap_length_cm: { type: "integer", title: "Strap Length (cm)", minimum: 70, maximum: 140, "koi:ui": { component: "number", suffix: "cm", group: "Kích thước" } },
+      hole_count: { type: "integer", title: "Số lỗ", minimum: 5, maximum: 9, default: 7, "koi:ui": { component: "number", group: "Kích thước" } },
+    },
+    required: ["belt_width_cm","buckle_type","strap_length_cm","hole_count"],
+    "koi:groups": [
+      {key:"Kích thước",label:"Kích thước",order:1},
+      {key:"Khóa",label:"Khóa",order:2}
+    ]
+  },
+  WATCH_STRAP: {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    type: "object",
+    title: "Thông số Dây đồng hồ",
+    properties: {
+      lug_width_mm: { type: "integer", title: "Lug Width (mm)", minimum: 14, maximum: 26, "koi:ui": { component: "select", options: [14,16,18,19,20,21,22,24,26], group: "Kích thước" } },
+      buckle_width_mm: { type: "integer", title: "Buckle Width (mm)", minimum: 12, maximum: 24, "koi:ui": { component: "select", options: [14,16,18,19,20,22], group: "Kích thước" } },
+      short_strap_mm: { type: "integer", title: "Short Strap (mm)", minimum: 60, maximum: 140, default: 115, "koi:ui": { component: "number", suffix: "mm", group: "Kích thước" } },
+      long_strap_mm: { type: "integer", title: "Long Strap (mm)", minimum: 60, maximum: 150, default: 75, "koi:ui": { component: "number", suffix: "mm", group: "Kích thước" } },
+      padding_type: {
+        type: "string", title: "Padding Type", enum: ["flat","padded"],
+        "koi:ui": { component: "radio", options: [
+          {label:"Flat",value:"flat"},{label:"Padded",value:"padded"}
+        ], group: "Kiểu dáng" }
+      },
+    },
+    required: ["lug_width_mm","buckle_width_mm","short_strap_mm","long_strap_mm","padding_type"],
+    "koi:groups": [
+      {key:"Kích thước",label:"Kích thước",order:1},
+      {key:"Kiểu dáng",label:"Kiểu dáng",order:2}
+    ]
+  },
+  BAG: {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    type: "object",
+    title: "Thông số Túi / Balo / Clutch",
+    properties: {
+      bag_type: {
+        type: "string", title: "Loại túi",
+        enum: ["tote","crossbody","backpack","clutch","messenger","duffle","briefcase","bucket","shoulder","boston"],
+        "koi:ui": { component: "select", options: [
+          {label:"Tote",value:"tote"},{label:"Crossbody",value:"crossbody"},{label:"Backpack",value:"backpack"},
+          {label:"Clutch",value:"clutch"},{label:"Messenger",value:"messenger"},{label:"Duffle",value:"duffle"},
+          {label:"Briefcase",value:"briefcase"},{label:"Bucket",value:"bucket"},{label:"Shoulder",value:"shoulder"},{label:"Boston",value:"boston"}
+        ], group: "Kiểu dáng" }
+      },
+      length_cm: { type: "number", title: "Length (cm)", minimum: 10, maximum: 80, "koi:ui": { component: "number", suffix: "cm", group: "Kích thước" } },
+      width_cm: { type: "number", title: "Width (cm)", minimum: 2, maximum: 40, "koi:ui": { component: "number", suffix: "cm", group: "Kích thước" } },
+      height_cm: { type: "number", title: "Height (cm)", minimum: 5, maximum: 60, "koi:ui": { component: "number", suffix: "cm", group: "Kích thước" } },
+    },
+    required: ["bag_type","length_cm","width_cm","height_cm"],
+    "koi:groups": [
+      {key:"Kiểu dáng",label:"Kiểu dáng",order:1},
+      {key:"Kích thước",label:"Kích thước",order:2}
+    ]
+  },
+  ACCESSORY: {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    type: "object",
+    title: "Thông số Phụ kiện da",
+    properties: {
+      accessory_type: {
+        type: "string", title: "Loại phụ kiện",
+        enum: ["keychain","zippo_case","car_key_case","mouse_mat","coaster","pen_case","glasses_case","card_dispenser","airpods_case","phone_case"],
+        "koi:ui": { component: "select", options: [
+          {label:"Móc khóa",value:"keychain"},{label:"Bao Zippo",value:"zippo_case"},{label:"Bao chìa khóa",value:"car_key_case"},
+          {label:"Lót chuột",value:"mouse_mat"},{label:"Lót cốc",value:"coaster"},{label:"Hộp bút",value:"pen_case"},
+          {label:"Hộp kính",value:"glasses_case"},{label:"Card Dispenser",value:"card_dispenser"},{label:"Bao AirPods",value:"airpods_case"},{label:"Bao điện thoại",value:"phone_case"}
+        ], group: "Kiểu dáng" }
+      },
+      length_cm: { type: "number", title: "Length (cm)", minimum: 2, maximum: 30, "koi:ui": { component: "number", suffix: "cm", group: "Kích thước" } },
+      width_cm: { type: "number", title: "Width (cm)", minimum: 1, maximum: 25, "koi:ui": { component: "number", suffix: "cm", group: "Kích thước" } },
+    },
+    required: ["accessory_type","length_cm","width_cm"],
+    "koi:groups": [
+      {key:"Kiểu dáng",label:"Kiểu dáng",order:1},
+      {key:"Kích thước",label:"Kích thước",order:2}
+    ]
+  }
+};
+
+const categoryCodeLabels = {
+  WALLET: 'Ví / Bóp / Cardholder',
+  BELT: 'Thắt lưng',
+  WATCH_STRAP: 'Dây đồng hồ',
+  BAG: 'Túi / Balo / Clutch',
+  ACCESSORY: 'Phụ kiện da',
+};
+
+let categories = [
+  { id: 'cat-1', code: 'WALLET', name: 'Ví / Bóp / Cardholder', slug: 'vi-bop-cardholder', description: 'Ví da thủ công các loại', specsSchema: defaultSpecsSchemas.WALLET, productCount: 1, isActive: true },
+  { id: 'cat-2', code: 'BELT', name: 'Thắt lưng', slug: 'that-lung', description: 'Thắt lưng da thủ công', specsSchema: defaultSpecsSchemas.BELT, productCount: 1, isActive: true },
+  { id: 'cat-3', code: 'WATCH_STRAP', name: 'Dây đồng hồ', slug: 'day-dong-ho', description: 'Dây đồng hồ da thủ công', specsSchema: defaultSpecsSchemas.WATCH_STRAP, productCount: 1, isActive: true },
+  { id: 'cat-4', code: 'BAG', name: 'Túi / Balo / Clutch', slug: 'tui-balo-clutch', description: 'Túi da thủ công', specsSchema: defaultSpecsSchemas.BAG, productCount: 1, isActive: true },
+  { id: 'cat-5', code: 'ACCESSORY', name: 'Phụ kiện da', slug: 'phu-kien-da', description: 'Phụ kiện da nhỏ', specsSchema: defaultSpecsSchemas.ACCESSORY, productCount: 0, isActive: true },
+];
+let nextCategoryId = 6;
+
 // ======================== UTILITY ========================
 
 function toast(msg) {
@@ -569,7 +865,7 @@ document.querySelectorAll('.sidebar-item').forEach(item => {
     const tab = this.dataset.tab;
     document.querySelectorAll('.content-panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
-    const titles = { products: 'Quản lý Sản phẩm', materials: 'Quản lý Nguyên liệu', orders: 'Quản lý Lệnh sản xuất' };
+    const titles = { products: 'Quản lý Sản phẩm', categories: 'Quản lý Loại sản phẩm', materials: 'Quản lý Nguyên liệu', orders: 'Quản lý Lệnh sản xuất' };
     document.getElementById('pageTitle').textContent = titles[tab] || tab;
     renderAll();
   });
@@ -700,6 +996,404 @@ function deleteProduct(id) {
 function toggleProductStatus(id) {
   const p = products.find(x => x.id === id);
   if (p) { p.active = !p.active; renderProducts(); }
+}
+
+// ======================== CATEGORIES ========================
+
+let editingSpecFields = [];
+let editingGroups = [];
+
+function getFieldKey(field) {
+  return Object.keys(field)[0];
+}
+function getFieldValue(field) {
+  return Object.values(field)[0];
+}
+
+function categoryToSpecFields(cat) {
+  if (!cat || !cat.specsSchema || !cat.specsSchema.properties) return [];
+  return Object.entries(cat.specsSchema.properties).map(([key, val]) => ({ key, ...val }));
+}
+
+function specFieldsToSchema(fields, existingSchema) {
+  const schema = existingSchema ? JSON.parse(JSON.stringify(existingSchema)) : {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    type: "object",
+    title: "",
+    description: "",
+    properties: {},
+    required: [],
+    "koi:groups": []
+  };
+  schema.properties = {};
+  schema.required = [];
+  fields.forEach(f => {
+    const prop = { type: f.type, title: f.title, description: f.description || undefined };
+    if (f.enum) prop.enum = f.enum;
+    if (f.minimum !== undefined && f.minimum !== null) prop.minimum = f.minimum;
+    if (f.maximum !== undefined && f.maximum !== null) prop.maximum = f.maximum;
+    if (f.default !== undefined && f.default !== null) prop.default = f.default;
+    if (f.koi_ui) prop["koi:ui"] = f.koi_ui;
+    if (f.isRequired) schema.required.push(f.key);
+    schema.properties[f.key] = prop;
+  });
+  schema["koi:groups"] = editingGroups.length > 0 ? editingGroups : (schema["koi:groups"] || []);
+  return schema;
+}
+
+function onCategoryCodeChange() {
+  const code = document.getElementById('catCode').value;
+  if (!code) return;
+  const editId = document.getElementById('editCategoryId').value;
+  if (editId) return; // Don't auto-fill when editing
+  document.getElementById('catName').value = categoryCodeLabels[code] || code;
+  document.getElementById('catSlug').value = code.toLowerCase().replace(/_/g, '-');
+  if (defaultSpecsSchemas[code]) {
+    const schema = JSON.parse(JSON.stringify(defaultSpecsSchemas[code]));
+    const reqs = schema.required || [];
+    editingGroups = schema['koi:groups'] ? JSON.parse(JSON.stringify(schema['koi:groups'])) : [];
+    editingSpecFields = Object.entries(schema.properties).map(([key, val]) => {
+      const f = { key, ...JSON.parse(JSON.stringify(val)) };
+      f.koi_ui = f['koi:ui'];
+      delete f['koi:ui'];
+      f.isRequired = reqs.includes(key);
+      return f;
+    });
+    renderSpecFields();
+  }
+}
+
+function openCategoryModal(editId) {
+  document.getElementById('categoryModalTitle').textContent = editId ? 'Chỉnh sửa loại sản phẩm' : 'Thêm loại sản phẩm';
+  document.getElementById('editCategoryId').value = editId || '';
+  document.getElementById('catCode').value = '';
+  document.getElementById('catName').value = '';
+  document.getElementById('catSlug').value = '';
+  document.getElementById('catDesc').value = '';
+  document.getElementById('catMetaTitle').value = '';
+  document.getElementById('catMetaDesc').value = '';
+  editingSpecFields = [];
+  editingGroups = [];
+
+  if (editId) {
+    const c = categories.find(x => x.id === editId);
+    if (!c) return;
+    document.getElementById('catCode').value = c.code;
+    document.getElementById('catName').value = c.name;
+    document.getElementById('catSlug').value = c.slug;
+    document.getElementById('catDesc').value = c.description || '';
+    if (c.specsSchema && c.specsSchema.metaTitle) document.getElementById('catMetaTitle').value = c.specsSchema.metaTitle;
+    if (c.specsSchema && c.specsSchema.metaDescription) document.getElementById('catMetaDesc').value = c.specsSchema.metaDescription;
+    editingGroups = (c.specsSchema && c.specsSchema['koi:groups']) ? JSON.parse(JSON.stringify(c.specsSchema['koi:groups'])) : [];
+    if (c.specsSchema && c.specsSchema.properties) {
+      const reqs = c.specsSchema.required || [];
+      editingSpecFields = Object.entries(c.specsSchema.properties).map(([key, val]) => {
+        const f = { key, ...JSON.parse(JSON.stringify(val)) };
+        f.koi_ui = f['koi:ui'];
+        delete f['koi:ui'];
+        f.isRequired = reqs.includes(key);
+        return f;
+      });
+    }
+  }
+
+  renderSpecFields();
+  document.getElementById('categoryModal').classList.add('open');
+}
+
+function renderSpecFields() {
+  const container = document.getElementById('specFieldsContainer');
+  if (editingSpecFields.length === 0) {
+    container.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Chưa có field nào. Nhấn "Thêm field" để bắt đầu.</p>';
+    return;
+  }
+  container.innerHTML = editingSpecFields.map((f, idx) => {
+    const ui = f.koi_ui || {};
+    const compType = ui.component || 'text';
+    const group = ui.group || '';
+    const optionsStr = ui.options ? JSON.stringify(ui.options) : (f.enum ? JSON.stringify(f.enum.map(v => typeof v === 'object' ? v : {label:v,value:v})) : '[]');
+    return `<div class="spec-field-card bg-white rounded-lg border p-3 text-sm">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2 flex-1 min-w-0">
+          <span class="font-mono text-xs font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">${f.key}</span>
+          <span class="text-xs text-gray-400">${f.type}</span>
+          <span class="text-xs text-gray-600 truncate">${f.title || ''}</span>
+          ${f.isRequired ? '<span class="text-xs text-red-500 font-medium">*required</span>' : ''}
+        </div>
+        <div class="flex gap-1 shrink-0">
+          <button onclick="toggleFieldRequired(${idx})" class="text-xs text-gray-400 hover:text-amber-500 px-1" title="Required">R</button>
+          <button onclick="editSpecField(${idx})" class="text-gray-400 hover:text-amber-500 transition"><i class="fas fa-edit text-xs"></i></button>
+          <button onclick="deleteSpecField(${idx})" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xs"></i></button>
+        </div>
+      </div>
+      <div class="flex gap-3 text-xs text-gray-500">
+        <span>UI: <span class="font-medium text-gray-700">${compType}</span></span>
+        <span>Nhóm: <span class="font-medium text-gray-700">${group || '(none)'}</span></span>
+        ${f.enum ? `<span>Enum: <span class="font-medium text-gray-700">${f.enum.length} values</span></span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleFieldRequired(idx) {
+  editingSpecFields[idx].isRequired = !editingSpecFields[idx].isRequired;
+  renderSpecFields();
+}
+
+function addSpecField() {
+  editingSpecFields.push({
+    key: 'new_field_' + (editingSpecFields.length + 1),
+    type: 'string',
+    title: 'Trường mới',
+    description: '',
+    enum: null,
+    minimum: null,
+    maximum: null,
+    default: null,
+    koi_ui: { component: 'text', group: '' },
+    isRequired: false
+  });
+  renderSpecFields();
+  editSpecField(editingSpecFields.length - 1);
+}
+
+function deleteSpecField(idx) {
+  if (!confirm(`Xoá field "${editingSpecFields[idx].key}"?`)) return;
+  editingSpecFields.splice(idx, 1);
+  renderSpecFields();
+}
+
+function editSpecField(idx) {
+  const f = editingSpecFields[idx];
+  const ui = f.koi_ui || {};
+  const compType = ui.component || 'text';
+  const group = ui.group || '';
+  const suffix = ui.suffix || '';
+  const placeholder = ui.placeholder || '';
+  const optionsStr = ui.options ? JSON.stringify(ui.options) : (f.enum ? JSON.stringify(f.enum.map(v => typeof v === 'object' ? v : {label: String(v), value: v})) : '[]');
+
+  const html = `
+    <div class="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onclick="if(event.target===this)this.remove()">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-5 fade-in max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-gray-800">Chỉnh sửa field</h3>
+          <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Key <span class="text-red-500">*</span></label>
+              <input id="sf_key" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" value="${f.key}">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
+              <select id="sf_type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <option value="string" ${f.type === 'string' ? 'selected' : ''}>string</option>
+                <option value="number" ${f.type === 'number' ? 'selected' : ''}>number</option>
+                <option value="integer" ${f.type === 'integer' ? 'selected' : ''}>integer</option>
+                <option value="boolean" ${f.type === 'boolean' ? 'selected' : ''}>boolean</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Title</label>
+            <input id="sf_title" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="${f.title || ''}">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+            <input id="sf_desc" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="${f.description || ''}">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">UI Component</label>
+              <select id="sf_component" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <option value="text" ${compType === 'text' ? 'selected' : ''}>Text input</option>
+                <option value="number" ${compType === 'number' ? 'selected' : ''}>Number input</option>
+                <option value="select" ${compType === 'select' ? 'selected' : ''}>Select dropdown</option>
+                <option value="radio" ${compType === 'radio' ? 'selected' : ''}>Radio button</option>
+                <option value="switch" ${compType === 'switch' ? 'selected' : ''}>Switch (boolean)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Nhóm</label>
+              <select id="sf_group" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <option value="">-- Không nhóm --</option>
+                ${editingGroups.map(g => `<option value="${g.key}" ${group === g.key ? 'selected' : ''}>${g.label}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3" id="sfNumberOptions" style="${f.type === 'boolean' ? 'display:none' : ''}">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Min</label>
+              <input id="sf_min" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="${f.minimum !== null && f.minimum !== undefined ? f.minimum : ''}">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Max</label>
+              <input id="sf_max" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="${f.maximum !== null && f.maximum !== undefined ? f.maximum : ''}">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Suffix (VD: cm, mm)</label>
+            <input id="sf_suffix" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="${suffix}">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Placeholder</label>
+            <input id="sf_placeholder" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="${placeholder}">
+          </div>
+          <div id="sfEnumSection" style="${compType !== 'select' && compType !== 'radio' ? 'display:none' : ''}">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Enum Options (JSON array: [{label, value}])</label>
+            <textarea id="sf_enum" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" rows="3">${optionsStr}</textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Default value</label>
+            <input id="sf_default" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="${f.default !== null && f.default !== undefined ? f.default : ''}">
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-4 pt-4 border-t">
+          <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium">Huỷ</button>
+          <button onclick="saveSpecField(${idx}, this)" class="px-4 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition">Lưu field</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function saveSpecField(idx, btn) {
+  const overlay = btn.closest('.fixed');
+  const key = document.getElementById('sf_key').value.trim();
+  if (!key) { alert('Key là bắt buộc'); return; }
+
+  const type = document.getElementById('sf_type').value;
+  const compType = document.getElementById('sf_component').value;
+  const group = document.getElementById('sf_group').value;
+  const suffix = document.getElementById('sf_suffix').value.trim();
+  const placeholder = document.getElementById('sf_placeholder').value.trim();
+  const minVal = document.getElementById('sf_min')?.value;
+  const maxVal = document.getElementById('sf_max')?.value;
+  const enumRaw = document.getElementById('sf_enum')?.value.trim();
+  const defaultVal = document.getElementById('sf_default').value.trim();
+
+  let enumArr = null;
+  if (enumRaw && enumRaw !== '[]') {
+    try { enumArr = JSON.parse(enumRaw); } catch(e) { alert('Enum JSON không hợp lệ'); return; }
+  }
+
+  const koi_ui = { component: compType };
+  if (group) koi_ui.group = group;
+  if (suffix) koi_ui.suffix = suffix;
+  if (placeholder) koi_ui.placeholder = placeholder;
+  if (compType === 'select' || compType === 'radio') {
+    if (enumArr) koi_ui.options = enumArr;
+  }
+
+  const f = {
+    key,
+    type,
+    title: document.getElementById('sf_title').value.trim(),
+    description: document.getElementById('sf_desc').value.trim(),
+    koi_ui,
+    isRequired: editingSpecFields[idx].isRequired
+  };
+  if (enumArr && type !== 'boolean') f.enum = enumArr.map(o => o.value !== undefined ? o.value : o);
+  if (minVal !== '') f.minimum = Number(minVal);
+  if (maxVal !== '') f.maximum = Number(maxVal);
+  if (defaultVal !== '') {
+    f.default = type === 'number' || type === 'integer' ? Number(defaultVal) : defaultVal;
+  }
+
+  editingSpecFields[idx] = f;
+  overlay.remove();
+  renderSpecFields();
+}
+
+function editGroups() {
+  const container = document.getElementById('groupsContainer');
+  container.innerHTML = `
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm text-gray-500">Các nhóm để phân loại field trong specs</p>
+      <button onclick="addGroup()" class="flex items-center gap-1 text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-1.5 rounded-lg transition">
+        <i class="fas fa-plus"></i> Thêm nhóm
+      </button>
+    </div>
+    <div id="groupsList" class="space-y-2">
+      ${editingGroups.length === 0 ? '<p class="text-sm text-gray-400 text-center py-4">Chưa có nhóm nào.</p>' :
+      editingGroups.map((g, idx) => `
+        <div class="flex items-center gap-2 bg-white rounded-lg border p-3">
+          <div class="flex-1">
+            <input class="group-key-input w-full border-0 bg-transparent font-mono text-xs font-bold text-amber-700 mb-1" value="${g.key}" placeholder="Key" onchange="editingGroups[${idx}].key=this.value">
+            <input class="w-full border-0 bg-transparent text-sm" value="${g.label}" placeholder="Label hiển thị" onchange="editingGroups[${idx}].label=this.value">
+          </div>
+          <input type="number" class="w-16 text-xs border border-gray-200 rounded px-2 py-1 text-center" value="${g.order}" placeholder="Order" onchange="editingGroups[${idx}].order=parseInt(this.value)||0">
+          <button onclick="removeGroup(${idx})" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-trash-alt text-xs"></i></button>
+        </div>
+      `).join('')}
+    </div>`;
+  document.getElementById('groupsModal').classList.add('open');
+}
+
+function addGroup() {
+  editingGroups.push({ key: 'nhom_' + (editingGroups.length + 1), label: 'Nhóm mới', order: editingGroups.length + 1 });
+  editGroups();
+}
+
+function removeGroup(idx) {
+  editingGroups.splice(idx, 1);
+  editGroups();
+  renderSpecFields();
+}
+
+function saveCategory() {
+  const id = document.getElementById('editCategoryId').value;
+  const code = document.getElementById('catCode').value;
+  const name = document.getElementById('catName').value.trim();
+  const slug = document.getElementById('catSlug').value.trim();
+  const description = document.getElementById('catDesc').value.trim();
+
+  if (!code || !name) { toast('Vui lòng nhập mã và tên loại sản phẩm'); return; }
+
+  const schema = specFieldsToSchema(editingSpecFields, null);
+  schema.metaTitle = document.getElementById('catMetaTitle').value.trim();
+  schema.metaDescription = document.getElementById('catMetaDesc').value.trim();
+
+  if (id) {
+    const c = categories.find(x => x.id === id);
+    if (c) {
+      Object.assign(c, { code, name, slug: slug || code.toLowerCase().replace(/_/g, '-'), description, specsSchema: schema });
+      toast('Đã cập nhật loại sản phẩm');
+    }
+  } else {
+    categories.push({
+      id: 'cat-' + nextCategoryId++,
+      code, name, slug: slug || code.toLowerCase().replace(/_/g, '-'), description,
+      specsSchema: schema, productCount: 0, isActive: true
+    });
+    toast('Đã thêm loại sản phẩm mới');
+  }
+
+  closeModal('categoryModal');
+  renderCategories();
+}
+
+function deleteCategory(id) {
+  if (!confirm('Xoá loại sản phẩm này?')) return;
+  categories = categories.filter(c => c.id !== id);
+  toast('Đã xoá loại sản phẩm');
+  renderCategories();
+}
+
+function toggleCategoryStatus(id) {
+  const c = categories.find(x => x.id === id);
+  if (c) { c.isActive = !c.isActive; renderCategories(); }
+}
+
+function getSpecsFieldCount(cat) {
+  if (!cat.specsSchema || !cat.specsSchema.properties) return 0;
+  return Object.keys(cat.specsSchema.properties).length;
+}
+
+function getSpecFieldEnum(field) {
+  if (!field.enum || field.enum.length === 0) return null;
+  return field.enum;
 }
 
 // ======================== MATERIALS ========================
@@ -904,8 +1598,83 @@ function viewOrderDetail(id) {
 
 function renderAll() {
   renderProducts();
+  renderCategories();
   renderMaterials();
   renderOrders();
+}
+
+function renderCategories() {
+  const tbody = document.getElementById('categoryTableBody');
+  const empty = document.getElementById('categoryEmpty');
+
+  if (categories.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    document.getElementById('statsCategories').textContent = '0';
+    document.getElementById('statsActiveCategories').textContent = '0';
+    document.getElementById('statsSpecFields').textContent = '0';
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const active = categories.filter(c => c.isActive).length;
+  const totalFields = categories.reduce((sum, c) => sum + getSpecsFieldCount(c), 0);
+
+  document.getElementById('statsCategories').textContent = categories.length;
+  document.getElementById('statsActiveCategories').textContent = active;
+  document.getElementById('statsSpecFields').textContent = totalFields;
+
+  const codeClassMap = {
+    WALLET: 'bg-blue-100 text-blue-700',
+    BELT: 'bg-emerald-100 text-emerald-700',
+    WATCH_STRAP: 'bg-purple-100 text-purple-700',
+    BAG: 'bg-rose-100 text-rose-700',
+    ACCESSORY: 'bg-amber-100 text-amber-700'
+  };
+
+  tbody.innerHTML = categories.map(c => {
+    const fieldCount = getSpecsFieldCount(c);
+    const specPreview = fieldCount > 0
+      ? Object.keys(c.specsSchema.properties).slice(0, 3).join(', ') + (fieldCount > 3 ? `...` : '')
+      : 'Chưa có field';
+    return `<tr>
+      <td class="px-5 py-3">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full ${c.isActive ? 'bg-green-500' : 'bg-gray-300'}"></div>
+          <div>
+            <span class="font-medium text-gray-800">${c.name}</span>
+            <div class="text-xs text-gray-400">${c.slug}</div>
+          </div>
+        </div>
+      </td>
+      <td class="px-5 py-3">
+        <span class="px-2 py-1 rounded text-xs font-medium ${codeClassMap[c.code] || 'bg-gray-100 text-gray-600'}">${c.code}</span>
+      </td>
+      <td class="px-5 py-3 font-mono text-xs text-gray-500">${c.slug}</td>
+      <td class="px-5 py-3">
+        <span class="font-medium text-gray-800">${fieldCount}</span>
+        <span class="text-xs text-gray-400 ml-1">fields</span>
+        <div class="text-xs text-gray-400 truncate max-w-[180px]" title="${specPreview}">${specPreview}</div>
+      </td>
+      <td class="px-5 py-3 text-center">
+        <span class="font-medium text-gray-800">${c.productCount || 0}</span>
+      </td>
+      <td class="px-5 py-3">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+          ${c.isActive ? 'Hoạt động' : 'Tạm dừng'}
+        </span>
+      </td>
+      <td class="px-5 py-3 text-right">
+        <div class="flex items-center justify-end gap-2">
+          <button onclick="toggleCategoryStatus('${c.id}')" class="text-${c.isActive ? 'gray-400 hover:text-amber-500' : 'green-400 hover:text-green-600'} transition text-sm" title="${c.isActive ? 'Vô hiệu hoá' : 'Kích hoạt'}">
+            <i class="fas ${c.isActive ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+          </button>
+          <button onclick="openCategoryModal('${c.id}')" class="text-gray-400 hover:text-amber-500 transition text-sm"><i class="fas fa-edit"></i></button>
+          <button onclick="deleteCategory('${c.id}')" class="text-gray-400 hover:text-red-500 transition text-sm"><i class="fas fa-trash-alt"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 function renderProducts() {

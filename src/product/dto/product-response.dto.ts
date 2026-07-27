@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class ProductImageResponseDto {
+export class KoiKoiProductImageResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() url: string;
   @ApiProperty() thumbnailUrl: string;
@@ -10,7 +10,7 @@ export class ProductImageResponseDto {
   @ApiProperty() displayOrder: number;
 }
 
-export class ProductResponseDto {
+export class KoiProductResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() name: Record<string, string>;
   @ApiProperty() slug: string;
@@ -27,12 +27,12 @@ export class ProductResponseDto {
   @ApiPropertyOptional() canonicalUrl?: string;
   @ApiPropertyOptional() createdAt: string;
   @ApiPropertyOptional() updatedAt: string;
-  @ApiPropertyOptional({ type: [ProductImageResponseDto] })
-  images?: ProductImageResponseDto[];
+  @ApiPropertyOptional({ type: [KoiKoiProductImageResponseDto] })
+  images?: KoiKoiProductImageResponseDto[];
 }
 
-export class PaginatedProductsDto {
-  @ApiProperty() data: ProductResponseDto[];
+export class PaginatedKoiProductsDto {
+  @ApiProperty() data: KoiProductResponseDto[];
   @ApiProperty() total: number;
   @ApiProperty() page: number;
   @ApiProperty() limit: number;

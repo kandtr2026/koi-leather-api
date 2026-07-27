@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Widget</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    <style>
+        .backdrop-glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+<div id="root"></div>
+
+<script type="module">
+    const { motion } = window.Motion;
+    const { useState } = React;
+
+    const App = () => {
+        return React.createElement(motion.div, {
+            drag: true,
+            dragMomentum: true,
+            className: "fixed top-10 left-10 p-4 rounded-2xl shadow-xl backdrop-glass w-64 cursor-grab active:cursor-grabbing",
+            initial: { opacity: 0, scale: 0.95 },
+            animate: { opacity: 1, scale: 1 },
+            transition: { type: "spring", damping: 1.0, response: 0.3 }
+        }, [
+            React.createElement("h2", { className: "text-sm font-semibold mb-3 text-gray-800" }, "Usage Monitor"),
+            React.createElement("div", { className: "space-y-3" }, [
+                React.createElement("div", null, [
+                    React.createElement("div", { className: "flex justify-between text-xs" }, [
+                        React.createElement("span", null, "Google Cloud"),
+                        React.createElement("span", null, "75%")
+                    ]),
+                    React.createElement("div", { className: "h-1.5 w-full bg-gray-200 rounded-full mt-1 overflow-hidden" },
+                        React.createElement("div", { className: "h-full bg-blue-500 rounded-full", style: { width: "75%" } })
+                    )
+                ]),
+                React.createElement("div", null, [
+                    React.createElement("div", { className: "flex justify-between text-xs" }, [
+                        React.createElement("span", null, "Anthropic (Manual)"),
+                        React.createElement("input", { 
+                            type: "text", 
+                            placeholder: "Update %", 
+                            className: "w-16 bg-transparent border-b border-gray-400 text-right focus:outline-none"
+                        })
+                    ])
+                ])
+            ])
+        ]);
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+</script>
+
+<!-- Libraries for the script -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-export enum ProductType {
+export enum KoiProductType {
   WALLET = 'WALLET',
   BELT = 'BELT',
   WATCH_STRAP = 'WATCH_STRAP',
@@ -6,15 +6,15 @@ export enum ProductType {
   ACCESSORY = 'ACCESSORY',
 }
 
-export const ProductTypeLabel: Record<ProductType, string> = {
-  [ProductType.WALLET]: 'Ví',
-  [ProductType.BELT]: 'Thắt lưng',
-  [ProductType.WATCH_STRAP]: 'Watch Strap',
-  [ProductType.BAG]: 'Túi',
-  [ProductType.ACCESSORY]: 'Phụ kiện',
+export const ProductTypeLabel: Record<KoiProductType, string> = {
+  [KoiProductType.WALLET]: 'Ví',
+  [KoiProductType.BELT]: 'Thắt lưng',
+  [KoiProductType.WATCH_STRAP]: 'Watch Strap',
+  [KoiProductType.BAG]: 'Túi',
+  [KoiProductType.ACCESSORY]: 'Phụ kiện',
 };
 
-export enum CategoryCode {
+export enum KoiCategoryCode {
   WATCH_STRAP = 'WATCH_STRAP',
   WALLET = 'WALLET',
   BELT = 'BELT',
@@ -22,15 +22,15 @@ export enum CategoryCode {
   ACCESSORY = 'ACCESSORY',
 }
 
-export const CategoryCodeLabel: Record<CategoryCode, string> = {
-  [CategoryCode.WATCH_STRAP]: 'Dây đồng hồ',
-  [CategoryCode.WALLET]: 'Ví / Bóp / Cardholder',
-  [CategoryCode.BELT]: 'Thắt lưng',
-  [CategoryCode.BAG]: 'Túi / Balo / Clutch',
-  [CategoryCode.ACCESSORY]: 'Phụ kiện da',
+export const CategoryCodeLabel: Record<KoiCategoryCode, string> = {
+  [KoiCategoryCode.WATCH_STRAP]: 'Dây đồng hồ',
+  [KoiCategoryCode.WALLET]: 'Ví / Bóp / Cardholder',
+  [KoiCategoryCode.BELT]: 'Thắt lưng',
+  [KoiCategoryCode.BAG]: 'Túi / Balo / Clutch',
+  [KoiCategoryCode.ACCESSORY]: 'Phụ kiện da',
 };
 
-export enum ProductStatus {
+export enum KoiProductStatus {
   DRAFT = 'DRAFT',
   ACTIVE = 'ACTIVE',
   ARCHIVED = 'ARCHIVED',

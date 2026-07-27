@@ -9,7 +9,7 @@ export class RawMaterialService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateRawMaterialDto) {
-    return this.prisma.rawMaterial.create({
+    return this.prisma.koiRawMaterial.create({
       data: {
         name: dto.name,
         materialType: dto.materialType,
@@ -28,18 +28,18 @@ export class RawMaterialService {
   }
 
   async findAll(type?: string, supplier?: string) {
-    const where: Prisma.RawMaterialWhereInput = {};
+    const where: Prisma.KoiRawMaterialWhereInput = {};
     if (type) where.materialType = type as any;
     if (supplier) where.supplier = { contains: supplier };
 
-    return this.prisma.rawMaterial.findMany({
+    return this.prisma.koiRawMaterial.findMany({
       where,
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findById(id: string) {
-    const material = await this.prisma.rawMaterial.findUnique({
+    const material = await this.prisma.koiRawMaterial.findUnique({
       where: { id },
       include: { transactions: { orderBy: { createdAt: 'desc' }, take: 20 } },
     });
@@ -63,14 +63,14 @@ export class RawMaterialService {
       data.availableQuantity = dto.totalQuantity - (await this.getReserved(id));
     }
 
-    return this.prisma.rawMaterial.update({
+    return this.prisma.koiRawMaterial.update({
       where: { id },
       data,
     });
   }
 
   private async getReserved(id: string): Promise<number> {
-    const mat = await this.prisma.rawMaterial.findUnique({ where: { id } });
+    const mat = await this.prisma.koiRawMaterial.findUnique({ where: { id } });
     return Number(mat?.reservedQuantity || 0);
   }
 
@@ -80,7 +80,7 @@ export class RawMaterialService {
     if (newTotal < 0) throw new Error('Insufficient stock');
 
     return this.prisma.$transaction(async (tx) => {
-      await tx.inventoryTransaction.create({
+      await tx.koiInventoryTransaction.create({
         data: {
           materialId: id,
           transactionType: quantity > 0 ? 'RECEIPT' : 'CONSUMPTION',
@@ -90,7 +90,7 @@ export class RawMaterialService {
         },
       });
 
-      return tx.rawMaterial.update({
+      return tx.koiRawMaterial.update({
         where: { id },
         data: {
           totalQuantity: newTotal,
@@ -102,6 +102,7 @@ export class RawMaterialService {
 
   async remove(id: string) {
     await this.findById(id);
-    return this.prisma.rawMaterial.delete({ where: { id } });
+    await this.prisma.koiInventoryTransaction.deleteMany({ where: { materialId: id } });
+    return this.prisma.koiRawMaterial.delete({ where: { id } });
   }
 }

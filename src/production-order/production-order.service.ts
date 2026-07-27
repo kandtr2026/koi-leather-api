@@ -16,14 +16,14 @@ export class ProductionOrderService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateProductionOrderDto) {
-    const variant = await this.prisma.productVariant.findUnique({
+    const variant = await this.prisma.koiProductVariant.findUnique({
       where: { id: dto.variantId },
       include: { product: true, craftingSpec: true },
     });
     if (!variant) throw new NotFoundException('Product variant not found');
     if (dto.quantity < 1) throw new BadRequestException('Quantity must be >= 1');
 
-    const count = await this.prisma.productionOrder.count();
+    const count = await this.prisma.koiProductionOrder.count();
     const orderId = `PO-${String(count + 1).padStart(3, '0')}`;
 
     const materialsAllocated = await this.buildMaterialSnapshot(dto.variantId, dto.materials, dto.quantity);
@@ -32,7 +32,7 @@ export class ProductionOrderService {
       (sum, m) => sum + m.cost_at_snapshot * m.qty_consumed, 0,
     );
 
-    return this.prisma.productionOrder.create({
+    return this.prisma.koiProductionOrder.create({
       data: {
         id: orderId,
         variantId: dto.variantId,
@@ -59,7 +59,7 @@ export class ProductionOrderService {
 
     if (manualMaterials && manualMaterials.length > 0) {
       for (const mat of manualMaterials) {
-        const material = await this.prisma.rawMaterial.findUnique({
+        const material = await this.prisma.koiRawMaterial.findUnique({
           where: { id: mat.materialId },
         });
         const currentPrice = material ? Number(material.unitCost) : 0;
@@ -75,7 +75,7 @@ export class ProductionOrderService {
       return snapshots;
     }
 
-    const craftingSpec = await this.prisma.craftingSpec.findFirst({
+    const craftingSpec = await this.prisma.koiCraftingSpec.findFirst({
       where: { variants: { some: { id: variantId } } },
     });
 
@@ -131,33 +131,53 @@ export class ProductionOrderService {
 
   private async findMaterialByType(type: string, spec: any) {
     if (spec.material_id) {
-      return this.prisma.rawMaterial.findUnique({ where: { id: spec.material_id } });
+      return this.prisma.koiRawMaterial.findUnique({ where: { id: spec.material_id } });
     }
     if (spec.material_name) {
-      return this.prisma.rawMaterial.findFirst({
+      return this.prisma.koiRawMaterial.findFirst({
         where: { name: { contains: spec.material_name } },
       });
     }
-    return this.prisma.rawMaterial.findFirst({ where: { materialType: type as any } });
+    return this.prisma.koiRawMaterial.findFirst({ where: { materialType: type as any } });
   }
 
-  async findAll(status?: string) {
+  async findAll(status?: string, page = 1, limit = 50) {
     const where: any = {};
     if (status) where.status = status;
 
-    return this.prisma.productionOrder.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        variant: {
-          include: { product: { select: { id: true, name: true, sku: true } } },
+    const [data, total] = await Promise.all([
+      this.prisma.koiProductionOrder.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          quantity: true,
+          status: true,
+          craftsman: true,
+          dueDate: true,
+          totalCostSnapshot: true,
+          notes: true,
+          createdAt: true,
+          variantId: true,
+          variant: {
+            select: {
+              id: true,
+              sku: true,
+              product: { select: { id: true, name: true, sku: true } },
+            },
+          },
         },
-      },
-    });
+      }),
+      this.prisma.koiProductionOrder.count({ where }),
+    ]);
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(id: string) {
-    const order = await this.prisma.productionOrder.findUnique({
+    const order = await this.prisma.koiProductionOrder.findUnique({
       where: { id },
       include: {
         variant: {
@@ -174,7 +194,7 @@ export class ProductionOrderService {
 
   async updateStatus(id: string, status: string) {
     await this.findById(id);
-    return this.prisma.productionOrder.update({
+    return this.prisma.koiProductionOrder.update({
       where: { id },
       data: { status: status as any },
     });
@@ -182,9 +202,9 @@ export class ProductionOrderService {
 
   async getStats() {
     const [total, snapped, costAgg] = await Promise.all([
-      this.prisma.productionOrder.count(),
-      this.prisma.productionOrder.count({ where: { status: { not: 'PENDING' } } }),
-      this.prisma.productionOrder.aggregate({
+      this.prisma.koiProductionOrder.count(),
+      this.prisma.koiProductionOrder.count({ where: { status: { not: 'PENDING' } } }),
+      this.prisma.koiProductionOrder.aggregate({
         _sum: { totalCostSnapshot: true },
         where: { totalCostSnapshot: { not: null } },
       }),

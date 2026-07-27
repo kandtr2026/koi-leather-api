@@ -8,4 +8,4 @@ import { SpecsValidatorService } from '../common/specs-validator.service';
   providers: [ProductService, SpecsValidatorService],
   exports: [ProductService],
 })
-export class ProductModule {}
+export class KoiProductModule {}

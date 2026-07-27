@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Koi Leather Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f1f5f9; }
+    .tab-btn { cursor: pointer; transition: all 0.2s; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; }
+    .tab-btn:hover { background: #e2e8f0; }
+    .tab-btn.active { background: #1e293b; color: white; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 100; background: #1f2937; color: white; padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transform: translateY(80px); opacity: 0; transition: all 0.3s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.2s ease; }
+    .stat-card { transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-2px); }
+    input:focus, select:focus, textarea:focus { border-color: #f59e0b; --tw-ring-color: #f59e0b; }
+    .loading { opacity: 0.5; pointer-events: none; }
+    .json-view { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-family: monospace; font-size: 12px; max-height: 100px; overflow-y: auto; white-space: pre-wrap; }
+    .specs-badge { display: inline-flex; align-items: center; gap: 4px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; padding: 3px 8px; font-size: 11px; color: #92400e; margin: 2px 4px 2px 0; white-space: nowrap; }
+    .specs-badge .specs-label { font-weight: 600; }
+    .specs-badge .specs-value { font-weight: 400; }
+    .specs-badge.specs-bool { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+    .specs-form-field { transition: border-color 0.2s; }
+    .specs-form-field:focus { border-color: #f59e0b; --tw-ring-color: #f59e0b; }
+    /* Auth-gated elements — hidden by default, shown when authenticated */
+    .requires-auth { display: none !important; }
+    body.authenticated .requires-auth { display: inline-flex !important; }
+    body.authenticated .requires-auth-block { display: block !important; }
+    .g_id_signout { cursor: pointer; }
+    .g_id_signout:hover { opacity: 0.7; }
+  </style>
+</head>
+<body>
+
+<div class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="bg-white border-b shadow-sm px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 bg-amber-500 rounded-lg flex items-center justify-center font-bold text-white text-sm">KL</div>
+      <div>
+        <h1 class="text-lg font-bold text-gray-800">Koi Leather Admin</h1>
+        <p class="text-xs text-gray-400" id="headerStatus">Đang tải...</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <!-- Auth state: login button or user avatar -->
+      <div id="authSection">
+        <div id="gSignInWrapper" class="hidden"></div>
+        <div id="authUser" class="hidden items-center gap-2">
+          <img id="authAvatar" class="w-7 h-7 rounded-full border border-gray-200" src="" alt="">
+          <span id="authEmail" class="text-xs text-gray-600 font-medium"></span>
+          <button onclick="logout()" class="g_id_signout text-xs text-gray-400 hover:text-red-500 ml-1" title="Đăng xuất"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-gray-400">
+        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+        API Online
+      </div>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="bg-white border-b px-6 py-3 flex gap-2">
+    <button class="tab-btn active" data-tab="products"><i class="fas fa-box mr-2 text-amber-500"></i>Sản phẩm</button>
+    <button class="tab-btn" data-tab="prodcats"><i class="fas fa-layer-group mr-2 text-amber-500"></i>Loại sản phẩm</button>
+    <button class="tab-btn" data-tab="materials"><i class="fas fa-database mr-2 text-amber-500"></i>Nguyên liệu</button>
+    <button class="tab-btn" data-tab="orders"><i class="fas fa-clipboard-list mr-2 text-amber-500"></i>Lệnh sản xuất</button>
+    <button class="tab-btn" data-tab="specs"><i class="fas fa-ruler mr-2 text-amber-500"></i>Crafting Specs</button>
+    <button class="tab-btn" data-tab="imgcats"><i class="fas fa-tags mr-2 text-amber-500"></i>Loại ảnh</button>
+  </div>
+
+  <!-- Main -->
+  <div class="flex-1 overflow-y-auto p-6">
+
+    <!-- PRODUCTS PANEL -->
+    <div class="panel active" id="panel-products">
+      <div class="flex justify-between items-center mb-4">
+        <p class="text-sm text-gray-500">Danh sách sản phẩm — JSONB specs động theo loại</p>
+        <button onclick="openCreateProduct()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
+          <i class="fas fa-plus"></i> Thêm sản phẩm
+        </button>
+      </div>
+      <div id="productTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="skeleton-loading p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCT CATEGORIES PANEL -->
+    <div class="panel" id="panel-prodcats">
+      <div class="flex justify-between items-center mb-4">
+        <p class="text-sm text-gray-500">Danh mục loại sản phẩm</p>
+        <button onclick="openCreateProdCat()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
+          <i class="fas fa-plus"></i> Thêm loại sản phẩm
+        </button>
+      </div>
+      <div id="prodCatTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="skeleton-loading p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MATERIALS PANEL -->
+    <div class="panel" id="panel-materials">
+      <div class="flex justify-between items-center mb-4">
+        <p class="text-sm text-gray-500">Nguyên liệu — thay đổi giá ảnh hưởng lệnh mới, không ảnh hưởng snapshot cũ</p>
+        <button onclick="openCreateMaterial()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
+          <i class="fas fa-plus"></i> Thêm nguyên liệu
+        </button>
+      </div>
+      <div id="materialTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="skeleton-loading p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDERS PANEL -->
+    <div class="panel" id="panel-orders">
+      <div class="flex justify-between items-center mb-4">
+        <p class="text-sm text-gray-500">Lệnh sản xuất — snapshot chi phí nguyên liệu tại thời điểm chốt</p>
+        <button onclick="openCreateOrder()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
+          <i class="fas fa-plus"></i> Tạo lệnh mới
+        </button>
+      </div>
+      <div id="orderTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="skeleton-loading p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMAGE CATEGORIES PANEL -->
+    <div class="panel" id="panel-imgcats">
+      <div class="flex justify-between items-center mb-4">
+        <p class="text-sm text-gray-500">Danh mục loại ảnh — dùng để phân loại ảnh sản phẩm (Studio, Lifestyle, Lưu kho...)</p>
+        <button onclick="openCreateImgCat()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
+          <i class="fas fa-plus"></i> Thêm loại ảnh
+        </button>
+      </div>
+      <div id="imgCatTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="skeleton-loading p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPECS PANEL -->
+    <div class="panel" id="panel-specs">
+      <div class="flex justify-between items-center mb-4">
+        <p class="text-sm text-gray-500">Crafting Specs — pattern files, yield calculation, crafting details</p>
+        <button onclick="openCreateSpec()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
+          <i class="fas fa-plus"></i> Thêm spec
+        </button>
+      </div>
+      <div id="specTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="skeleton-loading p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="modal-overlay" id="productModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-6 fade-in max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold" id="productModalTitle">Thêm sản phẩm</h2>
+      <button onclick="closeModal('productModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="space-y-3">
+      <input type="hidden" id="editProductId">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Tên (VI)</label><input id="pNameVi" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví đứng Epsom Navy"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Tên (EN)</label><input id="pNameEn" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Bifold Wallet"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">SKU</label><input id="pSku" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="WD-EPS-001"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Loại</label>
+          <select id="pType" onchange="onProductTypeChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="WALLET">Ví</option><option value="BELT">Thắt lưng</option>
+            <option value="WATCH_STRAP">Watch Strap</option><option value="BAG">Túi</option>
+            <option value="ACCESSORY">Phụ kiện</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2500000"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Website ID</label><input id="pExtId" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="KL-001"></div>
+      </div>
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-medium text-gray-600">Thông số kỹ thuật</label>
+          <button id="pSpecsToggle" type="button" onclick="toggleSpecsMode()" class="text-xs text-amber-500 hover:text-amber-600 font-medium hidden"><i class="fas fa-code mr-1"></i>JSON</button>
+        </div>
+        <div id="pSpecsDynamic" class="hidden"></div>
+        <textarea id="pSpecs" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder='{"card_slots":8,"cash_pockets":2}'></textarea>
+      </div>
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">SEO Metadata (JSON)</label>
+        <textarea id="pSeo" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder='{"metaTitle":"Ví đứng Epsom Navy","metaDescription":"..."}'></textarea>
+      </div>
+
+      <!-- IMAGE GALLERY -->
+      <div class="border-t pt-4 mt-4">
+        <div class="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1"><i class="fas fa-image text-amber-500"></i> Hình ảnh sản phẩm</div>
+        <div id="imageGallery" class="flex flex-wrap gap-3 mb-3 min-h-[80px]">
+          <p class="text-gray-400 text-sm py-6 w-full text-center">Lưu sản phẩm trước để upload ảnh</p>
+        </div>
+
+        <!-- Upload zone -->
+        <div id="uploadZone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-amber-400 hover:bg-amber-50/30 transition hidden">
+          <div id="uploadTypeRadios" class="flex justify-center gap-4 mb-3"></div>
+          <div onclick="document.getElementById('fileInput').click()">
+            <i class="fas fa-cloud-upload-alt text-3xl text-gray-300 mb-2"></i>
+            <p class="text-sm text-gray-500">Kéo thả ảnh vào đây hoặc <span class="text-amber-500 font-medium">chọn file</span></p>
+            <p class="text-xs text-gray-400 mt-1">Tự động chuyển đổi sang WebP chất lượng cao</p>
+          </div>
+          <input id="fileInput" type="file" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
+          <div id="uploadProgress" class="hidden mt-3"><div class="w-full bg-gray-200 rounded-full h-1.5"><div id="progressBar" class="bg-amber-500 h-1.5 rounded-full" style="width:0%"></div></div><p id="progressText" class="text-xs text-gray-400 mt-1">Đang xử lý...</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+      <button onclick="closeModal('productModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+      <button onclick="saveProduct()" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- MATERIAL MODAL -->
+<div class="modal-overlay" id="materialModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 fade-in">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold" id="materialModalTitle">Thêm nguyên liệu</h2>
+      <button onclick="closeModal('materialModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="space-y-3">
+      <input type="hidden" id="editMaterialId">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Tên</label><input id="mName" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Loại</label>
+          <select id="mType" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="OUTER_LEATHER">Da ngoài</option><option value="LINING_LEATHER">Da lót</option>
+            <option value="INTERLINING">Độn</option><option value="THREAD">Chỉ</option>
+            <option value="BUCKLE">Khóa</option><option value="HARDWARE">Phụ kiện</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Nhà cung cấp</label><input id="mSupplier" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Đơn vị</label>
+          <select id="mUnit" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="SQFT">sqft</option><option value="METER">mét</option>
+            <option value="PIECE">cái</option><option value="ROLL">cuộn</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Tồn kho</label><input id="mStock" type="number" step="0.1" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="mPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+      <button onclick="closeModal('materialModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+      <button onclick="saveMaterial()" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER MODAL -->
+<div class="modal-overlay" id="orderModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 p-6 fade-in max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold">Tạo lệnh sản xuất</h2>
+      <button onclick="closeModal('orderModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="space-y-3">
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Chọn sản phẩm</label>
+        <select id="oProduct" onchange="onOrderProductChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
+      </div>
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Số lượng</label>
+        <input id="oQty" type="number" min="1" value="1" onchange="onOrderProductChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <div class="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1"><i class="fas fa-camera text-amber-500"></i> Nguyên liệu dự kiến (giá hiện tại)</div>
+        <div id="oMaterialPreview" class="space-y-2 p-3 bg-gray-50 rounded-lg border text-sm min-h-[80px]">
+          <p class="text-gray-400 text-center py-4">Chọn sản phẩm để xem nguyên liệu</p>
+        </div>
+      </div>
+      <div id="oTotalRow" class="hidden flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+        <span class="text-sm font-medium text-gray-700">Tổng chi phí dự kiến:</span>
+        <span id="oTotalCost" class="text-lg font-bold text-amber-700">0 VNĐ</span>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+      <button onclick="closeModal('orderModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+      <button onclick="saveOrder()" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-camera mr-1"></i> Chốt lệnh & Snapshot</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPEC MODAL -->
+<div class="modal-overlay" id="specModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 fade-in max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold">Tạo Crafting Spec</h2>
+      <button onclick="closeModal('specModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="space-y-3">
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Sản phẩm</label>
+        <select id="sProduct" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
+      </div>
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Da ngoài (JSON)</label>
+        <textarea id="sOuter" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder='{"material_name":"Da Epsom Navy","sqft":0.8,"wastage_rate":0.15}'></textarea>
+      </div>
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Da lót (JSON)</label>
+        <textarea id="sLining" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder='{"material_name":"Zermatt Beige","sqft":0.5}'></textarea>
+      </div>
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Chi tiết gia công (JSON)</label>
+        <textarea id="sDetails" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder='{"thread":"Meisi 0.45mm","pitch_mm":3.38,"stitching_type":"Saddle Stitch"}'></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+      <button onclick="closeModal('specModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+      <button onclick="saveSpec()" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT CATEGORY MODAL -->
+<div class="modal-overlay" id="prodCatModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 p-6 fade-in">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold" id="prodCatModalTitle">Thêm loại sản phẩm</h2>
+      <button onclick="closeModal('prodCatModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="space-y-3">
+      <input type="hidden" id="editProdCatId">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Code</label><input id="pcCode" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="WALLET"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Tên</label><input id="pcName" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví / Bóp"></div>
+      </div>
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Slug</label><input id="pcSlug" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="vi-bop"></div>
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Mô tả</label><textarea id="pcDesc" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></textarea></div>
+  <div>
+    <div class="flex justify-between items-center mb-1">
+      <label class="block text-xs font-medium text-gray-600">Specs Schema</label>
+      <button type="button" onclick="addSchemaField()" class="text-xs text-amber-600 hover:text-amber-700 font-medium"><i class="fas fa-plus mr-0.5"></i>Thêm thông số</button>
+    </div>
+    <div id="schemaBuilder" class="space-y-1.5 max-h-64 overflow-y-auto"></div>
+    <textarea id="pcSpecs" class="hidden"></textarea>
+  </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+      <button onclick="closeModal('prodCatModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+      <button onclick="saveProdCat()" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE CATEGORY MODAL -->
+<div class="modal-overlay" id="imgCatModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 fade-in">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold" id="imgCatModalTitle">Thêm loại ảnh</h2>
+      <button onclick="closeModal('imgCatModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="space-y-3">
+      <input type="hidden" id="editImgCatId">
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Tên hiển thị</label><input id="icName" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ảnh studio"></div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+      <button onclick="closeModal('imgCatModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+      <button onclick="saveImgCat()" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 fade-in">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold" id="detailTitle">Chi tiết lệnh</h2>
+      <button onclick="closeModal('detailModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="detailContent" class="space-y-3 text-sm"></div>
+    <div class="flex justify-end mt-5 pt-4 border-t">
+      <button onclick="closeModal('detailModal')" class="px-4 py-2 text-sm text-gray-600 font-medium">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Deploy badge -->
+<div id="deployBadge" class="fixed bottom-3 right-3 z-50 cursor-pointer" onclick="showDeployDetail()">
+  <div class="flex items-center gap-1.5 bg-gray-900/80 backdrop-blur text-white text-[10px] px-2.5 py-1.5 rounded-full shadow-lg border border-gray-700 hover:bg-gray-800 transition" id="deployBadgeInner">
+    <div id="deployDot" class="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+    <span id="deployText">Loading...</span>
+    <span id="deployTimestamp" class="text-gray-400 hidden">· <span id="deployTimeText"></span></span>
+  </div>
+</div>
+
+<!-- Deploy detail tooltip -->
+<div id="deployDetail" class="fixed bottom-12 right-3 z-50 hidden">
+  <div class="bg-gray-900/95 backdrop-blur text-white text-[11px] p-3 rounded-xl shadow-2xl border border-gray-700 max-w-[280px] space-y-1.5">
+    <div class="flex justify-between"><span class="text-gray-400">Commit</span><span id="ddCommit" class="font-mono font-medium">-</span></div>
+    <div class="flex justify-between"><span class="text-gray-400">Branch</span><span id="ddBranch" class="font-medium">-</span></div>
+    <div class="flex justify-between"><span class="text-gray-400">Message</span><span id="ddMsg" class="text-right max-w-[160px] truncate">-</span></div>
+    <div class="flex justify-between"><span class="text-gray-400">Deployed</span><span id="ddTime" class="font-medium">-</span></div>
+    <div id="ddVercelRow" class="hidden flex justify-between"><span class="text-gray-400">Vercel</span><span id="ddVercel" class="text-blue-300">-</span></div>
+    <div class="text-center pt-1"><button onclick="document.getElementById('deployDetail').classList.add('hidden')" class="text-gray-500 hover:text-white text-[10px]">Đóng</button></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+let products = [], materials = [], orders = [], specs = [];
+
+function toast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._hide); t._hide=setTimeout(()=>t.classList.remove('show'),2500); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function fm(n) { return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ'; }
+
+// ========== TABS ==========
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById('panel-' + this.dataset.tab).classList.add('active');
+  });
+});
+
+// ========== API HELPERS ==========
+// SWR cache: stale-while-revalidate via sessionStorage
+const swrCache = {
+  get(key) {
+    try {
+      const raw = sessionStorage.getItem('swr_' + key);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch { return null; }
+  },
+  set(key, data) {
+    try { sessionStorage.setItem('swr_' + key, JSON.stringify({ data, ts: Date.now() })); } catch {}
+  },
+  remove(key) {
+    try { sessionStorage.removeItem('swr_' + key); } catch {}
+  }
+};
+
+async function api(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const cacheKey = method + ' ' + path;
+
+  // GET: try SWR cache before network (60s TTL)
+  if (method === 'GET') {
+    const cached = swrCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < 60000) return cached.data;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), method === 'GET' ? 12000 : 25000);
+
+  // Attach auth token if available
+  const token = sessionStorage.getItem('auth_token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (options.headers) Object.assign(headers, options.headers);
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+
+  try {
+    const res = await fetch(API + path, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      // 401 on mutation: prompt login
+      if (res.status === 401 && method !== 'GET') {
+        if (confirm('Phiên đăng nhập hết hạn. Đăng nhập lại?')) logout();
+        throw new Error('Unauthorized');
+      }
+      const err = await res.json().catch(() => ({message:res.statusText}));
+      throw new Error(err.message || 'API error');
+    }
+    const data = res.status === 204 ? null : await res.json();
+    if (method === 'GET' && data !== null) swrCache.set(cacheKey, data);
+    return data;
+  } catch (err) {
+    if (method === 'GET') {
+      const cached = swrCache.get(cacheKey);
+      if (cached) return cached.data;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// ========== AUTH ==========
+let isAuthenticated = false;
+let googleClientId = '';
+
+async function fetchAuthConfig() {
+  try {
+    const cfg = await api('/auth/config');
+    googleClientId = cfg.googleClientId || '';
+    if (window.google && googleClientId) initGoogleSignIn();
+  } catch {}
+}
+
+async function initGoogleSignIn() {
+  if (!window.google || !googleClientId) return;
+  google.accounts.id.initialize({
+    client_id: googleClientId,
+    callback: handleGoogleCredential,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+  });
+  google.accounts.id.renderButton(
+    document.getElementById('gSignInWrapper'),
+    { type: 'standard', shape: 'pill', theme: 'outline', size: 'small', text: 'signin_with', logo_alignment: 'left' }
+  );
+}
+
+async function handleGoogleCredential(response) {
+  if (!response?.credential) return;
+  try {
+    const data = await api('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential: response.credential }),
+    });
+    if (data.accessToken) {
+      sessionStorage.setItem('auth_token', data.accessToken);
+      applyAuth(data.user);
+    }
+  } catch (e) {
+    toast('Đăng nhập thất bại: ' + e.message);
+  }
+}
+
+function applyAuth(user) {
+  isAuthenticated = true;
+  document.body.classList.add('authenticated');
+  document.getElementById('gSignInWrapper').classList.add('hidden');
+  document.getElementById('authUser').classList.remove('hidden');
+  document.getElementById('authAvatar').src = user.picture || '';
+  document.getElementById('authEmail').textContent = user.email || '';
+}
+
+function logout() {
+  sessionStorage.removeItem('auth_token');
+  isAuthenticated = false;
+  document.body.classList.remove('authenticated');
+  document.getElementById('gSignInWrapper').classList.remove('hidden');
+  document.getElementById('authUser').classList.add('hidden');
+  if (window.google) google.accounts.id.disableAutoSelect();
+  toast('Đã đăng xuất');
+}
+
+async function checkAuth() {
+  const token = sessionStorage.getItem('auth_token');
+  if (!token) return;
+  try {
+    const data = await api('/auth/me');
+    if (data.authenticated && data.user) {
+      applyAuth(data.user);
+    } else {
+      sessionStorage.removeItem('auth_token');
+    }
+  } catch {
+    sessionStorage.removeItem('auth_token');
+  }
+}
+
+// ========== IMAGE UPLOAD / GALLERY ==========
+let currentProductId = null;
+
+async function loadGallery(productId) {
+  if (!productId) return;
+  currentProductId = productId;
+  const el = document.getElementById('imageGallery');
+  try {
+    const images = await api(`/products/${productId}/images`);
+    if (!images.length) {
+      el.innerHTML = '<p class="text-gray-400 text-sm py-6 w-full text-center">Chưa có ảnh — tải lên bên dưới</p>';
+    } else {
+      el.innerHTML = images.map((img, i) => `
+        <div class="relative group w-36 rounded-lg overflow-hidden border bg-gray-100 flex-shrink-0">
+          <div class="h-28 overflow-hidden">
+            <img src="${img.thumbnailUrl || img.url}" class="w-full h-full object-cover" alt="${img.altText || ''}" loading="lazy">
+          </div>
+          <div class="p-1.5 bg-white">
+            <select onchange="updateImageType('${img.id}', this.value)" class="text-[10px] w-full border-none bg-transparent font-medium cursor-pointer text-gray-600">
+              ${imgCats.map(c => `<option value="${c.code}" ${img.imageType === c.code ? 'selected' : ''}>${c.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="absolute top-1 left-1 flex gap-1">
+            ${img.isPrimary ? '<div class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">CHÍNH</div>' : ''}
+          </div>
+          <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition flex gap-1">
+            <button onclick="deleteImage('${img.id}')" class="bg-white/80 hover:bg-white rounded-full w-6 h-6 flex items-center justify-center text-gray-600 hover:text-red-500 shadow text-xs" title="Xoá"><i class="fas fa-trash"></i></button>
+            ${!img.isPrimary ? `<button onclick="setPrimaryImage('${img.id}')" class="bg-white/80 hover:bg-white rounded-full w-6 h-6 flex items-center justify-center text-gray-600 hover:text-amber-500 shadow text-xs" title="Đặt làm ảnh chính"><i class="fas fa-star"></i></button>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch(e) {
+    el.innerHTML = `<p class="text-red-400 text-sm py-6 w-full text-center">Lỗi tải ảnh: ${e.message}</p>`;
+  }
+}
+
+async function updateImageType(imageId, imageType) {
+  try {
+    await api(`/products/${currentProductId}/images/${imageId}/type`, {
+      method: 'PATCH',
+      body: JSON.stringify({ imageType }),
+    });
+    await loadGallery(currentProductId);
+    const cat = imgCats.find(c => c.code === imageType);
+    toast(`Đã đặt loại: ${cat ? cat.name : imageType}`);
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+function handleFileSelect(e) {
+  const files = e.target.files;
+  if (!files.length) return;
+  uploadFiles(files);
+}
+
+function setupDragDrop() {
+  const zone = document.getElementById('uploadZone');
+  if (!zone) return;
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('border-amber-500', 'bg-amber-50'); });
+  zone.addEventListener('dragleave', () => { zone.classList.remove('border-amber-500', 'bg-amber-50'); });
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('border-amber-500', 'bg-amber-50');
+    uploadFiles(e.dataTransfer.files);
+  });
+}
+
+async function uploadFiles(files) {
+  if (!currentProductId) { toast('Lưu sản phẩm trước'); return; }
+  const progressEl = document.getElementById('uploadProgress');
+  const bar = document.getElementById('progressBar');
+  const text = document.getElementById('progressText');
+  progressEl.classList.remove('hidden');
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (!file.type.startsWith('image/')) continue;
+    const pct = Math.round(((i) / files.length) * 100);
+    bar.style.width = pct + '%';
+    text.textContent = `Đang xử lý ${file.name} (${i+1}/${files.length}) → WebP`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('altText', file.name.replace(/\.[^.]+$/, ''));
+    const selectedType = document.querySelector('input[name="uploadType"]:checked');
+    if (selectedType) formData.append('imageType', selectedType.value);
+
+    try {
+      await fetch(`/products/${currentProductId}/images/upload`, { method: 'POST', body: formData });
+    } catch(e) {
+      toast('Lỗi upload: ' + e.message);
+    }
+  }
+
+  bar.style.width = '100%';
+  text.textContent = 'Hoàn tất!';
+  setTimeout(() => { progressEl.classList.add('hidden'); bar.style.width = '0%'; }, 1500);
+  await loadGallery(currentProductId);
+  toast(`Đã upload & chuyển đổi ${files.length} ảnh sang WebP`);
+  document.getElementById('fileInput').value = '';
+}
+
+async function deleteImage(imageId) {
+  if (!confirm('Xoá ảnh này?')) return;
+  try {
+    await api(`/products/${currentProductId}/images/${imageId}`, { method: 'DELETE' });
+    await loadGallery(currentProductId);
+    toast('Đã xoá ảnh');
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+async function setPrimaryImage(imageId) {
+  try {
+    await api(`/products/${currentProductId}/images/primary`, {
+      method: 'PATCH',
+      body: JSON.stringify({ imageId }),
+    });
+    await loadGallery(currentProductId);
+    toast('Đã đặt ảnh chính');
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+// ========== PRODUCTS ==========
+async function loadProducts() {
+  document.getElementById('headerStatus').textContent = 'Đang tải sản phẩm...';
+  const data = await api('/products?limit=50');
+  products = data.data;
+  document.getElementById('headerStatus').textContent = `${products.length} sản phẩm · ${materials.length} nguyên liệu · ${orders.length} lệnh SX`;
+  renderProducts();
+}
+
+function renderProducts() {
+  const el = document.getElementById('productTable');
+  const typeLabel = { WALLET:'Ví', BELT:'Thắt lưng', WATCH_STRAP:'Watch Strap', BAG:'Túi', ACCESSORY:'Phụ kiện' };
+  if (!products.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-box-open text-4xl mb-3"></i><p>Chưa có sản phẩm</p></div>'; return; }
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Sản phẩm</th><th class="px-4 py-3">Loại</th><th class="px-4 py-3">SKU</th><th class="px-4 py-3">Giá</th><th class="px-4 py-3 min-w-[160px]">Thông số</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${products.map(p => {
+    const schemaProps = p.category?.specsSchema ? (() => { try { const s = typeof p.category.specsSchema === 'string' ? JSON.parse(p.category.specsSchema) : p.category.specsSchema; return s.properties; } catch { return null; } })() : null;
+    const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3"><span class="px-2 py-0.5 bg-gray-100 rounded text-xs">${typeLabel[p.productType]||p.productType}</span></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// ========== SPECS HELPERS ==========
+const SPECS_LABELS = {
+  card_slots: 'Số ngăn thẻ', cash_pockets: 'Số ngăn tiền', coin_pocket: 'Ngăn xu',
+  id_window: 'Cửa sổ CMND', total_pockets: 'Tổng ngăn', height_mm: 'Cao (mm)',
+  width_mm: 'Rộng (mm)', depth_mm: 'Dày (mm)', weight_g: 'TL (g)',
+  lug_width_mm: 'Size Lug (mm)', buckle_width_mm: 'Size Khóa (mm)',
+  length_short_mm: 'Mặt ngắn (mm)', length_long_mm: 'Mặt dài (mm)',
+  strap_width_mm: 'Bản rộng (mm)', thickness_mm: 'Dày (mm)',
+  belt_width_cm: 'Bản rộng (cm)', length_cm: 'Dài (cm)', hole_qty: 'Số lỗ',
+  material: 'Chất liệu', height_cm: 'Cao (cm)', width_cm: 'Rộng (cm)',
+  depth_cm: 'Sâu (cm)', capacity_l: 'Dung tích (L)', handle_drop_cm: 'Dài quai (cm)',
+  compartment_qty: 'Số ngăn', length_mm: 'Dài (mm)', lining_material: 'Da lót',
+  thread_type: 'Loại chỉ', stitch_pitch_mm: 'Bước chỉ (mm)',
+  edge_paint_color: 'Sơn viền', waxed: 'Đánh sáp',
+  hand_stitched: 'Khâu tay', warranty_months: 'BH (tháng)', made_in: 'SX tại',
+  zipper_qty: 'Số khóa kéo', rivet_material: 'Rivet', outer_material: 'Da ngoài',
+};
+
+function getSpecLabel(key, schemaProps) {
+  if (schemaProps && schemaProps[key] && schemaProps[key].title) return schemaProps[key].title;
+  if (SPECS_LABELS[key]) return SPECS_LABELS[key];
+  return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function renderSpecsBadges(specs, schemaProps) {
+  if (!specs || typeof specs !== 'object' || Object.keys(specs).length === 0)
+    return '<span class="text-gray-400 text-xs">—</span>';
+  return Object.entries(specs).map(([key, val]) => {
+    if (val === null || val === undefined || val === '') return '';
+    const label = getSpecLabel(key, schemaProps);
+    if (typeof val === 'boolean') {
+      if (!val) return '';
+      return `<span class="specs-badge specs-bool"><span class="specs-label">${esc(label)}</span></span>`;
+    }
+    return `<span class="specs-badge"><span class="specs-label">${esc(label)}:</span> <span class="specs-value">${esc(String(val))}</span></span>`;
+  }).filter(Boolean).join('') || '<span class="text-gray-400 text-xs">—</span>';
+}
+
+function buildSpecsForm(specsSchema, currentValues) {
+  const container = document.getElementById('pSpecsDynamic');
+  const textarea = document.getElementById('pSpecs');
+  const toggle = document.getElementById('pSpecsToggle');
+  if (!specsSchema || !specsSchema.properties || Object.keys(specsSchema.properties).length === 0) {
+    container.innerHTML = '';
+    container.classList.add('hidden');
+    textarea.classList.remove('hidden');
+    if (toggle) toggle.classList.add('hidden');
+    return;
+  }
+  container.classList.remove('hidden');
+  textarea.classList.add('hidden');
+  if (toggle) toggle.classList.remove('hidden');
+  const props = specsSchema.properties;
+  const required = new Set(specsSchema.required || []);
+  container.innerHTML = '<div class="grid grid-cols-2 gap-2">' +
+    Object.entries(props).map(([key, prop]) => {
+      const label = prop.title || getSpecLabel(key);
+      const val = (currentValues && currentValues[key] !== undefined) ? currentValues[key] : prop.default ?? '';
+      const req = required.has(key);
+      const isEnum = prop.enum && prop.enum.length > 0;
+      if (prop.type === 'boolean') {
+        const checked = val ? 'checked' : '';
+        return `<div class="flex items-center gap-2 p-2 bg-gray-50 rounded-lg"><input type="checkbox" id="spec_${key}" data-spec-key="${key}" ${checked} class="w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500"> <label for="spec_${key}" class="text-xs font-medium text-gray-700 cursor-pointer select-none">${esc(label)}${req ? ' <span class="text-red-400">*</span>' : ''}</label></div>`;
+      }
+      if (isEnum) {
+        return `<div><label for="spec_${key}" class="block text-xs font-medium text-gray-600 mb-0.5">${esc(label)}${req ? ' <span class="text-red-400">*</span>' : ''}</label><select id="spec_${key}" data-spec-key="${key}" class="specs-form-field w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white">${prop.enum.map(opt => `<option value="${esc(String(opt))}" ${String(val) === String(opt) ? 'selected' : ''}>${esc(String(opt))}</option>`).join('')}</select></div>`;
+      }
+      const inputType = prop.type === 'number' || prop.type === 'integer' ? 'number' : 'text';
+      const step = prop.type === 'number' ? 'step="any"' : (prop.type === 'integer' ? 'step="1"' : '');
+      const min = prop.minimum !== undefined ? `min="${prop.minimum}"` : '';
+      const max = prop.maximum !== undefined ? `max="${prop.maximum}"` : '';
+      const ph = prop.placeholder || '';
+      return `<div><label for="spec_${key}" class="block text-xs font-medium text-gray-600 mb-0.5">${esc(label)}${req ? ' <span class="text-red-400">*</span>' : ''}</label><input type="${inputType}" id="spec_${key}" data-spec-key="${key}" value="${esc(String(val ?? ''))}" ${step} ${min} ${max} placeholder="${esc(ph)}" class="specs-form-field w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></div>`;
+    }).join('') + '</div>';
+}
+
+function collectSpecsFormValues() {
+  const container = document.getElementById('pSpecsDynamic');
+  const textarea = document.getElementById('pSpecs');
+  const toggle = document.getElementById('pSpecsToggle');
+  if (!container.classList.contains('hidden')) {
+    const fields = container.querySelectorAll('[data-spec-key]');
+    const result = {};
+    fields.forEach(el => {
+      const key = el.dataset.specKey;
+      if (el.type === 'checkbox') {
+        result[key] = el.checked;
+      } else if (el.type === 'number') {
+        const v = el.value.trim();
+        result[key] = v === '' ? null : Number(v);
+      } else {
+        result[key] = el.value.trim() || null;
+      }
+    });
+    return result;
+  }
+  try { return JSON.parse(textarea.value || '{}'); } catch { return {}; }
+}
+
+function toggleSpecsMode() {
+  const container = document.getElementById('pSpecsDynamic');
+  const textarea = document.getElementById('pSpecs');
+  const toggle = document.getElementById('pSpecsToggle');
+  const isDynamic = !container.classList.contains('hidden');
+  if (isDynamic) {
+    const values = collectSpecsFormValues();
+    textarea.value = JSON.stringify(values, null, 2);
+    container.classList.add('hidden');
+    textarea.classList.remove('hidden');
+    toggle.innerHTML = '<i class="fas fa-sliders-h mr-1"></i>Dynamic';
+  } else {
+    container.classList.remove('hidden');
+    textarea.classList.add('hidden');
+    toggle.innerHTML = '<i class="fas fa-code mr-1"></i>JSON';
+  }
+}
+
+function getCategorySchema(productType) {
+  if (!prodCats || !prodCats.length) return null;
+  const cat = prodCats.find(c => c.code === productType);
+  if (!cat || !cat.specsSchema) return null;
+  let schema = cat.specsSchema;
+  if (typeof schema === 'string') { try { schema = JSON.parse(schema); } catch { return null; } }
+  return schema;
+}
+
+function onProductTypeChange() {
+  const type = document.getElementById('pType').value;
+  const schema = getCategorySchema(type);
+  const currentSpecs = collectSpecsFormValues();
+  const hasExisting = currentSpecs && Object.keys(currentSpecs).length > 0;
+  buildSpecsForm(schema, hasExisting ? currentSpecs : {});
+}
+
+function openCreateProduct() {
+  document.getElementById('productModalTitle').textContent = 'Thêm sản phẩm';
+  ['editProductId','pNameVi','pNameEn','pSku','pPrice','pExtId','pSeo'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pType').value = 'WALLET';
+  currentProductId = null;
+  document.getElementById('imageGallery').innerHTML = '<p class="text-gray-400 text-sm py-6 w-full text-center">Lưu sản phẩm trước để upload ảnh</p>';
+  document.getElementById('uploadZone').classList.add('hidden');
+  onProductTypeChange();
+  openModal('productModal');
+}
+
+async function editProduct(id) {
+  // Fetch full product detail (list API excludes heavy fields for performance)
+  let p;
+  try {
+    p = await api('/products/' + id);
+  } catch { p = products.find(x => x.id === id); }
+  if (!p) return;
+  document.getElementById('productModalTitle').textContent = 'Sửa sản phẩm';
+  document.getElementById('editProductId').value = id;
+  document.getElementById('pNameVi').value = p.name?.vi || '';
+  document.getElementById('pNameEn').value = p.name?.en || '';
+  document.getElementById('pSku').value = p.sku || '';
+  document.getElementById('pType').value = p.productType;
+  document.getElementById('pPrice').value = p.basePrice || '';
+  document.getElementById('pExtId').value = p.externalId || '';
+  document.getElementById('pSeo').value = JSON.stringify({ metaTitle:p.metaTitle||'', metaDescription:p.metaDescription||'' }, null, 2);
+  const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
+  const schema = getCategorySchema(p.productType);
+  buildSpecsForm(schema, specs);
+  if (!schema || !schema.properties || Object.keys(schema.properties).length === 0) {
+    document.getElementById('pSpecs').value = JSON.stringify(specs, null, 2);
+  }
+  openModal('productModal');
+  document.getElementById('uploadZone').classList.remove('hidden');
+  await loadGallery(id);
+}
+
+async function saveProduct() {
+  const id = document.getElementById('editProductId').value;
+  const body = {
+    name: { vi: document.getElementById('pNameVi').value, en: document.getElementById('pNameEn').value },
+    sku: document.getElementById('pSku').value,
+    productType: document.getElementById('pType').value,
+    basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
+    externalId: document.getElementById('pExtId').value || undefined,
+  };
+  body.technicalSpecs = collectSpecsFormValues();
+  try {
+    const seo = JSON.parse(document.getElementById('pSeo').value || '{}');
+    if (seo.metaTitle) body.metaTitle = seo.metaTitle;
+    if (seo.metaDescription) body.metaDescription = seo.metaDescription;
+  } catch(e) {}
+
+  try {
+    let newId = id;
+    if (id) { await api('/products/' + id, { method: 'PATCH', body: JSON.stringify(body) }); toast('Đã cập nhật sản phẩm'); }
+    else {
+      const created = await api('/products', { method: 'POST', body: JSON.stringify(body) });
+      newId = created.id;
+      toast('Đã thêm sản phẩm');
+    }
+    closeModal('productModal');
+    await loadProducts();
+    if (!id && newId) {
+      await editProduct(newId);
+    }
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Xoá sản phẩm này?')) return;
+  try { await api('/products/' + id, { method: 'DELETE' }); toast('Đã xoá'); await loadProducts(); } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+// ========== MATERIALS ==========
+async function loadMaterials() {
+  materials = await api('/raw-materials');
+  renderMaterials();
+  document.getElementById('headerStatus').textContent = `${products.length} sản phẩm · ${materials.length} nguyên liệu · ${orders.length} lệnh SX`;
+}
+
+function renderMaterials() {
+  const el = document.getElementById('materialTable');
+  const typeLabel = { OUTER_LEATHER:'Da ngoài', LINING_LEATHER:'Da lót', INTERLINING:'Độn', THREAD:'Chỉ', BUCKLE:'Khóa', HARDWARE:'Phụ kiện' };
+  if (!materials.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-database text-4xl mb-3"></i><p>Chưa có nguyên liệu</p></div>'; return; }
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Nguyên liệu</th><th class="px-4 py-3">Loại</th><th class="px-4 py-3">NCC</th><th class="px-4 py-3">Tồn kho</th><th class="px-4 py-3">Giá</th><th class="px-4 py-3">Sync</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${materials.map(m => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${m.name}</td><td class="px-4 py-3"><span class="px-2 py-0.5 bg-gray-100 rounded text-xs">${typeLabel[m.materialType]||m.materialType}</span></td><td class="px-4 py-3 text-xs text-gray-500">${m.supplier||'-'}</td><td class="px-4 py-3 font-medium">${m.totalQuantity} <span class="text-xs text-gray-400">${m.unit}</span></td><td class="px-4 py-3 font-medium">${fm(m.unitCost)}</td><td class="px-4 py-3"><span class="text-xs px-2 py-0.5 rounded-full ${m.syncStatus==='SYNCED'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}">${m.syncStatus||'-'}</span></td><td class="px-4 py-3 text-right"><button onclick="editMaterial('${m.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteMaterial('${m.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function openCreateMaterial() {
+  document.getElementById('materialModalTitle').textContent = 'Thêm nguyên liệu';
+  ['editMaterialId','mName','mSupplier','mStock','mPrice'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('mType').value = 'OUTER_LEATHER';
+  document.getElementById('mUnit').value = 'SQFT';
+  openModal('materialModal');
+}
+
+async function editMaterial(id) {
+  const m = materials.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('materialModalTitle').textContent = 'Sửa nguyên liệu';
+  document.getElementById('editMaterialId').value = id;
+  document.getElementById('mName').value = m.name;
+  document.getElementById('mType').value = m.materialType;
+  document.getElementById('mSupplier').value = m.supplier || '';
+  document.getElementById('mUnit').value = m.unit;
+  document.getElementById('mStock').value = m.totalQuantity;
+  document.getElementById('mPrice').value = m.unitCost;
+  openModal('materialModal');
+}
+
+async function saveMaterial() {
+  const id = document.getElementById('editMaterialId').value;
+  const body = {
+    name: document.getElementById('mName').value,
+    materialType: document.getElementById('mType').value,
+    supplier: document.getElementById('mSupplier').value || undefined,
+    unit: document.getElementById('mUnit').value,
+    totalQuantity: parseFloat(document.getElementById('mStock').value) || 0,
+    unitCost: parseInt(document.getElementById('mPrice').value) || 0,
+  };
+  try {
+    if (id) { await api('/raw-materials/' + id, { method: 'PATCH', body: JSON.stringify(body) }); toast('Đã cập nhật'); }
+    else { await api('/raw-materials', { method: 'POST', body: JSON.stringify(body) }); toast('Đã thêm nguyên liệu'); }
+    closeModal('materialModal');
+    await loadMaterials();
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+async function deleteMaterial(id) {
+  if (!confirm('Xoá nguyên liệu này?')) return;
+  try { await api('/raw-materials/' + id, { method: 'DELETE' }); toast('Đã xoá'); await loadMaterials(); } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+// ========== ORDERS ==========
+async function loadOrders() {
+  const raw = await api('/production-orders');
+  orders = Array.isArray(raw) ? raw : (raw.data || []);
+  renderOrders();
+  document.getElementById('headerStatus').textContent = `${products.length} sản phẩm · ${materials.length} nguyên liệu · ${orders.length} lệnh SX`;
+}
+
+function renderOrders() {
+  const el = document.getElementById('orderTable');
+  if (!orders.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-clipboard-list text-4xl mb-3"></i><p>Chưa có lệnh sản xuất</p></div>'; return; }
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Mã</th><th class="px-4 py-3">Sản phẩm</th><th class="px-4 py-3">SL</th><th class="px-4 py-3">Trạng thái</th><th class="px-4 py-3">Chi phí snapshot</th><th class="px-4 py-3">Ngày</th><th class="px-4 py-3 text-right">Chi tiết</th></tr></thead><tbody>${orders.map(o => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-mono text-xs font-medium">${o.id}</td><td class="px-4 py-3">${o.variant?.product?.name?.vi || o.variant?.product?.name || '-'}</td><td class="px-4 py-3 font-medium">${o.quantity}</td><td class="px-4 py-3"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"><i class="fas fa-camera text-xs"></i> ${o.status}</span></td><td class="px-4 py-3 font-medium">${o.totalCostSnapshot ? fm(o.totalCostSnapshot) : '-'}</td><td class="px-4 py-3 text-xs text-gray-500">${o.createdAt?.slice(0,10)}</td><td class="px-4 py-3 text-right"><button onclick="viewOrder('${o.id}')" class="text-gray-400 hover:text-amber-500"><i class="fas fa-eye"></i></button></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+async function openCreateOrder() {
+  document.getElementById('oProduct').innerHTML = '<option value="">-- Chọn sản phẩm --</option>' + products.filter(p=>p.status==='ACTIVE').map(p => `<option value="${p.id}">${p.name?.vi||p.sku}</option>`).join('');
+  document.getElementById('oQty').value = 1;
+  document.getElementById('oMaterialPreview').innerHTML = '<p class="text-gray-400 text-center py-4">Chọn sản phẩm để xem nguyên liệu</p>';
+  document.getElementById('oTotalRow').classList.add('hidden');
+  openModal('orderModal');
+}
+
+async function onOrderProductChange() {
+  const pid = document.getElementById('oProduct').value;
+  const qty = parseInt(document.getElementById('oQty').value) || 1;
+  const preview = document.getElementById('oMaterialPreview');
+  const totalRow = document.getElementById('oTotalRow');
+  const totalEl = document.getElementById('oTotalCost');
+
+  if (!pid) { preview.innerHTML = '<p class="text-gray-400 text-center py-4">Chọn sản phẩm</p>'; totalRow.classList.add('hidden'); return; }
+
+  try {
+    const product = await api('/products/' + pid);
+    const variant = product.variants?.[0];
+    if (!variant) { preview.innerHTML = '<p class="text-gray-400 text-center py-2">Sản phẩm chưa có variant</p>'; return; }
+
+    // Get crafting spec
+    let specMaterials = [];
+    try {
+      const variants = await api('/products/' + pid);
+      const v = variants.variants?.[0];
+      if (v?.craftingSpecId) {
+        // We'll try to get specs via the crafting spec logic
+      }
+    } catch {}
+
+    // Get materials for snapshot preview
+    const allMat = await api('/raw-materials');
+    // Find materials that match the product type's needs
+    const typeNeeds = { WALLET: ['Da ngoài','Da lót','Độn','Chỉ'], BELT: ['Da ngoài','Khóa','Chỉ','Độn'], WATCH_STRAP: ['Da ngoài','Da lót','Chỉ','Phụ kiện'], BAG: ['Da ngoài','Da lót','Độn','Chỉ','Phụ kiện'] };
+    const needed = typeNeeds[product.productType] || [];
+    const matched = allMat.filter(m => needed.some(n => m.materialType === n || m.name.includes(n)));
+
+    if (!matched.length) { preview.innerHTML = '<p class="text-gray-400 text-center py-2">Không có nguyên liệu phù hợp</p>'; return; }
+
+    let totalCost = 0;
+    preview.innerHTML = matched.map(m => {
+      const qtyNeeded = 1.0;
+      const cost = m.unitCost * qtyNeeded * qty;
+      totalCost += cost;
+      return `<div class="flex justify-between items-center p-2 bg-white rounded border text-sm"><div><span class="font-medium">${m.name}</span><span class="text-xs text-gray-400 ml-2">× ${qtyNeeded} ${m.unit}/sp</span></div><div class="text-right"><div class="font-medium">${fm(m.unitCost)}</div><div class="text-xs text-gray-400">= ${fm(cost)}</div></div></div>`;
+    }).join('');
+
+    totalEl.textContent = fm(totalCost);
+    totalRow.classList.remove('hidden');
+    preview.dataset.totalCost = totalCost;
+  } catch(e) { preview.innerHTML = `<p class="text-red-400 text-center py-2">Lỗi: ${e.message}</p>`; }
+}
+
+async function saveOrder() {
+  const pid = document.getElementById('oProduct').value;
+  const qty = parseInt(document.getElementById('oQty').value) || 1;
+  if (!pid) { toast('Chọn sản phẩm'); return; }
+
+  try {
+    const product = await api('/products/' + pid);
+    const variant = product.variants?.[0];
+    if (!variant) { toast('Sản phẩm chưa có variant'); return; }
+
+    // Build material snapshot from current prices
+    const typeNeeds = { WALLET: ['Da ngoài','Da lót','Độn','Chỉ'], BELT: ['Da ngoài','Khóa','Chỉ','Độn'], WATCH_STRAP: ['Da ngoài','Da lót','Chỉ','Phụ kiện'], BAG: ['Da ngoài','Da lót','Độn','Chỉ','Phụ kiện'] };
+    const needed = typeNeeds[product.productType] || [];
+    const allMat = await api('/raw-materials');
+    const matched = allMat.filter(m => needed.some(n => m.materialType === n || m.name.includes(n)));
+
+    const materials = matched.map(m => ({
+      materialId: m.id, materialName: m.name, qtyPerUnit: 1.0, unit: m.unit,
+    }));
+
+    await api('/production-orders', {
+      method: 'POST',
+      body: JSON.stringify({ variantId: variant.id, quantity: qty, materials }),
+    });
+    toast('Đã tạo lệnh & snapshot thành công!');
+    closeModal('orderModal');
+    await loadOrders();
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+async function viewOrder(id) {
+  try {
+    const o = await api('/production-orders/' + id);
+    const snap = o.materialsAllocated || [];
+    document.getElementById('detailTitle').textContent = 'Chi tiết ' + o.id;
+    document.getElementById('detailContent').innerHTML = `
+      <div class="grid grid-cols-2 gap-3"><div><span class="text-gray-500">Sản phẩm:</span> <span class="font-medium">${o.variant?.product?.name?.vi || '-'}</span></div>
+      <div><span class="text-gray-500">Số lượng:</span> <span class="font-medium">${o.quantity}</span></div></div>
+      <div class="border-t pt-3"><div class="text-xs font-semibold text-gray-500 uppercase mb-2">Nguyên liệu (Snapshot)</div>
+      ${Array.isArray(snap) ? snap.map(s => `<div class="flex justify-between py-1.5 border-b border-gray-50 text-sm"><div><i class="fas fa-lock text-gray-300 text-xs mr-1"></i>${s.material_name} <span class="text-xs text-gray-400">× ${s.qty_consumed} ${s.unit}</span></div><div class="font-medium">${fm(s.cost_at_snapshot * s.qty_consumed)}</div></div>`).join('') : '<p class="text-sm text-gray-400">Không có dữ liệu snapshot</p>'}
+      </div>
+      <div class="flex justify-between p-3 bg-amber-50 rounded border border-amber-200 mt-2"><span class="font-medium">Tổng snapshot:</span><span class="text-lg font-bold text-amber-700">${fm(o.totalCostSnapshot||0)}</span></div>
+      <div class="text-xs text-gray-400">Tạo ngày: ${o.createdAt?.slice(0,10)} | Trạng thái: ${o.status}</div>`;
+    openModal('detailModal');
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+// ========== PRODUCT CATEGORIES ==========
+let prodCats = [];
+
+async function loadProdCats() {
+  try {
+    const raw = await api('/categories');
+    prodCats = Array.isArray(raw) ? raw : (raw.value || raw.data || []);
+  } catch(e) { prodCats = []; }
+  renderProdCats();
+}
+
+function renderProdCats() {
+  const el = document.getElementById('prodCatTable');
+  if (!prodCats.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-layer-group text-4xl mb-3"></i><p>Chưa có loại sản phẩm</p></div>'; return; }
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Code</th><th class="px-4 py-3">Tên</th><th class="px-4 py-3">Slug</th><th class="px-4 py-3">Số SP</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${prodCats.map(c => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-mono text-xs font-medium">${c.code}</td><td class="px-4 py-3 font-medium">${c.name}</td><td class="px-4 py-3 text-xs text-gray-500">${c.slug}</td><td class="px-4 py-3">${c._count?.products??0}</td><td class="px-4 py-3 text-right"><button onclick="editProdCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteProdCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function openCreateProdCat() {
+  document.getElementById('prodCatModalTitle').textContent = 'Thêm loại sản phẩm';
+  document.getElementById('editProdCatId').value = '';
+  document.getElementById('pcCode').value = '';
+  document.getElementById('pcName').value = '';
+  document.getElementById('pcSlug').value = '';
+  document.getElementById('pcDesc').value = '';
+  _schemaFields = [];
+  renderSchemaBuilder();
+  openModal('prodCatModal');
+}
+
+async function editProdCat(id) {
+  const c = prodCats.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('prodCatModalTitle').textContent = 'Sửa loại sản phẩm';
+  document.getElementById('editProdCatId').value = id;
+  document.getElementById('pcCode').value = c.code;
+  document.getElementById('pcName').value = c.name;
+  document.getElementById('pcSlug').value = c.slug;
+  document.getElementById('pcDesc').value = c.description || '';
+  // Load specsSchema into schema builder
+  try {
+    const full = await api('/categories/' + id);
+    jsonToSchemaBuilder(full.specsSchema || {});
+  } catch(e) { _schemaFields = []; }
+  renderSchemaBuilder();
+  openModal('prodCatModal');
+}
+
+// ========== SCHEMA BUILDER ==========
+let _schemaFields = [];
+
+function renderSchemaBuilder() {
+  const container = document.getElementById('schemaBuilder');
+  container.innerHTML = _schemaFields.map((f, i) => `
+    <div class="flex items-start gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200 schema-field" data-index="${i}">
+      <div class="flex-1 min-w-0 grid grid-cols-[1fr_1fr_auto_auto] gap-1.5 items-center">
+        <input value="${esc(f.key)}" onchange="onSchemaFieldChange(${i},'key',this.value)" placeholder="vd: card_slots" class="w-full border border-gray-300 rounded px-2 py-1 text-xs font-mono">
+        <input value="${esc(f.title)}" onchange="onSchemaFieldChange(${i},'title',this.value)" placeholder="Nhãn (vd: Số ngăn thẻ)" class="w-full border border-gray-300 rounded px-2 py-1 text-xs">
+        <select onchange="onSchemaFieldChange(${i},'type',this.value)" class="border border-gray-300 rounded px-1 py-1 text-xs bg-white">
+          <option value="string" ${f.type==='string'?'selected':''}>string</option>
+          <option value="number" ${f.type==='number'?'selected':''}>number</option>
+          <option value="integer" ${f.type==='integer'?'selected':''}>integer</option>
+          <option value="boolean" ${f.type==='boolean'?'selected':''}>boolean</option>
+        </select>
+        <div class="flex items-center gap-1">
+          <input type="checkbox" id="sf_req_${i}" ${f.required?'checked':''} onchange="onSchemaFieldChange(${i},'required',this.checked)" class="w-3.5 h-3.5 text-amber-500 border-gray-300 rounded focus:ring-amber-500">
+          <label for="sf_req_${i}" class="text-[10px] text-gray-500 cursor-pointer select-none">Bắt buộc</label>
+          <button onclick="removeSchemaField(${i})" class="text-gray-400 hover:text-red-500 ml-1" title="Xoá"><i class="fas fa-trash-alt text-[10px]"></i></button>
+        </div>
+      </div>
+    </div>`).join('');
+  if (!_schemaFields.length) {
+    container.innerHTML = '<div class="text-center py-6 text-gray-400 text-xs border-2 border-dashed border-gray-200 rounded-lg"><i class="fas fa-plus-circle text-lg mb-1"></i><p>Chưa có thông số — bấm "Thêm thông số" để bắt đầu</p></div>';
+  }
+}
+
+function onSchemaFieldChange(index, field, value) {
+  if (index >= 0 && index < _schemaFields.length) {
+    _schemaFields[index][field] = value;
+  }
+}
+
+function addSchemaField() {
+  _schemaFields.push({ key: '', title: '', type: 'string', required: false });
+  renderSchemaBuilder();
+  const container = document.getElementById('schemaBuilder');
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeSchemaField(index) {
+  _schemaFields.splice(index, 1);
+  renderSchemaBuilder();
+}
+
+function schemaBuilderToJSON() {
+  const properties = {};
+  const required = [];
+  for (const f of _schemaFields) {
+    if (!f.key) continue;
+    const prop = { type: f.type };
+    if (f.title) prop.title = f.title;
+    properties[f.key] = prop;
+    if (f.required) required.push(f.key);
+  }
+  const schema = { type: 'object', properties };
+  if (required.length) schema.required = required;
+  return schema;
+}
+
+function jsonToSchemaBuilder(jsonStr) {
+  _schemaFields = [];
+  try {
+    const schema = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+    if (!schema || !schema.properties) return;
+    const requiredSet = new Set(schema.required || []);
+    for (const [key, prop] of Object.entries(schema.properties)) {
+      _schemaFields.push({
+        key,
+        title: prop.title || '',
+        type: ['string','number','integer','boolean'].includes(prop.type) ? prop.type : 'string',
+        required: requiredSet.has(key),
+      });
+    }
+  } catch {}
+}
+
+async function saveProdCat() {
+  const id = document.getElementById('editProdCatId').value;
+  const specsSchema = schemaBuilderToJSON();
+  const body = {
+    code: document.getElementById('pcCode').value,
+    name: document.getElementById('pcName').value,
+    slug: document.getElementById('pcSlug').value || undefined,
+    description: document.getElementById('pcDesc').value || undefined,
+    specsSchema,
+  };
+  if (!body.code || !body.name) { toast('Code và tên là bắt buộc'); return; }
+  try {
+    if (id) { await api('/categories/' + id, { method: 'PATCH', body: JSON.stringify(body) }); toast('Đã cập nhật'); }
+    else { await api('/categories', { method: 'POST', body: JSON.stringify(body) }); toast('Đã thêm loại sản phẩm'); }
+    closeModal('prodCatModal');
+    await loadProdCats();
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+async function deleteProdCat(id) {
+  if (!confirm('Xoá loại sản phẩm này?')) return;
+  try { await api('/categories/' + id, { method: 'DELETE' }); toast('Đã xoá'); await loadProdCats(); } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+// ========== IMAGE CATEGORIES ==========
+let imgCats = [];
+
+async function loadImgCats() {
+  try {
+    const raw = await api('/image-categories');
+    imgCats = Array.isArray(raw) ? raw : (raw.value || raw.data || []);
+  } catch(e) { imgCats = []; }
+  renderImgCats();
+  // Also update any open upload forms
+  updateUploadTypeRadios();
+  updateGalleryTypeOptions();
+}
+
+function renderImgCats() {
+  const hs = document.getElementById('headerStatus');
+  if (hs) hs.textContent = `${products.length} sản phẩm · ${materials.length} nguyên liệu · ${orders.length} lệnh SX · ${imgCats.length} loại ảnh`;
+  const el = document.getElementById('imgCatTable');
+  if (!imgCats.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-tags text-4xl mb-3"></i><p>Chưa có loại ảnh — thêm loại ảnh đầu tiên</p></div>'; return; }
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Tên hiển thị</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${imgCats.map(c => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${c.name}</td><td class="px-4 py-3 text-right"><button onclick="editImgCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteImgCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function openCreateImgCat() {
+  document.getElementById('imgCatModalTitle').textContent = 'Thêm loại ảnh';
+  document.getElementById('editImgCatId').value = '';
+  document.getElementById('icName').value = '';
+  openModal('imgCatModal');
+}
+
+async function editImgCat(id) {
+  const c = imgCats.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('imgCatModalTitle').textContent = 'Sửa loại ảnh';
+  document.getElementById('editImgCatId').value = id;
+  document.getElementById('icName').value = c.name;
+  openModal('imgCatModal');
+}
+
+function nameToCode(str) {
+  return str
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .trim().toUpperCase().replace(/\s+/g, '_');
+}
+
+async function saveImgCat() {
+  const id = document.getElementById('editImgCatId').value;
+  const name = document.getElementById('icName').value.trim();
+  if (!name) { toast('Tên hiển thị là bắt buộc'); return; }
+  const body = { name };
+  if (!id) body.code = nameToCode(name);
+  try {
+    if (id) { await api('/image-categories/' + id, { method: 'PATCH', body: JSON.stringify(body) }); toast('Đã cập nhật'); }
+    else { await api('/image-categories', { method: 'POST', body: JSON.stringify(body) }); toast('Đã thêm loại ảnh'); }
+    closeModal('imgCatModal');
+    await loadImgCats();
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+async function deleteImgCat(id) {
+  if (!confirm('Xoá loại ảnh này?')) return;
+  try { await api('/image-categories/' + id, { method: 'DELETE' }); toast('Đã xoá'); await loadImgCats(); } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+function updateUploadTypeRadios() {
+  const container = document.getElementById('uploadTypeRadios');
+  if (!container) return;
+  container.innerHTML = imgCats.map((c, i) => `
+    <label class="flex items-center gap-1 text-xs text-gray-500">
+      <input type="radio" name="uploadType" value="${c.code}" ${i===0?'checked':''}> ${c.name}
+    </label>
+  `).join('');
+}
+
+function updateGalleryTypeOptions() {
+  document.querySelectorAll('.img-type-select').forEach(sel => {
+    const current = sel.value;
+    sel.innerHTML = imgCats.map(c => `<option value="${c.code}" ${current===c.code?'selected':''}>${c.name}</option>`).join('');
+  });
+}
+
+// ========== SPECS ==========
+async function loadSpecs() {
+  try {
+    const raw = await api('/crafting-specs');
+    specs = Array.isArray(raw) ? raw : (raw.data || []);
+  } catch { specs = []; }
+  renderSpecs();
+}
+
+function renderSpecs() {
+  const el = document.getElementById('specTable');
+  if (!specs.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-ruler text-4xl mb-3"></i><p>Chưa có crafting spec</p></div>'; return; }
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Sản phẩm</th><th class="px-4 py-3">Da ngoài</th><th class="px-4 py-3">Da lót</th><th class="px-4 py-3">Độn</th><th class="px-4 py-3">Gia công</th></tr></thead><tbody>${specs.map(s => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${s.product?.name?.vi || s.product?.name || '-'}</td><td class="px-4 py-3"><div class="json-view">${esc(JSON.stringify(s.outerLeather||{},null,1))}</div></td><td class="px-4 py-3"><div class="json-view">${esc(JSON.stringify(s.liningLeather||{},null,1))}</div></td><td class="px-4 py-3"><div class="json-view">${esc(JSON.stringify(s.interlining||{},null,1))}</div></td><td class="px-4 py-3"><div class="json-view">${esc(JSON.stringify(s.craftingDetails||{},null,1))}</div></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+async function openCreateSpec() {
+  document.getElementById('sProduct').innerHTML = products.map(p => `<option value="${p.id}">${p.name?.vi||p.sku}</option>`).join('');
+  ['sOuter','sLining','sDetails'].forEach(id => document.getElementById(id).value = '');
+  openModal('specModal');
+}
+
+async function saveSpec() {
+  const pid = document.getElementById('sProduct').value;
+  if (!pid) { toast('Chọn sản phẩm'); return; }
+  try {
+    const body = { productId: pid };
+    try { body.outerLeather = JSON.parse(document.getElementById('sOuter').value || '{}'); } catch(e) {}
+    try { body.liningLeather = JSON.parse(document.getElementById('sLining').value || '{}'); } catch(e) {}
+    try { body.craftingDetails = JSON.parse(document.getElementById('sDetails').value || '{}'); } catch(e) {}
+    // Use product controller's nested approach: post to crafting-spec endpoint
+    // For simplicity, we'll note that crafting specs are created via the API
+    toast('Tính năng tạo spec qua API đang được hoàn thiện. Dùng Swagger docs để thử.');
+    closeModal('specModal');
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+// ========== DEPLOY BADGE ==========
+async function loadDeployInfo() {
+  try {
+    const data = await api('/health');
+    const d = data.deploy || {};
+    const commit = d.commit ? d.commit.slice(0,7) : 'dev';
+    document.getElementById('deployText').textContent = commit;
+    document.getElementById('deployDot').className = 'w-1.5 h-1.5 rounded-full ' + (d.vercel ? 'bg-green-400' : 'bg-amber-400');
+    document.getElementById('ddCommit').textContent = d.commit || '-';
+    document.getElementById('ddBranch').textContent = d.branch || '-';
+    document.getElementById('ddMsg').textContent = d.message || '-';
+    const deployDate = d.deployedAt ? new Date(d.deployedAt) : null;
+    document.getElementById('ddTime').textContent = deployDate ? deployDate.toLocaleString('vi-VN') : '-';
+    // Show deploy time in badge
+    if (deployDate) {
+      const badgeTime = document.getElementById('deployTimestamp');
+      const timeText = document.getElementById('deployTimeText');
+      const pad = n => String(n).padStart(2, '0');
+      timeText.textContent = `${pad(deployDate.getDate())}/${pad(deployDate.getMonth()+1)}/${deployDate.getFullYear()} ${pad(deployDate.getHours())}:${pad(deployDate.getMinutes())}`;
+      badgeTime.classList.remove('hidden');
+      document.getElementById('deployBadgeInner').title = `Deploy: ${deployDate.toLocaleString('vi-VN')} · ${commit}`;
+    }
+    if (d.vercel) {
+      document.getElementById('ddVercelRow').classList.remove('hidden');
+      document.getElementById('ddVercel').textContent = d.vercel.environment || '-';
+    }
+  } catch { document.getElementById('deployText').textContent = 'offline'; document.getElementById('deployDot').className = 'w-1.5 h-1.5 rounded-full bg-red-400'; }
+}
+
+function showDeployDetail() {
+  const el = document.getElementById('deployDetail');
+  el.classList.toggle('hidden');
+}
+
+// ========== PROGRESSIVE LOADING ==========
+function updateHeaderStatus() {
+  document.getElementById('headerStatus').textContent =
+    `${products.length} sản phẩm · ${materials.length} nguyên liệu · ${orders.length} lệnh SX · ${prodCats.length} loại SP · ${imgCats.length} loại ảnh`;
+}
+
+// Load each dataset independently — no Promise.all bottleneck
+async function init() {
+  setupDragDrop();
+  loadDeployInfo();
+  fetchAuthConfig();
+  checkAuth();
+  loadProducts().then(updateHeaderStatus).catch(() => {});
+  loadMaterials().then(updateHeaderStatus).catch(() => {});
+  loadProdCats().then(updateHeaderStatus).catch(() => {});
+  loadOrders().then(updateHeaderStatus).catch(() => {});
+  loadSpecs().then(updateHeaderStatus).catch(() => {});
+  loadImgCats().then(updateHeaderStatus).catch(() => {});
+}
+init();
+</script>
+</body>
+</html>

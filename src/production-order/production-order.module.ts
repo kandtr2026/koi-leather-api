@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ProductionOrderController } from './production-order.controller';
 import { ProductionOrderService } from './production-order.service';
-import { RawMaterialModule } from '../raw-material/raw-material.module';
+import { KoiRawMaterialModule } from '../raw-material/raw-material.module';
 
 @Module({
-  imports: [RawMaterialModule],
+  imports: [KoiRawMaterialModule],
   controllers: [ProductionOrderController],
   providers: [ProductionOrderService],
   exports: [ProductionOrderService],
 })
-export class ProductionOrderModule {}
+export class KoiProductionOrderModule {}

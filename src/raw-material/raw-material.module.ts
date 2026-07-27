@@ -7,4 +7,4 @@ import { RawMaterialService } from './raw-material.service';
   providers: [RawMaterialService],
   exports: [RawMaterialService],
 })
-export class RawMaterialModule {}
+export class KoiRawMaterialModule {}

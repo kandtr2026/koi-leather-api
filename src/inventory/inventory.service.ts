@@ -9,7 +9,7 @@ export class InventoryService {
     const where: any = {};
     if (materialId) where.materialId = materialId;
 
-    return this.prisma.inventoryTransaction.findMany({
+    return this.prisma.koiInventoryTransaction.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -18,7 +18,7 @@ export class InventoryService {
   }
 
   async reserveMaterials(orderId: string) {
-    const order = await this.prisma.productionOrder.findUnique({
+    const order = await this.prisma.koiProductionOrder.findUnique({
       where: { id: orderId },
       include: { variant: true },
     });
@@ -34,7 +34,7 @@ export class InventoryService {
       for (const alloc of allocations) {
         if (!alloc.material_id) continue;
 
-        const material = await tx.rawMaterial.findUnique({
+        const material = await tx.koiRawMaterial.findUnique({
           where: { id: alloc.material_id },
         });
         if (!material) continue;
@@ -47,7 +47,7 @@ export class InventoryService {
           );
         }
 
-        await tx.rawMaterial.update({
+        await tx.koiRawMaterial.update({
           where: { id: alloc.material_id },
           data: {
             reservedQuantity: Number(material.reservedQuantity) + qtyToReserve,
@@ -55,7 +55,7 @@ export class InventoryService {
           },
         });
 
-        const txn = await tx.inventoryTransaction.create({
+        const txn = await tx.koiInventoryTransaction.create({
           data: {
             materialId: alloc.material_id,
             orderId,
@@ -71,7 +71,7 @@ export class InventoryService {
   }
 
   async releaseMaterials(orderId: string) {
-    const order = await this.prisma.productionOrder.findUnique({
+    const order = await this.prisma.koiProductionOrder.findUnique({
       where: { id: orderId },
     });
     if (!order) throw new NotFoundException('Order not found');
@@ -84,14 +84,14 @@ export class InventoryService {
       for (const alloc of allocations) {
         if (!alloc.material_id) continue;
 
-        const material = await tx.rawMaterial.findUnique({
+        const material = await tx.koiRawMaterial.findUnique({
           where: { id: alloc.material_id },
         });
         if (!material) continue;
 
         const qtyToRelease = alloc.qty_consumed;
 
-        await tx.rawMaterial.update({
+        await tx.koiRawMaterial.update({
           where: { id: alloc.material_id },
           data: {
             reservedQuantity: Math.max(0, Number(material.reservedQuantity) - qtyToRelease),
@@ -99,7 +99,7 @@ export class InventoryService {
           },
         });
 
-        const txn = await tx.inventoryTransaction.create({
+        const txn = await tx.koiInventoryTransaction.create({
           data: {
             materialId: alloc.material_id,
             orderId,
@@ -114,7 +114,7 @@ export class InventoryService {
   }
 
   async consumeMaterials(orderId: string) {
-    const order = await this.prisma.productionOrder.findUnique({
+    const order = await this.prisma.koiProductionOrder.findUnique({
       where: { id: orderId },
     });
     if (!order) throw new NotFoundException('Order not found');
@@ -127,14 +127,14 @@ export class InventoryService {
       for (const alloc of allocations) {
         if (!alloc.material_id) continue;
 
-        const material = await tx.rawMaterial.findUnique({
+        const material = await tx.koiRawMaterial.findUnique({
           where: { id: alloc.material_id },
         });
         if (!material) continue;
 
         const qtyToConsume = alloc.qty_consumed;
 
-        await tx.rawMaterial.update({
+        await tx.koiRawMaterial.update({
           where: { id: alloc.material_id },
           data: {
             totalQuantity: Math.max(0, Number(material.totalQuantity) - qtyToConsume),
@@ -142,7 +142,7 @@ export class InventoryService {
           },
         });
 
-        const txn = await tx.inventoryTransaction.create({
+        const txn = await tx.koiInventoryTransaction.create({
           data: {
             materialId: alloc.material_id,
             orderId,
@@ -158,7 +158,7 @@ export class InventoryService {
   }
 
   async getInventorySummary() {
-    const materials = await this.prisma.rawMaterial.findMany();
+    const materials = await this.prisma.koiRawMaterial.findMany();
     const totalValue = materials.reduce((sum, m) => sum + Number(m.unitCost) * Number(m.totalQuantity), 0);
     const lowStock = materials.filter(m => Number(m.totalQuantity) < 10);
     const syncedCount = materials.filter(m => m.syncStatus === 'SYNCED').length;

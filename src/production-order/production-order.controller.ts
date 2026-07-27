@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query, ParseUUIDPipe,
+  Controller, Get, Post, Patch, Body, Param, Query, ParseUUIDPipe, DefaultValuePipe, ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ProductionOrderService } from './production-order.service';
@@ -17,10 +17,16 @@ export class ProductionOrderController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all production orders' })
+  @ApiOperation({ summary: 'List all production orders (paginated)' })
   @ApiQuery({ name: 'status', required: false })
-  findAll(@Query('status') status?: string) {
-    return this.orderService.findAll(status);
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 50 })
+  findAll(
+    @Query('status') status?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+  ) {
+    return this.orderService.findAll(status, page, limit);
   }
 
   @Get('stats')

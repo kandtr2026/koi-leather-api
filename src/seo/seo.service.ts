@@ -7,10 +7,10 @@ export class SeoService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateSEORecordDto) {
-    const existing = await this.prisma.sEORecord.findUnique({ where: { slug: dto.slug } });
+    const existing = await this.prisma.koiSEORecord.findUnique({ where: { slug: dto.slug } });
     if (existing) throw new ConflictException('Slug already exists');
 
-    return this.prisma.sEORecord.create({
+    return this.prisma.koiSEORecord.create({
       data: {
         entityType: dto.entityType,
         entityId: dto.entityId,
@@ -30,26 +30,26 @@ export class SeoService {
   }
 
   async findByEntity(entityType: string, entityId: string) {
-    return this.prisma.sEORecord.findFirst({
+    return this.prisma.koiSEORecord.findFirst({
       where: { entityType: entityType as any, entityId },
     });
   }
 
   async findBySlug(slug: string) {
-    const record = await this.prisma.sEORecord.findUnique({ where: { slug } });
+    const record = await this.prisma.koiSEORecord.findUnique({ where: { slug } });
     if (!record) throw new NotFoundException('SEO record not found');
     return record;
   }
 
   async update(id: string, dto: UpdateSEORecordDto) {
-    const record = await this.prisma.sEORecord.findUnique({ where: { id } });
+    const record = await this.prisma.koiSEORecord.findUnique({ where: { id } });
     if (!record) throw new NotFoundException('SEO record not found');
 
     const data: any = {};
 
     // If slug changes, save old slug to history
     if (dto.slug && dto.slug !== record.slug) {
-      const existing = await this.prisma.sEORecord.findUnique({ where: { slug: dto.slug } });
+      const existing = await this.prisma.koiSEORecord.findUnique({ where: { slug: dto.slug } });
       if (existing) throw new ConflictException('Slug already in use');
 
       const history = (record.slugHistory as unknown as any[]) || [];
@@ -68,18 +68,18 @@ export class SeoService {
     if (dto.sitemapPriority) data.sitemapPriority = parseFloat(dto.sitemapPriority);
     if (dto.sitemapChangeFreq) data.sitemapChangeFreq = dto.sitemapChangeFreq;
 
-    return this.prisma.sEORecord.update({ where: { id }, data });
+    return this.prisma.koiSEORecord.update({ where: { id }, data });
   }
 
   async remove(id: string) {
-    await this.prisma.sEORecord.findUnique({ where: { id } });
-    return this.prisma.sEORecord.delete({ where: { id } });
+    await this.prisma.koiSEORecord.findUnique({ where: { id } });
+    return this.prisma.koiSEORecord.delete({ where: { id } });
   }
 
   // === JSON-LD Generators ===
 
   async generateProductJsonLd(productId: string) {
-    const product = await this.prisma.product.findUnique({
+    const product = await this.prisma.koiProduct.findUnique({
       where: { id: productId },
       include: { images: { where: { isPrimary: true }, take: 1 } },
     });
@@ -122,7 +122,7 @@ export class SeoService {
   }
 
   async generateCraftActionJsonLd(productId: string) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    const product = await this.prisma.koiProduct.findUnique({ where: { id: productId } });
     if (!product) throw new NotFoundException('Product not found');
 
     const name = (product.name as any)?.vi || 'Sản phẩm da thủ công';
@@ -142,11 +142,11 @@ export class SeoService {
   // === Sitemap Generator ===
 
   async generateSitemapXml(baseUrl: string): Promise<string> {
-    const products = await this.prisma.product.findMany({
+    const products = await this.prisma.koiProduct.findMany({
       where: { status: 'ACTIVE' },
       select: { slug: true, updatedAt: true },
     });
-    const seoRecords = await this.prisma.sEORecord.findMany({
+    const seoRecords = await this.prisma.koiSEORecord.findMany({
       select: { slug: true, updatedAt: true, sitemapPriority: true, sitemapChangeFreq: true },
     });
 

@@ -40,7 +40,7 @@ export class InventorySyncService {
    * Push inventory update to kitleather.vn
    */
   async pushUpdate(materialId: string): Promise<boolean> {
-    const material = await this.prisma.rawMaterial.findUnique({
+    const material = await this.prisma.koiRawMaterial.findUnique({
       where: { id: materialId },
     });
     if (!material) {
@@ -104,7 +104,7 @@ export class InventorySyncService {
     const { externalId, quantity, unitCost } = payload.data;
     if (!externalId) return;
 
-    const material = await this.prisma.rawMaterial.findFirst({
+    const material = await this.prisma.koiRawMaterial.findFirst({
       where: { externalId },
     });
     if (!material) {
@@ -126,14 +126,14 @@ export class InventorySyncService {
       updateData.unitCost = unitCost;
     }
 
-    await this.prisma.rawMaterial.update({
+    await this.prisma.koiRawMaterial.update({
       where: { id: material.id },
       data: updateData,
     });
 
     // Record transaction
     if (quantity !== undefined && quantity > 0) {
-      await this.prisma.inventoryTransaction.create({
+      await this.prisma.koiInventoryTransaction.create({
         data: {
           materialId: material.id,
           transactionType: 'RECEIPT',
@@ -151,12 +151,12 @@ export class InventorySyncService {
     const { externalId, name, unitCost } = payload.data;
     if (!externalId) return;
 
-    const material = await this.prisma.rawMaterial.findFirst({
+    const material = await this.prisma.koiRawMaterial.findFirst({
       where: { externalId },
     });
     if (!material) return;
 
-    await this.prisma.rawMaterial.update({
+    await this.prisma.koiRawMaterial.update({
       where: { id: material.id },
       data: {
         ...(name ? { name } : {}),
@@ -173,7 +173,7 @@ export class InventorySyncService {
   async onOrderCompleted(orderId: string) {
     this.logger.log(`Order ${orderId} completed — auto-deducting raw materials`);
 
-    const order = await this.prisma.productionOrder.findUnique({
+    const order = await this.prisma.koiProductionOrder.findUnique({
       where: { id: orderId },
     });
     if (!order) return;
@@ -182,7 +182,7 @@ export class InventorySyncService {
     for (const alloc of allocations) {
       if (!alloc.material_id) continue;
 
-      const material = await this.prisma.rawMaterial.findUnique({
+      const material = await this.prisma.koiRawMaterial.findUnique({
         where: { id: alloc.material_id },
       });
       if (!material || !material.externalId) continue;
@@ -204,7 +204,7 @@ export class InventorySyncService {
   }
 
   private async markSyncStatus(materialId: string, status: string) {
-    await this.prisma.rawMaterial.update({
+    await this.prisma.koiRawMaterial.update({
       where: { id: materialId },
       data: {
         syncStatus: status,
@@ -217,7 +217,7 @@ export class InventorySyncService {
    * Sync all pending materials
    */
   async syncPending() {
-    const pending = await this.prisma.rawMaterial.findMany({
+    const pending = await this.prisma.koiRawMaterial.findMany({
       where: { syncStatus: 'PENDING', externalId: { not: null } },
     });
 

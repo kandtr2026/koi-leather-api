@@ -2,13 +2,28 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 const JSON_FIELDS: Record<string, string[]> = {
-  Product: ['name', 'description', 'technicalSpecs'],
-  ProductVariant: ['options', 'images'],
-  CraftingSpec: ['patternFiles', 'outerLeather', 'liningLeather', 'interlining', 'dimensions', 'craftingDetails'],
-  ProductionOrder: ['materialsAllocated'],
-  SEORecord: ['slugHistory', 'jsonLd'],
-  Category: ['specsSchema'],
+  KoiProduct: ['name', 'description', 'technicalSpecs'],
+  KoiProductVariant: ['options', 'images'],
+  KoiCraftingSpec: ['patternFiles', 'outerLeather', 'liningLeather', 'interlining', 'dimensions', 'craftingDetails'],
+  KoiProductionOrder: ['materialsAllocated'],
+  KoiSEORecord: ['slugHistory', 'jsonLd'],
+  KoiCategory: ['specsSchema'],
 };
+
+function appendPoolParams(url: string): string {
+  try {
+    const u = new URL(url);
+    u.searchParams.set('connection_limit', '1');
+    u.searchParams.set('pgbouncer', 'true');
+    // If using Supabase pooler, change port from 5432 to 6543
+    if (u.hostname.endsWith('supabase.co') && u.port === '5432') {
+      u.port = '6543';
+    }
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
 
 function isObject(value: any): boolean {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -17,7 +32,17 @@ function isObject(value: any): boolean {
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor() {
-    super();
+    const isVercel = !!process.env.VERCEL_ENV;
+    const rawUrl = process.env.DATABASE_URL || '';
+    // On Vercel, append connection_limit to Supabase pooler URL.
+    // Create DATABASE_URL_POOL env var on Vercel pointing to Supabase pooler (port 6543).
+    const dbUrl = isVercel
+      ? (process.env.DATABASE_URL_POOL || appendPoolParams(rawUrl))
+      : rawUrl;
+    super({
+      datasourceUrl: dbUrl,
+      log: isVercel ? undefined : ['warn', 'error'],
+    });
 
     // Middleware: auto-parse JSON strings on read, auto-stringify on write
     this.$use(async (params, next) => {
@@ -71,7 +96,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleInit() {
-    await this.$connect();
+    // Non-blocking connect: do not hold up Nest bootstrap in serverless cold starts.
+    // Prisma lazily connects on first query anyway; we just log connectivity here.
+    const started = Date.now();
+    this.$connect()
+      .then(() => console.log(`[Prisma] connected in ${Date.now() - started}ms`))
+      .catch((e) => console.error('[Prisma] connect failed:', e?.message ?? e));
   }
 
   async onModuleDestroy() {

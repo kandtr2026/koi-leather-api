@@ -1,13 +1,13 @@
 {
   "version": 2,
-  "buildCommand": "npx prisma generate && npm run build",
+  "buildCommand": "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) npx prisma generate && npm run build",
   "installCommand": "npm install",
   "outputDirectory": "dist",
   "functions": {
     "api/index.js": {
       "memory": 512,
       "maxDuration": 30,
-      "includeFiles": "dist/src/**"
+      "includeFiles": "{dist/src/**,public/**}"
     }
   },
   "rewrites": [

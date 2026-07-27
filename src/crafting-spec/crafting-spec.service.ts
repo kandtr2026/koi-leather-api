@@ -8,10 +8,10 @@ export class CraftingSpecService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateCraftingSpecDto) {
-    const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
+    const product = await this.prisma.koiProduct.findUnique({ where: { id: dto.productId } });
     if (!product) throw new NotFoundException('Product not found');
 
-    return this.prisma.craftingSpec.create({
+    return this.prisma.koiCraftingSpec.create({
       data: {
         productId: dto.productId,
         patternFiles: (dto.patternFiles || []) as any,
@@ -25,15 +25,25 @@ export class CraftingSpecService {
     });
   }
 
+  async findAll() {
+    return this.prisma.koiCraftingSpec.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        product: { select: { id: true, name: true, sku: true, slug: true } },
+        variants: { select: { id: true, sku: true } },
+      },
+    });
+  }
+
   async findByProduct(productId: string) {
-    return this.prisma.craftingSpec.findMany({
+    return this.prisma.koiCraftingSpec.findMany({
       where: { productId },
       include: { variants: { select: { id: true, sku: true } } },
     });
   }
 
   async findById(id: string) {
-    const spec = await this.prisma.craftingSpec.findUnique({
+    const spec = await this.prisma.koiCraftingSpec.findUnique({
       where: { id },
       include: { product: true, variants: true },
     });
@@ -43,7 +53,7 @@ export class CraftingSpecService {
 
   async update(id: string, dto: UpdateCraftingSpecDto) {
     await this.findById(id);
-    return this.prisma.craftingSpec.update({
+    return this.prisma.koiCraftingSpec.update({
       where: { id },
       data: {
         ...(dto.patternFiles ? { patternFiles: dto.patternFiles as any } : {}),
@@ -59,6 +69,6 @@ export class CraftingSpecService {
 
   async remove(id: string) {
     await this.findById(id);
-    return this.prisma.craftingSpec.delete({ where: { id } });
+    return this.prisma.koiCraftingSpec.delete({ where: { id } });
   }
 }

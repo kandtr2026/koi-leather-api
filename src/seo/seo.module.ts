@@ -7,4 +7,4 @@ import { SeoService } from './seo.service';
   providers: [SeoService],
   exports: [SeoService],
 })
-export class SeoModule {}
+export class KoiSeoModule {}

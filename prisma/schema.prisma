@@ -1,27 +1,224 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["koi_free_style", "public"]
 }
 
-model Category {
-  id          String @id @default(uuid())
-  code        String @unique
-  name        String
-  slug        String @unique
-  description String?
-  specsSchema String @default("{}")
+// --- Public Schema (Koi Wordpress Data) ---
+model categories {
+  id                 BigInt               @id
+  name               String
+  slug               String               @unique
+  description        String?
+  parent_id          BigInt?
+  image_url          String?
+  product_count      Int                  @default(0)
+  sort_order         Int                  @default(0)
+  is_hidden          Boolean              @default(false)
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  categories         categories?          @relation("categoriesTocategories", fields: [parent_id], references: [id], onUpdate: NoAction)
+  other_categories   categories[]         @relation("categoriesTocategories")
+  product_categories product_categories[]
+  @@index([parent_id])
+  @@index([slug])
+  @@schema("public")
+}
 
+model leads {
+  id         BigInt    @id @default(autoincrement())
+  name       String
+  phone      String
+  email      String?
+  message    String?
+  product_id BigInt?
+  source     String?
+  status     String    @default("new")
+  note       String?
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  products   products? @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+  @@index([status, created_at(sort: Desc)])
+  @@schema("public")
+}
+
+model pages {
+  id               BigInt  @id
+  title            String
+  slug             String  @unique
+  content          String?
+  meta_title       String?
+  meta_description String?
+  is_published     Boolean @default(true)
+  @@schema("public")
+}
+
+model post_term_links {
+  post_id    BigInt
+  term_id    BigInt
+  posts      posts      @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  post_terms post_terms @relation(fields: [term_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@id([post_id, term_id])
+  @@index([term_id])
+  @@schema("public")
+}
+
+model post_terms {
+  id              BigInt            @id
+  name            String
+  slug            String
+  description     String?
+  taxonomy        String
+  post_count      Int               @default(0)
+  post_term_links post_term_links[]
+  @@unique([taxonomy, slug])
+  @@index([taxonomy, post_count(sort: Desc)])
+  @@index([taxonomy, slug])
+  @@schema("public")
+}
+
+model posts {
+  id               BigInt            @id
+  title            String
+  slug             String            @unique
+  excerpt          String?
+  content          String?
+  cover_image      String?
+  meta_title       String?
+  meta_description String?
+  is_published     Boolean           @default(true)
+  published_at     DateTime?         @db.Timestamptz(6)
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  post_term_links  post_term_links[]
+  @@index([is_published, published_at(sort: Desc)])
+  @@schema("public")
+}
+
+model product_categories {
+  product_id  BigInt
+  category_id BigInt
+  categories  categories @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products    products   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@id([product_id, category_id])
+  @@index([category_id])
+  @@schema("public")
+}
+
+model product_images {
+  id           BigInt   @id @default(autoincrement())
+  product_id   BigInt
+  storage_path String
+  alt          String?
+  is_primary   Boolean  @default(false)
+  sort_order   Int      @default(0)
+  products     products @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@index([product_id, sort_order])
+  @@schema("public")
+}
+
+model product_tags {
+  product_id BigInt
+  tag_id     BigInt
+  products   products @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tags       tags     @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@id([product_id, tag_id])
+  @@index([tag_id])
+  @@schema("public")
+}
+
+model product_variants {
+  id           BigInt   @id
+  product_id   BigInt
+  name         String?
+  sku          String?
+  price        BigInt?
+  attributes   Json     @default("{}")
+  image_url    String?
+  is_available Boolean  @default(true)
+  sort_order   Int      @default(0)
+  products     products @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@index([product_id])
+  @@schema("public")
+}
+
+model products {
+  id                 BigInt               @id
+  name               String
+  slug               String               @unique
+  sku                String?
+  short_description  String?
+  description        String?
+  price              BigInt?
+  regular_price      BigInt?
+  sale_price         BigInt?
+  price_min          BigInt?
+  price_max          BigInt?
+  on_sale            Boolean              @default(false)
+  has_variants       Boolean              @default(false)
+  is_available       Boolean              @default(true)
+  is_published       Boolean              @default(true)
+  is_featured        Boolean              @default(false)
+  meta_title         String?
+  meta_description   String?
+  search_text        String?
+  sort_order         Int                  @default(0)
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  leads              leads[]
+  product_categories product_categories[]
+  product_images     product_images[]
+  product_tags       product_tags[]
+  product_variants   product_variants[]
+  @@index([is_published, sort_order])
+  @@index([slug])
+  @@schema("public")
+}
+
+model redirects {
+  id          BigInt @id @default(autoincrement())
+  from_path   String @unique
+  to_path     String
+  status_code Int    @default(301)
+  @@schema("public")
+}
+
+model tags {
+  id            BigInt         @id
+  name          String
+  slug          String         @unique
+  description   String?
+  product_count Int            @default(0)
+  product_tags  product_tags[]
+  @@index([product_count(sort: Desc)])
+  @@index([slug])
+  @@schema("public")
+}
+
+// --- Koi Free Style Models (Koi Leather App) ---
+model KoiCategory {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  slug        String   @unique
+  description String?
+  specsSchema String   @default("{}")
+  metaTitle       String?
+  metaDescription String?
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  products Product[]
+  products KoiProduct[]
+  @@index([isActive])
+  @@index([displayOrder])
+  @@map("koi_categories")
+  @@schema("koi_free_style")
 }
 
-model Product {
+model KoiProduct {
   id           String @id @default(uuid())
   name         String
   slug         String @unique
@@ -32,104 +229,96 @@ model Product {
   status       String @default("DRAFT")
   sku          String? @unique
   externalId   String?
-
   technicalSpecs String @default("{}")
-
   metaTitle       String?
   metaDescription String?
   canonicalUrl    String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  images      ProductImage[]
-  variants    ProductVariant[]
-  craftSpecs  CraftingSpec[]
-  seoRecords  SEORecord[]
-
+  category    KoiCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  images      KoiProductImage[]
+  variants    KoiProductVariant[]
+  craftSpecs  KoiCraftingSpec[]
+  seoRecords  KoiSEORecord[]
   @@index([productType])
   @@index([status])
   @@index([slug])
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([categoryId, status])
+  @@map("koi_products")
+  @@schema("koi_free_style")
 }
 
-model ProductImage {
+model KoiProductImage {
   id        String @id @default(uuid())
   productId String
   variantId String?
-
   url           String
   thumbnailUrl  String
   mediumUrl     String?
   altText       String?
+  imageType     String  @default("STUDIO")
   isPrimary     Boolean @default(false)
   displayOrder  Int     @default(0)
   mimeType      String?
   fileSize      Int?
   width         Int?
   height        Int?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-
+  product KoiProduct         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant KoiProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   @@index([productId])
   @@index([variantId])
   @@index([isPrimary])
+  @@map("koi_product_images")
+  @@schema("koi_free_style")
 }
 
-model ProductVariant {
+model KoiProductVariant {
   id        String @id @default(uuid())
   productId String
-
   sku         String @unique
   price       Float?
   stockStatus String @default("IN_STOCK")
   isDefault   Boolean @default(false)
-
   options String @default("{}")
   images  String?
-
   craftingSpecId String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  craftingSpec CraftingSpec?  @relation(fields: [craftingSpecId], references: [id], onDelete: SetNull)
-  images_rel   ProductImage[]
-  orders       ProductionOrder[]
-
+  product      KoiProduct        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  craftingSpec KoiCraftingSpec?  @relation(fields: [craftingSpecId], references: [id], onDelete: SetNull)
+  images_rel   KoiProductImage[]
+  orders       KoiProductionOrder[]
   @@index([productId])
   @@index([sku])
   @@index([stockStatus])
+  @@map("koi_product_variants")
+  @@schema("koi_free_style")
 }
 
-model CraftingSpec {
+model KoiCraftingSpec {
   id        String @id @default(uuid())
   productId String
-
   patternFiles    String @default("[]")
   outerLeather    String @default("{}")
   liningLeather   String @default("{}")
   interlining     String @default("{}")
   dimensions      String @default("{}")
   craftingDetails String @default("{}")
-
   notes String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  product  Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
-  variants ProductVariant[]
-
+  product  KoiProduct          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variants KoiProductVariant[]
   @@index([productId])
+  @@map("koi_crafting_specs")
+  @@schema("koi_free_style")
 }
 
-model RawMaterial {
+model KoiRawMaterial {
   id         String @id @default(uuid())
   name       String
   materialType String
@@ -137,100 +326,96 @@ model RawMaterial {
   unit       String
   color      String?
   thicknessMm Float?
-
   totalQuantity     Float @default(0)
   reservedQuantity  Float @default(0)
   availableQuantity Float @default(0)
-
   unitCost    Float
   currency    String @default("VND")
-
   externalId    String?
   lastSyncedAt  DateTime?
   syncStatus    String? @default("SYNCED")
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  transactions InventoryTransaction[]
-
+  transactions KoiInventoryTransaction[]
   @@index([materialType])
   @@index([externalId])
   @@index([supplier])
+  @@map("koi_raw_materials")
+  @@schema("koi_free_style")
 }
 
-model InventoryTransaction {
+model KoiInventoryTransaction {
   id         String @id @default(uuid())
   materialId String
   orderId    String?
-
   transactionType String
   quantity        Float
   batchRef        String?
   costAtTransaction Float?
-
   notes String?
-
   createdAt DateTime @default(now())
-
-  material RawMaterial @relation(fields: [materialId], references: [id])
-
+  material KoiRawMaterial @relation(fields: [materialId], references: [id])
   @@index([materialId])
   @@index([orderId])
   @@index([transactionType])
   @@index([createdAt])
+  @@map("koi_inventory_transactions")
+  @@schema("koi_free_style")
 }
 
-model ProductionOrder {
+model KoiProductionOrder {
   id        String @id @default(uuid())
   variantId String
-
   quantity  Int
   status    String @default("PENDING")
   craftsman String?
   dueDate   DateTime?
-
   materialsAllocated String @default("[]")
   totalCostSnapshot   Float?
-
   notes String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  variant ProductVariant @relation(fields: [variantId], references: [id])
-
+  variant KoiProductVariant @relation(fields: [variantId], references: [id])
   @@index([variantId])
   @@index([status])
   @@index([createdAt])
+  @@map("koi_production_orders")
+  @@schema("koi_free_style")
 }
 
-model SEORecord {
+model KoiSEORecord {
   id         String @id @default(uuid())
   entityType String
   entityId   String
-
   slug        String @unique
   slugHistory String @default("[]")
-
   jsonLd String @default("{}")
-
   ogTitle       String?
   ogDescription String?
   ogImage       String?
-
   metaTitle       String?
   metaDescription String?
   noIndex         Boolean @default(false)
-
   sitemapPriority  Float?
   sitemapChangeFreq String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  product Product? @relation(fields: [entityId], references: [id], onDelete: Cascade)
-
+  product KoiProduct? @relation(fields: [entityId], references: [id], onDelete: Cascade)
   @@index([entityType, entityId])
   @@index([slug])
+  @@map("koi_seo_records")
+  @@schema("koi_free_style")
+}
+
+model KoiImageCategory {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([code])
+  @@map("koi_image_categories")
+  @@schema("koi_free_style")
 }

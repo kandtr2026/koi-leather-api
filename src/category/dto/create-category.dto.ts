@@ -1,11 +1,10 @@
-import { IsString, IsOptional, IsEnum, IsObject, IsInt, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsObject, IsInt, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CategoryCode } from '../../common/enums';
 
 export class CreateCategoryDto {
-  @ApiProperty({ enum: CategoryCode })
-  @IsEnum(CategoryCode)
-  code: CategoryCode;
+  @ApiProperty({ example: 'WALLET', description: 'Unique category code' })
+  @IsString()
+  code: string;
 
   @ApiProperty()
   @IsString()
