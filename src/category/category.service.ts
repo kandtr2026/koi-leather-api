@@ -20,19 +20,39 @@ export class CategoryService {
         displayOrder: true,
         isActive: true,
         createdAt: true,
-        _count: { select: { products: true } },
+        _count: { select: { categoryLinks: true } },
       },
     });
+
+    // Count only ACTIVE products per category (via junction table)
+    const activeCounts: Record<string, number> = {};
+    const raw: { categoryId: string; activeCount: number }[] =
+      await this.prisma.$queryRaw`
+        SELECT pc."categoryId", COUNT(*)::int as "activeCount"
+        FROM koi_free_style.koi_product_categories pc
+        JOIN koi_free_style.koi_products p ON p.id = pc."productId"
+        WHERE p.status = 'ACTIVE'
+        GROUP BY pc."categoryId"
+      `;
+    for (const r of raw) activeCounts[r.categoryId] = Number(r.activeCount);
+
     return rows.map(r => ({
       ...r,
       createdAt: r.createdAt.toISOString(),
+      productCount: activeCounts[r.id] ?? 0,
     }));
   }
 
   async findById(id: string) {
     const category = await this.prisma.koiCategory.findUnique({
       where: { id },
-      include: { products: { take: 10, orderBy: { createdAt: 'desc' } } },
+      include: {
+        categoryLinks: {
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: { product: true },
+        },
+      },
     });
     if (!category) throw new NotFoundException('Category not found');
     return category;
@@ -41,7 +61,11 @@ export class CategoryService {
   async findByCode(code: string) {
     const category = await this.prisma.koiCategory.findUnique({
       where: { code: code as any },
-      include: { products: { where: { status: 'ACTIVE' } } },
+      include: {
+        categoryLinks: {
+          include: { product: true },
+        },
+      },
     });
     if (!category) throw new NotFoundException('Category not found');
     return category;
