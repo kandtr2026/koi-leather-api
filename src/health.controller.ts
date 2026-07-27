@@ -1,6 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { execSync } from 'child_process';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 
 @ApiTags('Health')
 @Controller('health')
@@ -36,8 +38,18 @@ export class HealthController {
       } catch {}
     }
 
-    // Deploy timestamp: BUILD_TIME env > git commit date > server boot time
-    let deployedAt = process.env.BUILD_TIME;
+    // Deploy timestamp: build-meta.json (written by build script) > BUILD_TIME env > git commit date > server boot time
+    let deployedAt: string | undefined;
+    try {
+      const metaPath = join(__dirname, '..', 'build-meta.json');
+      if (existsSync(metaPath)) {
+        const meta = JSON.parse(readFileSync(metaPath, 'utf-8'));
+        deployedAt = meta.buildTime;
+      }
+    } catch {}
+    if (!deployedAt) {
+      deployedAt = process.env.BUILD_TIME;
+    }
     if (!deployedAt) {
       try {
         deployedAt = execSync('git log -1 --format=%cI', { encoding: 'utf-8' }).trim();

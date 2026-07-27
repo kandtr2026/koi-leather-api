@@ -2,7 +2,7 @@ import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query,
   ParseUUIDPipe, HttpCode, HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { RawMaterialService } from './raw-material.service';
 import { CreateRawMaterialDto } from './dto/create-raw-material.dto';
 import { UpdateRawMaterialDto } from './dto/update-raw-material.dto';
@@ -43,15 +43,5 @@ export class RawMaterialController {
   @ApiOperation({ summary: 'Delete a raw material' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.materialService.remove(id);
-  }
-
-  @Post(':id/adjust-stock')
-  @ApiOperation({ summary: 'Adjust stock (positive = receipt, negative = consumption)' })
-  adjustStock(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body('quantity') quantity: number,
-    @Body('notes') notes?: string,
-  ) {
-    return this.materialService.adjustStock(id, quantity, notes);
   }
 }

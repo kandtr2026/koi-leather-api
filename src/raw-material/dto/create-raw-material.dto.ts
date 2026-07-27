@@ -30,11 +30,6 @@ export class CreateRawMaterialDto {
   @IsNumber()
   thicknessMm?: number;
 
-  @ApiProperty({ description: 'Tổng số lượng tồn kho' })
-  @IsNumber()
-  @Min(0)
-  totalQuantity: number;
-
   @ApiProperty({ description: 'Giá nhập (VNĐ)' })
   @IsNumber()
   @Min(0)

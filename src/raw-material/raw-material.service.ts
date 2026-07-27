@@ -4,6 +4,23 @@ import { CreateRawMaterialDto } from './dto/create-raw-material.dto';
 import { UpdateRawMaterialDto } from './dto/update-raw-material.dto';
 import { Prisma } from '@prisma/client';
 
+const catalogSelect = {
+  id: true,
+  name: true,
+  materialType: true,
+  supplier: true,
+  unit: true,
+  color: true,
+  thicknessMm: true,
+  unitCost: true,
+  currency: true,
+  externalId: true,
+  syncStatus: true,
+  lastSyncedAt: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
 @Injectable()
 export class RawMaterialService {
   constructor(private prisma: PrismaService) {}
@@ -17,13 +34,11 @@ export class RawMaterialService {
         unit: dto.unit,
         color: dto.color,
         thicknessMm: dto.thicknessMm,
-        totalQuantity: dto.totalQuantity,
-        reservedQuantity: 0,
-        availableQuantity: dto.totalQuantity,
         unitCost: dto.unitCost,
         externalId: dto.externalId,
         syncStatus: dto.externalId ? 'PENDING' : 'SYNCED',
       },
+      select: catalogSelect,
     });
   }
 
@@ -35,13 +50,17 @@ export class RawMaterialService {
     return this.prisma.koiRawMaterial.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      select: catalogSelect,
     });
   }
 
   async findById(id: string) {
     const material = await this.prisma.koiRawMaterial.findUnique({
       where: { id },
-      include: { transactions: { orderBy: { createdAt: 'desc' }, take: 20 } },
+      select: {
+        ...catalogSelect,
+        transactions: { orderBy: { createdAt: 'desc' }, take: 20 },
+      },
     });
     if (!material) throw new NotFoundException('Raw material not found');
     return material;
@@ -58,45 +77,11 @@ export class RawMaterialService {
     if (dto.color !== undefined) data.color = dto.color;
     if (dto.thicknessMm !== undefined) data.thicknessMm = dto.thicknessMm;
     if (dto.unitCost !== undefined) data.unitCost = dto.unitCost;
-    if (dto.totalQuantity !== undefined) {
-      data.totalQuantity = dto.totalQuantity;
-      data.availableQuantity = dto.totalQuantity - (await this.getReserved(id));
-    }
 
     return this.prisma.koiRawMaterial.update({
       where: { id },
       data,
-    });
-  }
-
-  private async getReserved(id: string): Promise<number> {
-    const mat = await this.prisma.koiRawMaterial.findUnique({ where: { id } });
-    return Number(mat?.reservedQuantity || 0);
-  }
-
-  async adjustStock(id: string, quantity: number, notes?: string) {
-    const material = await this.findById(id);
-    const newTotal = Number(material.totalQuantity) + quantity;
-    if (newTotal < 0) throw new Error('Insufficient stock');
-
-    return this.prisma.$transaction(async (tx) => {
-      await tx.koiInventoryTransaction.create({
-        data: {
-          materialId: id,
-          transactionType: quantity > 0 ? 'RECEIPT' : 'CONSUMPTION',
-          quantity,
-          costAtTransaction: material.unitCost,
-          notes,
-        },
-      });
-
-      return tx.koiRawMaterial.update({
-        where: { id },
-        data: {
-          totalQuantity: newTotal,
-          availableQuantity: newTotal - Number(material.reservedQuantity),
-        },
-      });
+      select: catalogSelect,
     });
   }
 
