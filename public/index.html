@@ -55,7 +55,7 @@
     <div class="flex items-center gap-3">
       <!-- Auth state: login button or user avatar -->
       <div id="authSection">
-        <div id="gSignInWrapper" class="hidden"></div>
+        <div id="gSignInWrapper"></div>
         <div id="authUser" class="hidden items-center gap-2">
           <img id="authAvatar" class="w-7 h-7 rounded-full border border-gray-200" src="" alt="">
           <span id="authEmail" class="text-xs text-gray-600 font-medium"></span>
@@ -460,13 +460,57 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function fm(n) { return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ'; }
 
-// ========== TABS ==========
+// ========== TAB ROUTING ==========
+const TAB_MAP = {
+  'products':         { panel: 'products', label: 'Sản phẩm' },
+  'categories':       { panel: 'prodcats', label: 'Loại sản phẩm' },
+  'materials':        { panel: 'materials', label: 'Nguyên liệu' },
+  'production-orders': { panel: 'orders',   label: 'Lệnh sản xuất' },
+  'crafting-specs':   { panel: 'specs',    label: 'Crafting Specs' },
+  'image-types':      { panel: 'imgcats',  label: 'Loại ảnh' },
+};
+const URL_TABS = Object.keys(TAB_MAP);
+const DEFAULT_TAB = 'products';
+
+function getTabFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  return URL_TABS.includes(tab) ? tab : null;
+}
+
+function switchTab(urlTab) {
+  const entry = TAB_MAP[urlTab];
+  if (!entry) return;
+  const internal = entry.panel;
+
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === internal);
+  });
+  document.querySelectorAll('.panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'panel-' + internal);
+  });
+
+  const url = new URL(window.location);
+  url.searchParams.set('tab', urlTab);
+  history.pushState({ tab: urlTab }, '', url);
+}
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', function() {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    this.classList.add('active');
-    document.getElementById('panel-' + this.dataset.tab).classList.add('active');
+    const internal = this.dataset.tab;
+    const urlTab = Object.keys(TAB_MAP).find(k => TAB_MAP[k].panel === internal) || DEFAULT_TAB;
+    switchTab(urlTab);
+  });
+});
+
+window.addEventListener('popstate', function(e) {
+  const tab = getTabFromUrl() || DEFAULT_TAB;
+  const entry = TAB_MAP[tab];
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === entry.panel);
+  });
+  document.querySelectorAll('.panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'panel-' + entry.panel);
   });
 });
 
@@ -750,7 +794,7 @@ function renderProducts() {
   el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Sản phẩm</th><th class="px-4 py-3">Loại</th><th class="px-4 py-3">SKU</th><th class="px-4 py-3">Giá</th><th class="px-4 py-3 min-w-[160px]">Thông số</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${products.map(p => {
     const schemaProps = p.category?.specsSchema ? (() => { try { const s = typeof p.category.specsSchema === 'string' ? JSON.parse(p.category.specsSchema) : p.category.specsSchema; return s.properties; } catch { return null; } })() : null;
     const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
-    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3"><span class="px-2 py-0.5 bg-gray-100 rounded text-xs">${typeLabel[p.productType]||p.productType}</span></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3"><span class="px-2 py-0.5 bg-gray-100 rounded text-xs">${typeLabel[p.productType]||p.productType}</span></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
@@ -1447,6 +1491,22 @@ function updateHeaderStatus() {
 
 // Load each dataset independently — no Promise.all bottleneck
 async function init() {
+  // Restore tab from URL or default to products
+  const urlTab = getTabFromUrl() || DEFAULT_TAB;
+  const entry = TAB_MAP[urlTab];
+  if (entry) {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === entry.panel);
+    });
+    document.querySelectorAll('.panel').forEach(p => {
+      p.classList.toggle('active', p.id === 'panel-' + entry.panel);
+    });
+    // Set initial URL without creating a history entry
+    const url = new URL(window.location);
+    url.searchParams.set('tab', urlTab);
+    history.replaceState({ tab: urlTab }, '', url);
+  }
+
   setupDragDrop();
   loadDeployInfo();
   fetchAuthConfig();

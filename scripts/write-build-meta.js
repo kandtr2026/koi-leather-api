@@ -1,7 +1,13 @@
 const fs = require('fs');
 const path = require('path');
-const distDir = path.join(__dirname, '..', 'dist');
+const rootDir = path.join(__dirname, '..');
 const meta = { buildTime: new Date().toISOString() };
-fs.mkdirSync(distDir, { recursive: true });
-fs.writeFileSync(path.join(distDir, 'build-meta.json'), JSON.stringify(meta));
+const locations = [
+  path.join(rootDir, 'dist', 'build-meta.json'),
+  path.join(rootDir, 'public', 'build-meta.json'),
+];
+for (const loc of locations) {
+  fs.mkdirSync(path.dirname(loc), { recursive: true });
+  fs.writeFileSync(loc, JSON.stringify(meta));
+}
 console.log('[build-meta]', meta.buildTime);

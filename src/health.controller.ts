@@ -40,13 +40,20 @@ export class HealthController {
 
     // Deploy timestamp: build-meta.json (written by build script) > BUILD_TIME env > git commit date > server boot time
     let deployedAt: string | undefined;
-    try {
-      const metaPath = join(__dirname, '..', 'build-meta.json');
-      if (existsSync(metaPath)) {
-        const meta = JSON.parse(readFileSync(metaPath, 'utf-8'));
-        deployedAt = meta.buildTime;
-      }
-    } catch {}
+    const metaCandidates = [
+      join(__dirname, '..', 'build-meta.json'),
+      join(__dirname, 'build-meta.json'),
+      join(process.cwd(), 'build-meta.json'),
+      join(process.cwd(), 'dist', 'build-meta.json'),
+    ];
+    for (const metaPath of metaCandidates) {
+      try {
+        if (existsSync(metaPath)) {
+          const meta = JSON.parse(readFileSync(metaPath, 'utf-8'));
+          if (meta.buildTime) { deployedAt = meta.buildTime; break; }
+        }
+      } catch {}
+    }
     if (!deployedAt) {
       deployedAt = process.env.BUILD_TIME;
     }
