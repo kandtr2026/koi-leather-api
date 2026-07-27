@@ -3,9 +3,10 @@
   "buildCommand": "npx prisma generate && npm run build && node scripts/write-build-meta.js",
   "installCommand": "npm install",
   "outputDirectory": "dist",
+  "regions": ["bom1"],
   "functions": {
     "api/index.js": {
-      "memory": 512,
+      "memory": 1024,
       "maxDuration": 30,
       "includeFiles": "{dist/src/**,public/**}"
     }

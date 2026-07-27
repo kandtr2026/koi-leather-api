@@ -38,19 +38,24 @@ async function bootstrapServer() {
   app.use('/', express.static(path.join(process.cwd(), 'public')));
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-  const config = new DocumentBuilder()
-    .setTitle('Koi Leather API')
-    .setDescription('Headless Backend API for Koi Leather')
-    .setVersion('1.0')
-    .addTag('KoiProducts')
-    .addTag('Media')
-    .addServer('https://api.koileather.vn', 'KoiProduction')
-    .build();
+  // Swagger doc generation scans every controller/DTO and adds noticeable
+  // cold-start latency. Skip it on production serverless; enable with
+  // ENABLE_SWAGGER=1 if the docs are needed there.
+  if (process.env.VERCEL_ENV !== 'production' || process.env.ENABLE_SWAGGER === '1') {
+    const config = new DocumentBuilder()
+      .setTitle('Koi Leather API')
+      .setDescription('Headless Backend API for Koi Leather')
+      .setVersion('1.0')
+      .addTag('KoiProducts')
+      .addTag('Media')
+      .addServer('https://api.koileather.vn', 'KoiProduction')
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: { defaultModelsExpandDepth: -1, docExpansion: 'list' },
-  });
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: { defaultModelsExpandDepth: -1, docExpansion: 'list' },
+    });
+  }
 
   await app.init();
 
