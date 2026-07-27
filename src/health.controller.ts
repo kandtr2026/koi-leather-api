@@ -1,6 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @ApiTags('Health')
 @Controller('health')
@@ -36,11 +38,14 @@ export class HealthController {
       } catch {}
     }
 
-    // Deploy timestamp: git commit date > server boot time
-    let deployedAt;
-    try {
-      deployedAt = execSync('git log -1 --format=%cI', { encoding: 'utf-8' }).trim();
-    } catch {}
+    // Deploy timestamp: build-meta.json (written at build time) > git commit date > server boot time.
+    // On Vercel serverless there is no git binary, so build-meta.json is the reliable source.
+    let deployedAt = this.readBuildMeta();
+    if (!deployedAt) {
+      try {
+        deployedAt = execSync('git log -1 --format=%cI', { encoding: 'utf-8' }).trim();
+      } catch {}
+    }
     if (!deployedAt) {
       deployedAt = new Date().toISOString();
     }
@@ -52,6 +57,21 @@ export class HealthController {
       deployedAt,
       vercel: vercelEnv ? { environment: vercelEnv, deployId, url: vercelUrl } : undefined,
     };
+  }
+
+  private readBuildMeta(): string | undefined {
+    const candidates = [
+      path.join(process.cwd(), 'public', 'build-meta.json'),
+      path.join(process.cwd(), 'dist', 'build-meta.json'),
+      path.join(process.cwd(), 'build-meta.json'),
+    ];
+    for (const file of candidates) {
+      try {
+        const meta = JSON.parse(fs.readFileSync(file, 'utf-8'));
+        if (meta?.buildTime) return meta.buildTime;
+      } catch {}
+    }
+    return undefined;
   }
 
   @Get()

@@ -4,5 +4,8 @@ dist/
 uploads/
 *.log
 
+# Generated at build time by scripts/write-build-meta.js
+public/build-meta.json
+
 .vercel
 .env*

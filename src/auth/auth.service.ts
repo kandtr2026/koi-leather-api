@@ -11,6 +11,12 @@ export class AuthService {
       .split(',')
       .map(e => e.trim().toLowerCase())
       .filter(Boolean);
+
+    // Fail-closed: on production the admin whitelist must be configured,
+    // otherwise every Google account would be granted admin access.
+    if (!this.adminEmails.length && process.env.VERCEL_ENV === 'production') {
+      console.error('[Auth] ADMIN_EMAILS is empty in production — all logins will be rejected.');
+    }
   }
 
   private getGoogleClientId(): string {
@@ -65,7 +71,8 @@ export class AuthService {
   }
 
   isEmailAllowed(email: string): boolean {
-    if (!this.adminEmails.length) return true;
+    // Fail-closed: no whitelist configured means nobody is authorized.
+    if (!this.adminEmails.length) return false;
     return this.adminEmails.includes(email.toLowerCase());
   }
 

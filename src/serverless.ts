@@ -24,7 +24,10 @@ async function bootstrapServer() {
     origin: [
       'http://localhost:3000',
       'http://localhost:5173',
+      'https://koileather.com',
+      'https://www.koileather.com',
       'https://koileather.vn',
+      'https://www.koileather.vn',
       'https://admin.koileather.vn',
       'https://koileather.vercel.app',
     ],
