@@ -213,15 +213,15 @@
       <div class="grid grid-cols-2 gap-3">
         <div class="col-span-2"><label class="block text-xs font-medium text-gray-600 mb-1">Tên sản phẩm</label><input id="pNameVi" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví đứng Epsom Navy"></div>
       </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="block text-xs font-medium text-gray-600 mb-1">Loại</label>
-          <select id="pType" onchange="onProductTypeChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-            <!-- Options được nạp động từ /categories qua populateProductTypeOptions() -->
-          </select>
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-medium text-gray-600">Danh mục <span class="text-gray-400 font-normal">(tick chọn nhiều — 1 sản phẩm thuộc nhiều danh mục)</span></label>
+          <span id="pCatCount" class="text-[11px] text-amber-600 font-medium"></span>
         </div>
-        <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2500000"></div>
+        <div id="pCategories" class="w-full border border-gray-300 rounded-lg p-2 max-h-44 overflow-y-auto grid grid-cols-2 gap-x-4 gap-y-0.5"></div>
       </div>
       <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2500000"></div>
         <div><label class="block text-xs font-medium text-gray-600 mb-1">Website ID</label><input id="pExtId" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="KL-001"></div>
       </div>
       <div>
@@ -802,10 +802,14 @@ function renderProducts() {
   const typeFallback = { WALLET:'Ví', BELT:'Thắt lưng', WATCH_STRAP:'Dây đồng hồ', BAG:'Túi', ACCESSORY:'Phụ kiện' };
   const typeLabelOf = code => prodCats.find(c => c.code === code)?.name || typeFallback[code] || code;
   if (!products.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-box-open text-4xl mb-3"></i><p>Chưa có sản phẩm</p></div>'; return; }
-  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Sản phẩm</th><th class="px-4 py-3">Loại</th><th class="px-4 py-3">SKU</th><th class="px-4 py-3">Giá</th><th class="px-4 py-3 min-w-[160px]">Thông số</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${products.map(p => {
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Sản phẩm</th><th class="px-4 py-3 min-w-[180px]">Danh mục</th><th class="px-4 py-3">SKU</th><th class="px-4 py-3">Giá</th><th class="px-4 py-3 min-w-[160px]">Thông số</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${products.map(p => {
     const schemaProps = p.category?.specsSchema ? (() => { try { const s = typeof p.category.specsSchema === 'string' ? JSON.parse(p.category.specsSchema) : p.category.specsSchema; return s.properties; } catch { return null; } })() : null;
     const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
-    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3"><span class="px-2 py-0.5 bg-gray-100 rounded text-xs">${esc(typeLabelOf(p.productType))}</span></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
+    const cats = (p.categories && p.categories.length) ? p.categories : (p.category ? [p.category] : []);
+    const catBadges = cats.length
+      ? cats.map(c => `<span class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1">${esc(c.name)}</span>`).join('')
+      : `<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-xs">Chưa phân loại</span>`;
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
@@ -928,18 +932,53 @@ function toggleSpecsMode() {
   }
 }
 
-function getCategorySchema(productType) {
-  if (!prodCats || !prodCats.length) return null;
-  const cat = prodCats.find(c => c.code === productType);
-  if (!cat || !cat.specsSchema) return null;
-  let schema = cat.specsSchema;
-  if (typeof schema === 'string') { try { schema = JSON.parse(schema); } catch { return null; } }
-  return schema;
+function parseSchema(specsSchema) {
+  if (!specsSchema) return null;
+  let s = specsSchema;
+  if (typeof s === 'string') { try { s = JSON.parse(s); } catch { return null; } }
+  return s && typeof s === 'object' && Object.keys(s).length ? s : null;
 }
 
-function onProductTypeChange() {
-  const type = document.getElementById('pType').value;
-  const schema = getCategorySchema(type);
+// ===== Danh mục nhiều–nhiều: tick chọn nhiều =====
+function renderCategoryCheckboxes(selectedIds = []) {
+  const box = document.getElementById('pCategories');
+  if (!box) return;
+  if (!prodCats.length) {
+    box.innerHTML = '<p class="text-xs text-gray-400 py-2 text-center col-span-2">Chưa có danh mục nào</p>';
+    updateCatCount();
+    return;
+  }
+  const sel = new Set(selectedIds);
+  box.innerHTML = prodCats.map(c => `
+    <label class="flex items-center gap-2 py-1 px-1 rounded hover:bg-gray-50 cursor-pointer text-sm">
+      <input type="checkbox" class="pcat-cb w-4 h-4 accent-amber-500 rounded border-gray-300" value="${c.id}" ${sel.has(c.id) ? 'checked' : ''} onchange="onCategorySelectionChange()">
+      <span class="truncate">${esc(c.name)}</span>
+      <span class="text-[10px] text-gray-400 font-mono ml-auto shrink-0">${esc(c.code)}</span>
+    </label>`).join('');
+  updateCatCount();
+}
+
+function getSelectedCategoryIds() {
+  return Array.from(document.querySelectorAll('#pCategories .pcat-cb:checked')).map(cb => cb.value);
+}
+
+function getPrimaryCategory() {
+  const ids = getSelectedCategoryIds();
+  return ids.length ? prodCats.find(c => c.id === ids[0]) : null;
+}
+
+function updateCatCount() {
+  const el = document.getElementById('pCatCount');
+  if (!el) return;
+  const n = getSelectedCategoryIds().length;
+  el.textContent = n ? `Đã chọn ${n}` : '';
+}
+
+// Khi đổi lựa chọn: cập nhật đếm + dựng lại form thông số theo danh mục chính (đầu tiên)
+function onCategorySelectionChange() {
+  updateCatCount();
+  const cat = getPrimaryCategory();
+  const schema = cat ? parseSchema(cat.specsSchema) : null;
   const currentSpecs = collectSpecsFormValues();
   const hasExisting = currentSpecs && Object.keys(currentSpecs).length > 0;
   buildSpecsForm(schema, hasExisting ? currentSpecs : {});
@@ -948,12 +987,12 @@ function onProductTypeChange() {
 function openCreateProduct() {
   document.getElementById('productModalTitle').textContent = 'Thêm sản phẩm';
   ['editProductId','pNameVi','pPrice','pExtId'].forEach(id => document.getElementById(id).value = '');
-  populateProductTypeOptions();
-  document.getElementById('pType').value = prodCats[0]?.code || '';
+  document.getElementById('pSpecs').value = '';
+  renderCategoryCheckboxes([]);
   currentProductId = null;
   document.getElementById('imageGallery').innerHTML = '<p class="text-gray-400 text-sm py-6 w-full text-center">Lưu sản phẩm trước để upload ảnh</p>';
   document.getElementById('uploadZone').classList.add('hidden');
-  onProductTypeChange();
+  onCategorySelectionChange();
   openModal('productModal');
 }
 
@@ -967,17 +1006,16 @@ async function editProduct(id) {
   document.getElementById('productModalTitle').textContent = 'Sửa sản phẩm';
   document.getElementById('editProductId').value = id;
   document.getElementById('pNameVi').value = p.name?.vi || '';
-  populateProductTypeOptions();
-  const typeSel = document.getElementById('pType');
-  // Nếu loại cũ của SP không còn trong danh mục, vẫn thêm tạm để không mất dữ liệu
-  if (p.productType && !prodCats.some(c => toProductType(c) === p.productType)) {
-    typeSel.insertAdjacentHTML('beforeend', `<option value="${p.productType}">${esc(p.productType)} (không còn trong danh mục)</option>`);
-  }
-  typeSel.value = p.productType;
+  // Tick sẵn các danh mục sản phẩm đang thuộc (nhiều–nhiều); fallback categoryId cũ
+  const selIds = (p.categories && p.categories.length)
+    ? p.categories.map(c => c.id)
+    : (p.categoryId ? [p.categoryId] : []);
+  renderCategoryCheckboxes(selIds);
   document.getElementById('pPrice').value = p.basePrice || '';
   document.getElementById('pExtId').value = p.externalId || '';
   const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
-  const schema = getCategorySchema(p.productType);
+  const primary = getPrimaryCategory();
+  const schema = primary ? parseSchema(primary.specsSchema) : null;
   buildSpecsForm(schema, specs);
   if (!schema || !schema.properties || Object.keys(schema.properties).length === 0) {
     document.getElementById('pSpecs').value = JSON.stringify(specs, null, 2);
@@ -989,19 +1027,19 @@ async function editProduct(id) {
 
 async function saveProduct() {
   const id = document.getElementById('editProductId').value;
-  const productType = document.getElementById('pType').value;
-  // Bảo đảm productType luôn là enum chuẩn ngay cả value từ dropdown
-  const resolvedType = VALID_PRODUCT_TYPES.includes(productType) ? productType : null;
-  if (!resolvedType) { toast('Lỗi: Loại sản phẩm không hợp lệ'); return; }
+  const name = document.getElementById('pNameVi').value.trim();
+  if (!name) { toast('Nhập tên sản phẩm'); return; }
+  const categoryIds = getSelectedCategoryIds();
   const body = {
-    name: { vi: document.getElementById('pNameVi').value },
-    productType: resolvedType,
+    name: { vi: name },
+    categoryIds,
     basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
     externalId: document.getElementById('pExtId').value || undefined,
   };
-  // Tìm categoryId từ category có productType tương ứng
-  const selectedCat = prodCats.find(c => toProductType(c) === resolvedType);
-  if (selectedCat) body.categoryId = selectedCat.id;
+  // productType (legacy enum) suy từ danh mục chính; nếu không map được, để backend mặc định ACCESSORY
+  const primary = categoryIds.length ? prodCats.find(c => c.id === categoryIds[0]) : null;
+  const pt = primary ? toProductType(primary) : null;
+  if (pt) body.productType = pt;
   body.technicalSpecs = collectSpecsFormValues();
 
   try {
@@ -1240,24 +1278,10 @@ async function loadProdCats() {
     prodCats = Array.isArray(raw) ? raw : (raw.value || raw.data || []);
   } catch(e) { prodCats = []; }
   renderProdCats();
-  populateProductTypeOptions();
-}
-
-// Nạp danh sách "Loại" ở form sản phẩm từ danh mục (/categories)
-// Chỉ render các category có thể map được sang productType enum chuẩn
-function populateProductTypeOptions() {
-  const sel = document.getElementById('pType');
-  if (!sel) return;
-  const current = sel.value;
-  const validCats = prodCats.filter(c => toProductType(c));
-  if (!validCats.length) {
-    sel.innerHTML = '<option value="">— Chưa có loại sản phẩm —</option>';
-    return;
+  // Nếu modal sản phẩm đang mở, làm mới danh sách checkbox danh mục (giữ lựa chọn hiện tại)
+  if (document.getElementById('productModal')?.classList.contains('open')) {
+    renderCategoryCheckboxes(getSelectedCategoryIds());
   }
-  sel.innerHTML = validCats
-    .map(c => `<option value="${toProductType(c)}">${esc(c.name)}</option>`)
-    .join('');
-  if (current && validCats.some(c => toProductType(c) === current)) sel.value = current;
 }
 
 function renderProdCats() {
@@ -1521,19 +1545,19 @@ async function loadDeployInfo() {
   try {
     const data = await api('/health');
     const d = data.deploy || {};
-    const commit = d.commit ? d.commit.slice(0,7) : 'dev';
+    const commit = d.commitShort || (d.commit ? d.commit.slice(0,7) : 'dev');
     document.getElementById('deployText').textContent = commit;
     document.getElementById('deployDot').className = 'w-1.5 h-1.5 rounded-full ' + (d.vercel ? 'bg-green-400' : 'bg-amber-400');
     document.getElementById('ddCommit').textContent = d.commit || '-';
     document.getElementById('ddBranch').textContent = d.branch || '-';
     document.getElementById('ddMsg').textContent = d.message || '-';
-    // Try to get accurate build time from build-meta.json (static asset)
-    let buildTime = d.deployedAt;
-    try { const meta = await (await fetch('/build-meta.json')).json(); if (meta.buildTime) buildTime = meta.buildTime; } catch {}
-    const deployDate = buildTime ? new Date(buildTime) : null;
-    document.getElementById('ddTime').textContent = deployDate ? deployDate.toLocaleString('vi-VN') : '-';
+    // Build time: ưu tiên buildTimeDisplay (đã format UTC+7 từ build script), fallback deployedAt
+    const displayTime = d.buildTimeDisplay || d.deployedAt;
+    const deployDate = displayTime ? new Date(displayTime) : null;
+    document.getElementById('ddTime').textContent = deployDate && !isNaN(deployDate.getTime())
+      ? deployDate.toLocaleString('vi-VN') : (displayTime || '-');
     // Show deploy time in badge
-    if (deployDate) {
+    if (displayTime && deployDate && !isNaN(deployDate.getTime())) {
       const badgeTime = document.getElementById('deployTimestamp');
       const timeText = document.getElementById('deployTimeText');
       const pad = n => String(n).padStart(2, '0');

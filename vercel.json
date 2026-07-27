@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "node scripts/write-build-meta.js && npx prisma generate && npm run build",
+  "buildCommand": "npx prisma generate && npm run build && node scripts/write-build-meta.js",
   "installCommand": "npm install",
   "outputDirectory": "dist",
   "functions": {

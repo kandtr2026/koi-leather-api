@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsObject, IsNumber, ValidateNested, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsObject, IsNumber, ValidateNested, IsUUID, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { KoiProductType, KoiProductStatus } from '../../common/enums';
@@ -19,7 +19,8 @@ export class CreateProductDto {
   @IsObject()
   name: { vi: string; en?: string };
 
-  @ApiProperty({ enum: KoiProductType, description: 'Loại sản phẩm' })
+  @ApiPropertyOptional({ enum: KoiProductType, description: 'Loại sản phẩm (legacy, tự suy từ danh mục chính nếu bỏ trống)' })
+  @IsOptional()
   @IsEnum(KoiProductType)
   @Transform(({ value }) => {
     if (typeof value !== 'string') return value;
@@ -37,7 +38,13 @@ export class CreateProductDto {
     const key = value.trim().toLowerCase().replace(/[-\s]+/g, ' ');
     return map[key] || value;
   })
-  productType: KoiProductType;
+  productType?: KoiProductType;
+
+  @ApiPropertyOptional({ description: 'Danh sách category ID — 1 sản phẩm thuộc nhiều danh mục (nhiều–nhiều)', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  categoryIds?: string[];
 
   @ApiPropertyOptional({ description: 'SKU duy nhất (tự động generate nếu không cung cấp)' })
   @IsOptional()

@@ -20,6 +20,22 @@ export class ProductService {
     return slug;
   }
 
+  // Gộp categoryId (chính, legacy) + categoryIds (nhiều–nhiều) thành danh sách id duy nhất
+  private resolveCategoryIds(dto: { categoryId?: string; categoryIds?: string[] }): string[] {
+    const ids = [
+      ...(dto.categoryIds || []),
+      ...(dto.categoryId ? [dto.categoryId] : []),
+    ];
+    return [...new Set(ids.filter(Boolean))];
+  }
+
+  // Chuyển categoryLinks -> mảng categories phẳng cho response
+  private withCategories<T extends { categoryLinks?: any[] }>(p: T): any {
+    if (!p) return p;
+    const { categoryLinks, ...rest } = p as any;
+    return { ...rest, categories: (categoryLinks || []).map((l: any) => l.category) };
+  }
+
   private generateSku(productType: string, slug: string): string {
     const prefixMap: Record<string, string> = {
       WALLET: 'WD',
@@ -72,10 +88,14 @@ export class ProductService {
       if (existing) throw new ConflictException('Product with this SKU already exists');
     }
 
-    const sku = dto.sku || this.generateSku(dto.productType, slug);
+    const categoryIds = this.resolveCategoryIds(dto);
+    const primaryCategoryId = categoryIds[0];
+    const productType = dto.productType || 'ACCESSORY';
+
+    const sku = dto.sku || this.generateSku(productType, slug);
     const technicalSpecs = dto.technicalSpecs || dto.specs || {};
 
-    await this.validateTechnicalSpecs(dto.categoryId, technicalSpecs);
+    await this.validateTechnicalSpecs(primaryCategoryId, technicalSpecs);
 
     const providedTitle = dto.metaTitle ?? dto.seo?.metaTitle;
     const providedDesc = dto.metaDescription ?? dto.seo?.metaDescription;
@@ -84,8 +104,8 @@ export class ProductService {
       // Both provided — use as-is
     } else {
       let categoryName: string | undefined;
-      if (dto.categoryId) {
-        const cat = await this.prisma.koiCategory.findUnique({ where: { id: dto.categoryId } });
+      if (primaryCategoryId) {
+        const cat = await this.prisma.koiCategory.findUnique({ where: { id: primaryCategoryId } });
         categoryName = cat?.name;
       }
       const generated = generateProductSeo(dto.name?.vi || '', categoryName, dto.basePrice);
@@ -93,13 +113,13 @@ export class ProductService {
       if (!providedDesc) dto.metaDescription = generated.metaDescription;
     }
 
-    return this.prisma.koiProduct.create({
+    const created = await this.prisma.koiProduct.create({
       data: {
         name: dto.name as any,
         slug,
-        productType: dto.productType,
+        productType: productType as any,
         sku,
-        categoryId: dto.categoryId,
+        categoryId: primaryCategoryId,
         description: (dto.description || {}) as any,
         basePrice: dto.basePrice ?? undefined,
         status: dto.status ?? 'DRAFT',
@@ -108,13 +128,16 @@ export class ProductService {
         metaTitle: dto.metaTitle ?? dto.seo?.metaTitle,
         metaDescription: dto.metaDescription ?? dto.seo?.metaDescription,
         canonicalUrl: dto.seo?.canonicalUrl || slug,
+        categoryLinks: { create: categoryIds.map((categoryId) => ({ categoryId })) },
       },
       include: {
         images: { orderBy: { displayOrder: 'asc' } },
         variants: true,
         category: true,
+        categoryLinks: { include: { category: { select: { id: true, code: true, name: true, slug: true } } } },
       },
     });
+    return this.withCategories(created);
   }
 
   async findAll(page = 1, limit = 20, type?: string, status?: string, categoryId?: string) {
@@ -142,6 +165,7 @@ export class ProductService {
           updatedAt: true,
           categoryId: true,
           category: { select: { id: true, code: true, name: true, specsSchema: true } },
+          categoryLinks: { select: { category: { select: { id: true, code: true, name: true, slug: true } } } },
           _count: { select: { variants: true, images: true } },
           images: {
             orderBy: { displayOrder: 'asc' },
@@ -152,7 +176,7 @@ export class ProductService {
       this.prisma.koiProduct.count({ where }),
     ]);
 
-    const productsWithThumbnails = data.map(({ images, ...product }) => {
+    const productsWithThumbnails = data.map(({ images, categoryLinks, ...product }) => {
       const top = (images || []).slice(0, 3).map((img) => ({
         id: img.id,
         url: img.thumbnailUrl || img.url,
@@ -163,6 +187,7 @@ export class ProductService {
       const remaining = totalImages > 3 ? totalImages - 3 : 0;
       return {
         ...product,
+        categories: (categoryLinks || []).map((l: any) => l.category),
         thumbnails: { items: top, remaining },
       };
     });
@@ -175,6 +200,7 @@ export class ProductService {
       where: { id },
       include: {
         category: true,
+        categoryLinks: { include: { category: { select: { id: true, code: true, name: true, slug: true } } } },
         images: { orderBy: { displayOrder: 'asc' } },
         variants: { include: { images_rel: { orderBy: { displayOrder: 'asc' } } } },
         craftSpecs: true,
@@ -182,7 +208,7 @@ export class ProductService {
       },
     });
     if (!product) throw new NotFoundException('Product not found');
-    return product;
+    return this.withCategories(product);
   }
 
   async findBySlug(slug: string) {
@@ -203,14 +229,24 @@ export class ProductService {
 
     const technicalSpecs = dto.technicalSpecs || dto.specs;
     if (technicalSpecs) {
-      const catId = dto.categoryId || (await this.prisma.koiProduct.findUnique({ where: { id }, select: { categoryId: true } }))?.categoryId;
+      const catId = dto.categoryIds?.[0] ?? dto.categoryId ?? (existing as any).categoryId;
       await this.validateTechnicalSpecs(catId || undefined, technicalSpecs);
     }
+
+    // Nhiều–nhiều: nếu client gửi categoryIds (hoặc categoryId), thay toàn bộ danh mục
+    const categoriesProvided = dto.categoryIds !== undefined || dto.categoryId !== undefined;
+    const newCategoryIds = categoriesProvided ? this.resolveCategoryIds(dto) : null;
 
     const data: any = {};
     if (dto.name) data.name = dto.name;
     if (dto.productType) data.productType = dto.productType;
-    if (dto.categoryId !== undefined) data.categoryId = dto.categoryId;
+    if (newCategoryIds) {
+      data.categoryId = newCategoryIds[0] ?? null;
+      data.categoryLinks = {
+        deleteMany: {},
+        create: newCategoryIds.map((categoryId) => ({ categoryId })),
+      };
+    }
     if (dto.description) data.description = dto.description;
     if (dto.basePrice !== undefined) data.basePrice = dto.basePrice;
     if (dto.status) data.status = dto.status;
@@ -227,7 +263,7 @@ export class ProductService {
 
     const nameVi = dto.name?.vi || (existing.name as any)?.vi || '';
     let categoryName: string | undefined;
-    const catId = dto.categoryId || existing.categoryId;
+    const catId = (newCategoryIds ? newCategoryIds[0] : undefined) || existing.categoryId;
     if (catId) {
       const cat = await this.prisma.koiCategory.findUnique({ where: { id: catId } });
       categoryName = cat?.name;
@@ -256,11 +292,17 @@ export class ProductService {
       data.metaDescription = generateProductSeo(nameVi, categoryName, price).metaDescription;
     }
 
-    return this.prisma.koiProduct.update({
+    const updated = await this.prisma.koiProduct.update({
       where: { id },
       data,
-      include: { images: { orderBy: { displayOrder: 'asc' } }, variants: true, category: true },
+      include: {
+        images: { orderBy: { displayOrder: 'asc' } },
+        variants: true,
+        category: true,
+        categoryLinks: { include: { category: { select: { id: true, code: true, name: true, slug: true } } } },
+      },
     });
+    return this.withCategories(updated);
   }
 
   async remove(id: string) {

@@ -7,10 +7,15 @@ import * as path from 'path';
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
-  private deployInfo: Record<string, any>;
-
-  constructor() {
-    this.deployInfo = this.collectDeployInfo();
+  @Get()
+  @ApiOperation({ summary: 'Liveness check + deploy info' })
+  check() {
+    return {
+      ok: true,
+      service: 'koi-leather-api',
+      ts: new Date().toISOString(),
+      deploy: this.collectDeployInfo(),
+    };
   }
 
   private collectDeployInfo() {
@@ -23,65 +28,56 @@ export class HealthController {
 
     // Fallback to local git when not on Vercel
     if (!commitSha) {
-      try {
-        commitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
-      } catch {}
+      try { commitSha = execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim(); } catch {}
     }
     if (!commitRef) {
-      try {
-        commitRef = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
-      } catch {}
+      try { commitRef = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim(); } catch {}
     }
     if (!commitMsg) {
-      try {
-        commitMsg = execSync('git log -1 --pretty=%s', { encoding: 'utf-8' }).trim();
-      } catch {}
+      try { commitMsg = execSync('git log -1 --pretty=%s', { encoding: 'utf-8' }).trim(); } catch {}
     }
 
-    // Deploy timestamp: build-meta.json (written at build time) > git commit date > server boot time.
-    // On Vercel serverless there is no git binary, so build-meta.json is the reliable source.
-    let deployedAt = this.readBuildMeta();
+    // Deploy timestamp: build-meta.json (written at build time per deploy)
+    // Ưu tiên dist/ (Vercel output dir) > public/ > project root > git > runtime
+    const meta = this.readBuildMeta();
+    let deployedAt = meta?.buildTime;
+    let buildTimeDisplay = meta?.buildTimeDisplay;
+    let commitFromMeta = meta?.commit;
+    let shortCommitFromMeta = meta?.shortCommit;
+
     if (!deployedAt) {
-      try {
-        deployedAt = execSync('git log -1 --format=%cI', { encoding: 'utf-8' }).trim();
-      } catch {}
+      try { deployedAt = execSync('git log -1 --format=%cI', { encoding: 'utf-8' }).trim(); } catch {}
     }
     if (!deployedAt) {
       deployedAt = new Date().toISOString();
     }
 
+    const commit = commitFromMeta || commitSha || 'unknown';
+
     return {
-      commit: commitSha || 'unknown',
+      commit,
+      commitShort: (commit || '').slice(0, 7),
       branch: commitRef || 'unknown',
       message: commitMsg || '',
       deployedAt,
+      buildTimeDisplay: buildTimeDisplay || undefined,
+      serverTime: new Date().toISOString(),
       vercel: vercelEnv ? { environment: vercelEnv, deployId, url: vercelUrl } : undefined,
     };
   }
 
-  private readBuildMeta(): string | undefined {
+  private readBuildMeta(): Record<string, any> | undefined {
     const candidates = [
-      path.join(process.cwd(), 'public', 'build-meta.json'),
       path.join(process.cwd(), 'dist', 'build-meta.json'),
+      path.join(process.cwd(), 'public', 'build-meta.json'),
       path.join(process.cwd(), 'build-meta.json'),
     ];
     for (const file of candidates) {
       try {
         const meta = JSON.parse(fs.readFileSync(file, 'utf-8'));
-        if (meta?.buildTime) return meta.buildTime;
+        if (meta?.buildTime) return meta;
       } catch {}
     }
     return undefined;
-  }
-
-  @Get()
-  @ApiOperation({ summary: 'Liveness check + deploy info' })
-  check() {
-    return {
-      ok: true,
-      service: 'koi-leather-api',
-      ts: new Date().toISOString(),
-      deploy: this.deployInfo,
-    };
   }
 }

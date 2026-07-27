@@ -212,9 +212,24 @@ model KoiCategory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   products KoiProduct[]
+  categoryLinks KoiProductCategory[]
   @@index([isActive])
   @@index([displayOrder])
   @@map("koi_categories")
+  @@schema("koi_free_style")
+}
+
+// Bảng nối nhiều–nhiều: 1 sản phẩm thuộc nhiều danh mục và ngược lại.
+// categoryId cũ trên KoiProduct vẫn giữ làm "danh mục chính" (tương thích ngược).
+model KoiProductCategory {
+  productId  String
+  categoryId String
+  product    KoiProduct  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   KoiCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
+  @@id([productId, categoryId])
+  @@index([categoryId])
+  @@map("koi_product_categories")
   @@schema("koi_free_style")
 }
 
@@ -236,6 +251,7 @@ model KoiProduct {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   category    KoiCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryLinks KoiProductCategory[]
   images      KoiProductImage[]
   variants    KoiProductVariant[]
   craftSpecs  KoiCraftingSpec[]
