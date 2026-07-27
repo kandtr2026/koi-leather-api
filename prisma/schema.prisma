@@ -241,6 +241,9 @@ model KoiProduct {
   categoryId   String?
   description  String?
   basePrice    Float?
+  priceMin     Float?
+  priceMax     Float?
+  hasVariants  Boolean @default(false)
   status       String @default("DRAFT")
   sku          String? @unique
   externalId   String?
@@ -296,7 +299,9 @@ model KoiProductVariant {
   id        String @id @default(uuid())
   productId String
   sku         String @unique
+  title       String?
   price       Float?
+  hardwareOption String @default("none")
   stockStatus String @default("IN_STOCK")
   isDefault   Boolean @default(false)
   options String @default("{}")

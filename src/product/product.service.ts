@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SpecsValidatorService } from '../common/specs-validator.service';
-import { CreateProductDto } from './dto/create-product.dto';
+import { CreateProductDto, VariantDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Prisma } from '@prisma/client';
 import slugify from 'slugify';
@@ -20,7 +20,6 @@ export class ProductService {
     return slug;
   }
 
-  // Gộp categoryId (chính, legacy) + categoryIds (nhiều–nhiều) thành danh sách id duy nhất
   private resolveCategoryIds(dto: { categoryId?: string; categoryIds?: string[] }): string[] {
     const ids = [
       ...(dto.categoryIds || []),
@@ -29,7 +28,6 @@ export class ProductService {
     return [...new Set(ids.filter(Boolean))];
   }
 
-  // Chuyển categoryLinks -> mảng categories phẳng cho response
   private withCategories<T extends { categoryLinks?: any[] }>(p: T): any {
     if (!p) return p;
     const { categoryLinks, ...rest } = p as any;
@@ -63,19 +61,73 @@ export class ProductService {
 
   private async validateTechnicalSpecs(categoryId: string | undefined, technicalSpecs: Record<string, any>) {
     if (!categoryId || !technicalSpecs || Object.keys(technicalSpecs).length === 0) return;
-
     const category = await this.prisma.koiCategory.findUnique({ where: { id: categoryId } });
     if (!category) throw new BadRequestException(`Category ${categoryId} not found`);
-
     const schema = category.specsSchema as unknown as Record<string, any>;
     if (!schema || Object.keys(schema).length === 0) return;
-
     const { valid, errors } = this.specsValidator.validate(schema, technicalSpecs);
     if (!valid) {
-      throw new BadRequestException(
-        `Technical specs validation failed: ${errors.join('; ')}`,
-      );
+      throw new BadRequestException(`Technical specs validation failed: ${errors.join('; ')}`);
     }
+  }
+
+  private computePriceRange(
+    variants: { price?: number | null }[],
+    basePrice?: number | null,
+  ) {
+    if (!variants || variants.length === 0) {
+      return {
+        priceMin: basePrice ?? null,
+        priceMax: basePrice ?? null,
+        hasVariants: false,
+      };
+    }
+    const prices = variants.map(v => v.price).filter((p): p is number => p != null);
+    if (prices.length === 0) {
+      return { priceMin: basePrice ?? null, priceMax: basePrice ?? null, hasVariants: true };
+    }
+    return {
+      priceMin: Math.min(...prices),
+      priceMax: Math.max(...prices),
+      hasVariants: true,
+    };
+  }
+
+  private async upsertVariants(productId: string, variants: VariantDto[]) {
+    if (!variants || variants.length === 0) return [];
+
+    return this.prisma.$transaction(async (tx) => {
+      const incomingIds = variants.filter(v => v.id).map(v => v.id!);
+      await tx.koiProductVariant.deleteMany({
+        where: { productId, id: { notIn: incomingIds } },
+      });
+
+      const results: any[] = [];
+      for (const v of variants) {
+        const data: any = {
+          productId,
+          sku: v.sku,
+          title: v.title || null,
+          price: v.price,
+          hardwareOption: v.hardwareOption || 'none',
+          stockStatus: v.stockStatus || 'IN_STOCK',
+          isDefault: v.isDefault ?? false,
+          options: (v.options || {}) as any,
+        };
+
+        if (v.id) {
+          const existing = await tx.koiProductVariant.findUnique({ where: { id: v.id } });
+          if (existing) {
+            const updated = await tx.koiProductVariant.update({ where: { id: v.id }, data });
+            results.push(updated);
+            continue;
+          }
+        }
+        const created = await tx.koiProductVariant.create({ data });
+        results.push(created);
+      }
+      return results;
+    });
   }
 
   async create(dto: CreateProductDto) {
@@ -88,10 +140,14 @@ export class ProductService {
       if (existing) throw new ConflictException('Product with this SKU already exists');
     }
 
+    for (const v of dto.variants || []) {
+      const dup = await this.prisma.koiProductVariant.findUnique({ where: { sku: v.sku } });
+      if (dup) throw new ConflictException(`Variant SKU "${v.sku}" already exists`);
+    }
+
     const categoryIds = this.resolveCategoryIds(dto);
     const primaryCategoryId = categoryIds[0];
     const productType = dto.productType || 'ACCESSORY';
-
     const sku = dto.sku || this.generateSku(productType, slug);
     const technicalSpecs = dto.technicalSpecs || dto.specs || {};
 
@@ -101,7 +157,6 @@ export class ProductService {
     const providedDesc = dto.metaDescription ?? dto.seo?.metaDescription;
 
     if (providedTitle && providedDesc) {
-      // Both provided — use as-is
     } else {
       let categoryName: string | undefined;
       if (primaryCategoryId) {
@@ -113,6 +168,8 @@ export class ProductService {
       if (!providedDesc) dto.metaDescription = generated.metaDescription;
     }
 
+    const computed = this.computePriceRange(dto.variants || [], dto.basePrice);
+
     const created = await this.prisma.koiProduct.create({
       data: {
         name: dto.name as any,
@@ -122,6 +179,9 @@ export class ProductService {
         categoryId: primaryCategoryId,
         description: (dto.description || {}) as any,
         basePrice: dto.basePrice ?? undefined,
+        priceMin: computed.priceMin ?? undefined,
+        priceMax: computed.priceMax ?? undefined,
+        hasVariants: computed.hasVariants,
         status: dto.status ?? 'DRAFT',
         externalId: dto.externalId,
         technicalSpecs: technicalSpecs as any,
@@ -137,14 +197,38 @@ export class ProductService {
         categoryLinks: { include: { category: { select: { id: true, code: true, name: true, slug: true } } } },
       },
     });
+
+    if (dto.variants && dto.variants.length > 0) {
+      await this.upsertVariants(created.id, dto.variants);
+      const full = await this.prisma.koiProduct.findUnique({
+        where: { id: created.id },
+        include: {
+          variants: true,
+          images: { orderBy: { displayOrder: 'asc' } },
+          category: true,
+          categoryLinks: { include: { category: { select: { id: true, code: true, name: true, slug: true } } } },
+        },
+      });
+      return this.withCategories(full!);
+    }
+
     return this.withCategories(created);
   }
 
-  async findAll(page = 1, limit = 20, type?: string, status?: string, categoryId?: string) {
+  async findAll(page = 1, limit = 20, type?: string, status?: string, categoryId?: string, categorySlug?: string) {
     const where: Prisma.KoiProductWhereInput = {};
     if (type) where.productType = type as any;
     if (status) where.status = status as any;
-    if (categoryId) where.categoryId = categoryId;
+
+    // Resolve category filter: slug takes precedence over UUID
+    let resolvedCategoryId = categoryId;
+    if (categorySlug) {
+      const cat = await this.prisma.koiCategory.findUnique({ where: { slug: categorySlug } });
+      if (cat) resolvedCategoryId = cat.id;
+    }
+    if (resolvedCategoryId) {
+      where.categoryLinks = { some: { categoryId: resolvedCategoryId } };
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.koiProduct.findMany({
@@ -159,6 +243,9 @@ export class ProductService {
           productType: true,
           sku: true,
           basePrice: true,
+          priceMin: true,
+          priceMax: true,
+          hasVariants: true,
           status: true,
           technicalSpecs: true,
           createdAt: true,
@@ -217,7 +304,7 @@ export class ProductService {
       include: {
         category: true,
         images: { orderBy: { displayOrder: 'asc' } },
-        variants: true,
+        variants: { include: { images_rel: { orderBy: { displayOrder: 'asc' } } } },
       },
     });
     if (!product) throw new NotFoundException('Product not found');
@@ -233,13 +320,13 @@ export class ProductService {
       await this.validateTechnicalSpecs(catId || undefined, technicalSpecs);
     }
 
-    // Nhiều–nhiều: nếu client gửi categoryIds (hoặc categoryId), thay toàn bộ danh mục
     const categoriesProvided = dto.categoryIds !== undefined || dto.categoryId !== undefined;
     const newCategoryIds = categoriesProvided ? this.resolveCategoryIds(dto) : null;
 
     const data: any = {};
     if (dto.name) data.name = dto.name;
     if (dto.productType) data.productType = dto.productType;
+    if (dto.basePrice !== undefined) data.basePrice = dto.basePrice;
     if (newCategoryIds) {
       data.categoryId = newCategoryIds[0] ?? null;
       data.categoryLinks = {
@@ -248,7 +335,6 @@ export class ProductService {
       };
     }
     if (dto.description) data.description = dto.description;
-    if (dto.basePrice !== undefined) data.basePrice = dto.basePrice;
     if (dto.status) data.status = dto.status;
     if (dto.externalId !== undefined) data.externalId = dto.externalId;
     if (dto.sku !== undefined) data.sku = dto.sku;
@@ -270,7 +356,6 @@ export class ProductService {
     }
     const price = dto.basePrice ?? existing.basePrice ?? undefined;
 
-    // Resolve metaTitle: explicit DTO > seo sub-object > existing DB > auto-generate
     if (dto.metaTitle !== undefined) {
       data.metaTitle = dto.metaTitle;
     } else if (dto.seo?.metaTitle !== undefined) {
@@ -281,7 +366,6 @@ export class ProductService {
       data.metaTitle = generateProductSeo(nameVi, categoryName, price).metaTitle;
     }
 
-    // Resolve metaDescription: explicit DTO > seo sub-object > existing DB > auto-generate
     if (dto.metaDescription !== undefined) {
       data.metaDescription = dto.metaDescription;
     } else if (dto.seo?.metaDescription !== undefined) {
@@ -290,6 +374,15 @@ export class ProductService {
       data.metaDescription = existing.metaDescription;
     } else {
       data.metaDescription = generateProductSeo(nameVi, categoryName, price).metaDescription;
+    }
+
+    if (dto.variants !== undefined) {
+      await this.upsertVariants(id, dto.variants);
+      const allVariants = await this.prisma.koiProductVariant.findMany({ where: { productId: id } });
+      const computed = this.computePriceRange(allVariants, dto.basePrice ?? existing.basePrice);
+      data.priceMin = computed.priceMin;
+      data.priceMax = computed.priceMax;
+      data.hasVariants = computed.hasVariants;
     }
 
     const updated = await this.prisma.koiProduct.update({
@@ -316,6 +409,80 @@ export class ProductService {
     return this.prisma.koiProduct.update({
       where: { id },
       data: { status: newStatus },
+    });
+  }
+
+  async createVariant(productId: string, dto: VariantDto) {
+    await this.findById(productId);
+    const existing = await this.prisma.koiProductVariant.findUnique({ where: { sku: dto.sku } });
+    if (existing) throw new ConflictException(`Variant SKU "${dto.sku}" already exists`);
+
+    const variant = await this.prisma.koiProductVariant.create({
+      data: {
+        productId,
+        sku: dto.sku,
+        title: dto.title || null,
+        price: dto.price,
+        hardwareOption: dto.hardwareOption || 'none',
+        stockStatus: dto.stockStatus || 'IN_STOCK',
+        isDefault: dto.isDefault ?? false,
+        options: (dto.options || {}) as any,
+      },
+    });
+
+    await this.recomputePriceRange(productId);
+    return variant;
+  }
+
+  async updateVariant(variantId: string, dto: Partial<VariantDto>) {
+    const variant = await this.prisma.koiProductVariant.findUnique({ where: { id: variantId } });
+    if (!variant) throw new NotFoundException('Variant not found');
+
+    if (dto.sku && dto.sku !== variant.sku) {
+      const dup = await this.prisma.koiProductVariant.findUnique({ where: { sku: dto.sku } });
+      if (dup) throw new ConflictException(`Variant SKU "${dto.sku}" already exists`);
+    }
+
+    const data: any = {};
+    if (dto.sku !== undefined) data.sku = dto.sku;
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.price !== undefined) data.price = dto.price;
+    if (dto.hardwareOption !== undefined) data.hardwareOption = dto.hardwareOption;
+    if (dto.stockStatus !== undefined) data.stockStatus = dto.stockStatus;
+    if (dto.isDefault !== undefined) data.isDefault = dto.isDefault;
+    if (dto.options !== undefined) data.options = dto.options as any;
+
+    const updated = await this.prisma.koiProductVariant.update({
+      where: { id: variantId },
+      data,
+    });
+
+    await this.recomputePriceRange(variant.productId);
+    return updated;
+  }
+
+  async removeVariant(variantId: string) {
+    const variant = await this.prisma.koiProductVariant.findUnique({ where: { id: variantId } });
+    if (!variant) throw new NotFoundException('Variant not found');
+
+    await this.prisma.koiProductVariant.delete({ where: { id: variantId } });
+    await this.recomputePriceRange(variant.productId);
+    return { deleted: true };
+  }
+
+  private async recomputePriceRange(productId: string) {
+    const variants = await this.prisma.koiProductVariant.findMany({
+      where: { productId },
+    });
+    const product = await this.prisma.koiProduct.findUnique({ where: { id: productId } });
+    const computed = this.computePriceRange(variants, product?.basePrice);
+    await this.prisma.koiProduct.update({
+      where: { id: productId },
+      data: {
+        priceMin: computed.priceMin,
+        priceMax: computed.priceMax,
+        hasVariants: computed.hasVariants,
+      },
     });
   }
 }

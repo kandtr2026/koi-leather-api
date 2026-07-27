@@ -214,6 +214,59 @@ export class InventorySyncService {
   }
 
   /**
+   * Deduct hardware (brass tag) inventory when a variant with hardwareOption='brass_tag' is ordered.
+   * Looks up a KoiRawMaterial with materialType='HARDWARE' matching the hardware SKU keyword.
+   */
+  async deductHardwareForVariant(variantId: string, quantity = 1) {
+    const variant = await this.prisma.koiProductVariant.findUnique({
+      where: { id: variantId },
+    });
+    if (!variant || variant.hardwareOption !== 'brass_tag') return false;
+
+    const hardwareMaterial = await this.prisma.koiRawMaterial.findFirst({
+      where: {
+        materialType: 'HARDWARE',
+        name: { contains: 'Tag' },
+      },
+    });
+    if (!hardwareMaterial) {
+      this.logger.warn(`No HARDWARE material found for brass_tag deduction (variant ${variantId})`);
+      return false;
+    }
+
+    const newTotal = Math.max(0, Number(hardwareMaterial.totalQuantity) - quantity);
+    const newAvailable = Math.max(0, Number(hardwareMaterial.availableQuantity) - quantity);
+
+    await this.prisma.koiRawMaterial.update({
+      where: { id: hardwareMaterial.id },
+      data: {
+        totalQuantity: newTotal,
+        availableQuantity: newAvailable,
+        lastSyncedAt: new Date(),
+        syncStatus: 'PENDING',
+      },
+    });
+
+    await this.prisma.koiInventoryTransaction.create({
+      data: {
+        materialId: hardwareMaterial.id,
+        orderId: `variant-${variantId}`,
+        transactionType: 'CONSUMPTION',
+        quantity: -quantity,
+        costAtTransaction: hardwareMaterial.unitCost,
+        notes: `Auto-deduct brass_tag for variant ${variant.sku}`,
+      },
+    });
+
+    this.logger.log(`Deducted ${quantity}x ${hardwareMaterial.name} for variant ${variant.sku}`);
+
+    if (hardwareMaterial.externalId) {
+      await this.pushUpdate(hardwareMaterial.id);
+    }
+    return true;
+  }
+
+  /**
    * Sync all pending materials
    */
   async syncPending() {

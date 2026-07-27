@@ -81,31 +81,67 @@ export class SeoService {
   async generateProductJsonLd(productId: string) {
     const product = await this.prisma.koiProduct.findUnique({
       where: { id: productId },
-      include: { images: { where: { isPrimary: true }, take: 1 } },
+      include: {
+        images: { where: { isPrimary: true }, take: 1 },
+        variants: { select: { sku: true, title: true, price: true, stockStatus: true, hardwareOption: true } },
+      },
     });
     if (!product) throw new NotFoundException('Product not found');
 
     const name = (product.name as any)?.vi || (product.name as any)?.en || 'Koi Leather Product';
+    const offers: any[] = [];
+    const variants = product.variants || [];
 
-    return {
+    if (variants.length > 0) {
+      for (const v of variants) {
+        if (v.price == null) continue;
+        offers.push({
+          '@type': 'Offer',
+          name: v.title || name,
+          sku: v.sku,
+          price: Number(v.price),
+          priceCurrency: 'VND',
+          availability: v.stockStatus === 'IN_STOCK'
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/LimitedAvailability',
+          url: `https://koileather.vn/san-pham/${product.slug}?variant=${v.sku}`,
+        });
+      }
+    }
+
+    const schema: Record<string, any> = {
       '@context': 'https://schema.org',
       '@type': 'Product',
       name,
       sku: (product as any).sku || product.id,
       description: (product.description as any)?.vi || '',
-      brand: {
-        '@type': 'Brand',
-        name: 'Koi Leather',
-      },
+      brand: { '@type': 'Brand', name: 'Koi Leather' },
       image: product.images?.[0]?.url || undefined,
-      offers: {
+    };
+
+    if (offers.length > 1) {
+      const prices = offers.map((o: any) => o.price).filter(Boolean);
+      schema.offers = {
+        '@type': 'AggregateOffer',
+        priceCurrency: 'VND',
+        lowPrice: Math.min(...prices),
+        highPrice: Math.max(...prices),
+        offerCount: offers.length,
+        offers,
+      };
+    } else if (offers.length === 1) {
+      schema.offers = offers[0];
+    } else if (product.basePrice != null) {
+      schema.offers = {
         '@type': 'Offer',
-        price: product.basePrice ? Number(product.basePrice) : undefined,
+        price: Number(product.basePrice),
         priceCurrency: 'VND',
         availability: 'https://schema.org/InStock',
         url: `https://koileather.vn/san-pham/${product.slug}`,
-      },
-    };
+      };
+    }
+
+    return schema;
   }
 
   async generateBreadcrumbJsonLd(items: { name: string; url: string }[]) {

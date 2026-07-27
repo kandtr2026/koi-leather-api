@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsObject, IsNumber, ValidateNested, IsUUID, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsObject, IsNumber, ValidateNested, IsUUID, IsArray, Min, Max, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { KoiProductType, KoiProductStatus } from '../../common/enums';
@@ -12,6 +12,47 @@ export class SeoMetadataDto {
 
   @ApiPropertyOptional({ description: 'Canonical URL slug' })
   canonicalUrl?: string;
+}
+
+export class VariantDto {
+  @ApiPropertyOptional({ description: 'Variant UUID (omit for new variant)' })
+  @IsOptional()
+  @IsUUID()
+  id?: string;
+
+  @ApiProperty({ description: 'SKU duy nhất cho biến thể' })
+  @IsString()
+  sku: string;
+
+  @ApiPropertyOptional({ description: 'Tên biến thể (VD: Trơn, Có tag kim loại)' })
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @ApiProperty({ description: 'Giá biến thể' })
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @ApiPropertyOptional({ description: 'Option phụ kiện: none | brass_tag', default: 'none' })
+  @IsOptional()
+  @IsString()
+  hardwareOption?: string;
+
+  @ApiPropertyOptional({ description: 'Trạng thái tồn kho', default: 'IN_STOCK' })
+  @IsOptional()
+  @IsString()
+  stockStatus?: string;
+
+  @ApiPropertyOptional({ description: 'Có phải biến thể mặc định không?', default: false })
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
+
+  @ApiPropertyOptional({ description: 'Options JSON (leather, color, size...)' })
+  @IsOptional()
+  @IsObject()
+  options?: Record<string, any>;
 }
 
 export class CreateProductDto {
@@ -101,4 +142,11 @@ export class CreateProductDto {
   @ValidateNested()
   @Type(() => SeoMetadataDto)
   seo?: SeoMetadataDto;
+
+  @ApiPropertyOptional({ description: 'Mảng biến thể sản phẩm', type: [VariantDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => VariantDto)
+  variants?: VariantDto[];
 }

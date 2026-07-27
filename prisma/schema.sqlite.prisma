@@ -29,6 +29,9 @@ model Product {
   categoryId   String?
   description  Json?
   basePrice    Float?
+  priceMin     Float?
+  priceMax     Float?
+  hasVariants  Boolean @default(false)
   status       String  @default("DRAFT")
   sku          String? @unique
   externalId   String?
@@ -85,7 +88,9 @@ model ProductVariant {
   productId String
 
   sku         String @unique
+  title       String?
   price       Float?
+  hardwareOption String @default("none")
   stockStatus String @default("IN_STOCK")
   isDefault   Boolean @default(false)
 
