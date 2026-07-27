@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SpecsValidatorService } from '../common/specs-validator.service';
+import { InventorySyncService } from '../inventory-sync/inventory-sync.service';
 import { CreateProductDto, VariantDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Prisma } from '@prisma/client';
@@ -12,6 +13,7 @@ export class ProductService {
   constructor(
     private prisma: PrismaService,
     private specsValidator: SpecsValidatorService,
+    private inventorySync: InventorySyncService,
   ) {}
 
   private generateSlug(nameVi: string): string {
@@ -216,7 +218,7 @@ export class ProductService {
   }
 
   async findAll(page = 1, limit = 20, type?: string, status?: string, categoryId?: string, categorySlug?: string) {
-    const where: Prisma.KoiProductWhereInput = {};
+    const where: Prisma.KoiProductWhereInput = { isDeleted: false };
     if (type) where.productType = type as any;
     if (status) where.status = status as any;
 
@@ -283,8 +285,8 @@ export class ProductService {
   }
 
   async findById(id: string) {
-    const product = await this.prisma.koiProduct.findUnique({
-      where: { id },
+    const product = await this.prisma.koiProduct.findFirst({
+      where: { id, isDeleted: false },
       include: {
         category: true,
         categoryLinks: { include: { category: { select: { id: true, code: true, name: true, slug: true } } } },
@@ -299,8 +301,8 @@ export class ProductService {
   }
 
   async findBySlug(slug: string) {
-    const product = await this.prisma.koiProduct.findUnique({
-      where: { slug },
+    const product = await this.prisma.koiProduct.findFirst({
+      where: { slug, isDeleted: false },
       include: {
         category: true,
         images: { orderBy: { displayOrder: 'asc' } },
@@ -400,7 +402,52 @@ export class ProductService {
 
   async remove(id: string) {
     await this.findById(id);
-    return this.prisma.koiProduct.delete({ where: { id } });
+
+    const { syncedMaterialIds, deletedAt } = await this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+
+      await tx.koiProductionOrder.updateMany({
+        where: { variant: { productId: id } },
+        data: { status: 'CANCELLED' },
+      });
+
+      await tx.koiProduct.update({
+        where: { id },
+        data: { isDeleted: true, deletedAt: now },
+      });
+
+      const cancelledOrders = await tx.koiProductionOrder.findMany({
+        where: { variant: { productId: id } },
+      });
+      const materialIds: string[] = [];
+      for (const order of cancelledOrders) {
+        const allocations = order.materialsAllocated as unknown as Array<{ material_id: string; qty: number }>;
+        if (!allocations || allocations.length === 0) continue;
+        for (const alloc of allocations) {
+          if (!alloc.material_id) continue;
+          await tx.koiRawMaterial.update({
+            where: { id: alloc.material_id },
+            data: {
+              reservedQuantity: { decrement: alloc.qty },
+              availableQuantity: { increment: alloc.qty },
+            },
+          });
+          materialIds.push(alloc.material_id);
+        }
+      }
+
+      return { syncedMaterialIds: materialIds, deletedAt: now };
+    });
+
+    if (syncedMaterialIds.length > 0) {
+      for (const materialId of [...new Set(syncedMaterialIds)]) {
+        this.inventorySync.pushUpdate(materialId).catch((err) =>
+          Logger.warn(`Failed to sync material ${materialId} to kitleather.vn after product delete: ${err.message}`),
+        );
+      }
+    }
+
+    return { deleted: true, id, deletedAt };
   }
 
   async toggleStatus(id: string) {

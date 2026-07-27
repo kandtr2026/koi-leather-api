@@ -53,8 +53,7 @@ export class ProductController {
   }
 
   @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete product and all related images/variants' })
+  @ApiOperation({ summary: 'Soft-delete product. Cancels related production orders and releases raw material reservations.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.productService.remove(id);
   }

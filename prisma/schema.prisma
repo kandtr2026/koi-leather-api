@@ -251,6 +251,8 @@ model KoiProduct {
   metaTitle       String?
   metaDescription String?
   canonicalUrl    String?
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   category    KoiCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -396,7 +398,7 @@ model KoiProductionOrder {
   notes String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  variant KoiProductVariant @relation(fields: [variantId], references: [id])
+  variant KoiProductVariant @relation(fields: [variantId], references: [id], onDelete: SetNull)
   @@index([variantId])
   @@index([status])
   @@index([createdAt])

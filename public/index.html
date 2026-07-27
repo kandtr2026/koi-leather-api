@@ -90,9 +90,6 @@
   <div class="bg-white border-b px-6 py-3 flex gap-2">
     <button class="tab-btn active" data-tab="products"><i class="fas fa-box mr-2 text-amber-500"></i>Sản phẩm</button>
     <button class="tab-btn" data-tab="prodcats"><i class="fas fa-layer-group mr-2 text-amber-500"></i>Loại sản phẩm</button>
-    <button class="tab-btn" data-tab="materials"><i class="fas fa-database mr-2 text-amber-500"></i>Nguyên liệu</button>
-    <button class="tab-btn" data-tab="orders"><i class="fas fa-clipboard-list mr-2 text-amber-500"></i>Lệnh sản xuất</button>
-    <button class="tab-btn" data-tab="specs"><i class="fas fa-ruler mr-2 text-amber-500"></i>Crafting Specs</button>
     <button class="tab-btn" data-tab="imgcats"><i class="fas fa-tags mr-2 text-amber-500"></i>Loại ảnh</button>
   </div>
 
@@ -137,44 +134,6 @@
       </div>
     </div>
 
-    <!-- MATERIALS PANEL -->
-    <div class="panel" id="panel-materials">
-      <div class="flex justify-between items-center mb-4">
-        <p class="text-sm text-gray-500">Nguyên liệu — thay đổi giá ảnh hưởng lệnh mới, không ảnh hưởng snapshot cũ</p>
-        <button onclick="openCreateMaterial()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
-          <i class="fas fa-plus"></i> Thêm nguyên liệu
-        </button>
-      </div>
-      <div id="materialTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <div class="skeleton-loading p-6 space-y-3">
-          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
-          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
-          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
-          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
-          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ORDERS PANEL -->
-    <div class="panel" id="panel-orders">
-      <div class="flex justify-between items-center mb-4">
-        <p class="text-sm text-gray-500">Lệnh sản xuất — snapshot chi phí nguyên liệu tại thời điểm chốt</p>
-        <button onclick="openCreateOrder()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
-          <i class="fas fa-plus"></i> Tạo lệnh mới
-        </button>
-      </div>
-      <div id="orderTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <div class="skeleton-loading p-6 space-y-3">
-          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
-          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
-          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
-          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
-          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- IMAGE CATEGORIES PANEL -->
     <div class="panel" id="panel-imgcats">
       <div class="flex justify-between items-center mb-4">
@@ -184,25 +143,6 @@
         </button>
       </div>
       <div id="imgCatTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <div class="skeleton-loading p-6 space-y-3">
-          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
-          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
-          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
-          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
-          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SPECS PANEL -->
-    <div class="panel" id="panel-specs">
-      <div class="flex justify-between items-center mb-4">
-        <p class="text-sm text-gray-500">Crafting Specs — pattern files, yield calculation, crafting details</p>
-        <button onclick="openCreateSpec()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
-          <i class="fas fa-plus"></i> Thêm spec
-        </button>
-      </div>
-      <div id="specTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div class="skeleton-loading p-6 space-y-3">
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
@@ -490,9 +430,6 @@ function fm(n) { return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ'; }
 const TAB_MAP = {
   'products':         { panel: 'products', label: 'Sản phẩm' },
   'categories':       { panel: 'prodcats', label: 'Loại sản phẩm' },
-  'materials':        { panel: 'materials', label: 'Nguyên liệu' },
-  'production-orders': { panel: 'orders',   label: 'Lệnh sản xuất' },
-  'crafting-specs':   { panel: 'specs',    label: 'Crafting Specs' },
   'image-types':      { panel: 'imgcats',  label: 'Loại ảnh' },
 };
 const URL_TABS = Object.keys(TAB_MAP);
@@ -1807,7 +1744,7 @@ function showDeployDetail() {
 // ========== PROGRESSIVE LOADING ==========
 function updateHeaderStatus() {
   document.getElementById('headerStatus').textContent =
-    `${products.length} sản phẩm · ${materials.length} nguyên liệu · ${orders.length} lệnh SX · ${prodCats.length} loại SP · ${imgCats.length} loại ảnh`;
+    `${products.length} sản phẩm · ${prodCats.length} loại SP · ${imgCats.length} loại ảnh`;
 }
 
 // Load each dataset independently — no Promise.all bottleneck
@@ -1839,10 +1776,7 @@ async function init() {
   fetchAuthConfig();
   checkAuth();
   loadProducts().then(updateHeaderStatus).catch(() => {});
-  loadMaterials().then(updateHeaderStatus).catch(() => {});
   loadProdCats().then(() => { updateHeaderStatus(); if (products.length) renderProducts(); }).catch(() => {});
-  loadOrders().then(updateHeaderStatus).catch(() => {});
-  loadSpecs().then(updateHeaderStatus).catch(() => {});
   loadImgCats().then(updateHeaderStatus).catch(() => {});
 }
 init();
