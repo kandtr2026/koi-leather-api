@@ -989,12 +989,15 @@ async function editProduct(id) {
 
 async function saveProduct() {
   const id = document.getElementById('editProductId').value;
+  const productType = document.getElementById('pType').value;
   const body = {
     name: { vi: document.getElementById('pNameVi').value },
-    productType: document.getElementById('pType').value,
+    productType,
     basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
     externalId: document.getElementById('pExtId').value || undefined,
   };
+  const selectedCat = prodCats.find(c => c.code === productType);
+  if (selectedCat) body.categoryId = selectedCat.id;
   body.technicalSpecs = collectSpecsFormValues();
   try {
     const seo = JSON.parse(document.getElementById('pSeo').value || '{}');
