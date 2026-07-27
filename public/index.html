@@ -4,8 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Koi Leather Admin</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Tailwind biên dịch sẵn (tĩnh) — không còn compile runtime, hiển thị tức thì -->
+  <link rel="stylesheet" href="/tailwind.css">
+  <!-- Font Awesome tải bất đồng bộ để không chặn lần vẽ đầu -->
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -229,9 +232,7 @@
         <div id="pSpecsDynamic" class="hidden"></div>
         <textarea id="pSpecs" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder='{"card_slots":8,"cash_pockets":2}'></textarea>
       </div>
-      <div><label class="block text-xs font-medium text-gray-600 mb-1">SEO Metadata (JSON)</label>
-        <textarea id="pSeo" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder='{"metaTitle":"Ví đứng Epsom Navy","metaDescription":"..."}'></textarea>
-      </div>
+
 
       <!-- IMAGE GALLERY -->
       <div class="border-t pt-4 mt-4">
@@ -946,7 +947,7 @@ function onProductTypeChange() {
 
 function openCreateProduct() {
   document.getElementById('productModalTitle').textContent = 'Thêm sản phẩm';
-  ['editProductId','pNameVi','pPrice','pExtId','pSeo'].forEach(id => document.getElementById(id).value = '');
+  ['editProductId','pNameVi','pPrice','pExtId'].forEach(id => document.getElementById(id).value = '');
   populateProductTypeOptions();
   document.getElementById('pType').value = prodCats[0]?.code || '';
   currentProductId = null;
@@ -969,13 +970,12 @@ async function editProduct(id) {
   populateProductTypeOptions();
   const typeSel = document.getElementById('pType');
   // Nếu loại cũ của SP không còn trong danh mục, vẫn thêm tạm để không mất dữ liệu
-  if (p.productType && !prodCats.some(c => c.code === p.productType)) {
+  if (p.productType && !prodCats.some(c => toProductType(c) === p.productType)) {
     typeSel.insertAdjacentHTML('beforeend', `<option value="${p.productType}">${esc(p.productType)} (không còn trong danh mục)</option>`);
   }
   typeSel.value = p.productType;
   document.getElementById('pPrice').value = p.basePrice || '';
   document.getElementById('pExtId').value = p.externalId || '';
-  document.getElementById('pSeo').value = JSON.stringify({ metaTitle:p.metaTitle||'', metaDescription:p.metaDescription||'' }, null, 2);
   const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
   const schema = getCategorySchema(p.productType);
   buildSpecsForm(schema, specs);
@@ -990,20 +990,19 @@ async function editProduct(id) {
 async function saveProduct() {
   const id = document.getElementById('editProductId').value;
   const productType = document.getElementById('pType').value;
+  // Bảo đảm productType luôn là enum chuẩn ngay cả value từ dropdown
+  const resolvedType = VALID_PRODUCT_TYPES.includes(productType) ? productType : null;
+  if (!resolvedType) { toast('Lỗi: Loại sản phẩm không hợp lệ'); return; }
   const body = {
     name: { vi: document.getElementById('pNameVi').value },
-    productType,
+    productType: resolvedType,
     basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
     externalId: document.getElementById('pExtId').value || undefined,
   };
-  const selectedCat = prodCats.find(c => c.code === productType);
+  // Tìm categoryId từ category có productType tương ứng
+  const selectedCat = prodCats.find(c => toProductType(c) === resolvedType);
   if (selectedCat) body.categoryId = selectedCat.id;
   body.technicalSpecs = collectSpecsFormValues();
-  try {
-    const seo = JSON.parse(document.getElementById('pSeo').value || '{}');
-    if (seo.metaTitle) body.metaTitle = seo.metaTitle;
-    if (seo.metaDescription) body.metaDescription = seo.metaDescription;
-  } catch(e) {}
 
   try {
     let newId = id;
@@ -1206,6 +1205,35 @@ async function viewOrder(id) {
 // ========== PRODUCT CATEGORIES ==========
 let prodCats = [];
 
+// Các giá trị productType hợp lệ mà backend enum (KoiProductType) chấp nhận
+const VALID_PRODUCT_TYPES = ['WALLET', 'BELT', 'WATCH_STRAP', 'BAG', 'ACCESSORY'];
+
+// Map từ tên hiển thị / slug / code không chuẩn về enum chuẩn
+const PRODUCT_TYPE_BY_NAME = {
+  'ví': 'WALLET', 'ví / bóp / cardholder': 'WALLET', 'wallet': 'WALLET',
+  'thắt lưng': 'BELT', 'belt': 'BELT',
+  'watch strap': 'WATCH_STRAP', 'dây đồng hồ': 'WATCH_STRAP', 'dây da đồng hồ': 'WATCH_STRAP',
+  'túi': 'BAG', 'bag': 'BAG', 'túi / balo / clutch': 'BAG',
+  'phụ kiện': 'ACCESSORY', 'accessory': 'ACCESSORY', 'phụ kiện da': 'ACCESSORY',
+};
+
+// Chuyển đổi category bất kỳ thành productType enum hợp lệ, null nếu không map được
+function toProductType(cat) {
+  if (!cat) return null;
+  // Ưu tiên: code đã là enum chuẩn
+  const code = (cat.code || '').toUpperCase().replace(/\s+/g, '_');
+  if (VALID_PRODUCT_TYPES.includes(code)) return code;
+  // Nhánh 2: tra theo tên hiển thị (vi/en)
+  const name = (cat.name || '').toLowerCase().trim();
+  if (PRODUCT_TYPE_BY_NAME[name]) return PRODUCT_TYPE_BY_NAME[name];
+  // Nhánh 3: tra theo slug
+  const slug = (cat.slug || '').toLowerCase().replace(/-/g, ' ');
+  if (PRODUCT_TYPE_BY_NAME[slug]) return PRODUCT_TYPE_BY_NAME[slug];
+  // Nhánh 4: tra theo code gốc (lowercased)
+  if (PRODUCT_TYPE_BY_NAME[code.toLowerCase()]) return PRODUCT_TYPE_BY_NAME[code.toLowerCase()];
+  return null;
+}
+
 async function loadProdCats() {
   try {
     const raw = await api('/categories');
@@ -1216,18 +1244,20 @@ async function loadProdCats() {
 }
 
 // Nạp danh sách "Loại" ở form sản phẩm từ danh mục (/categories)
+// Chỉ render các category có thể map được sang productType enum chuẩn
 function populateProductTypeOptions() {
   const sel = document.getElementById('pType');
   if (!sel) return;
-  const current = sel.value; // giữ lựa chọn hiện tại nếu còn hợp lệ
-  if (!prodCats.length) {
+  const current = sel.value;
+  const validCats = prodCats.filter(c => toProductType(c));
+  if (!validCats.length) {
     sel.innerHTML = '<option value="">— Chưa có loại sản phẩm —</option>';
     return;
   }
-  sel.innerHTML = prodCats
-    .map(c => `<option value="${c.code}">${esc(c.name)}</option>`)
+  sel.innerHTML = validCats
+    .map(c => `<option value="${toProductType(c)}">${esc(c.name)}</option>`)
     .join('');
-  if (current && prodCats.some(c => c.code === current)) sel.value = current;
+  if (current && validCats.some(c => toProductType(c) === current)) sel.value = current;
 }
 
 function renderProdCats() {
