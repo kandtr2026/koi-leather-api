@@ -1551,19 +1551,24 @@ async function loadDeployInfo() {
     document.getElementById('ddCommit').textContent = d.commit || '-';
     document.getElementById('ddBranch').textContent = d.branch || '-';
     document.getElementById('ddMsg').textContent = d.message || '-';
-    // Build time: ưu tiên buildTimeDisplay (đã format UTC+7 từ build script), fallback deployedAt
-    const displayTime = d.buildTimeDisplay || d.deployedAt;
-    const deployDate = displayTime ? new Date(displayTime) : null;
-    document.getElementById('ddTime').textContent = deployDate && !isNaN(deployDate.getTime())
-      ? deployDate.toLocaleString('vi-VN') : (displayTime || '-');
-    // Show deploy time in badge
-    if (displayTime && deployDate && !isNaN(deployDate.getTime())) {
-      const badgeTime = document.getElementById('deployTimestamp');
-      const timeText = document.getElementById('deployTimeText');
-      const pad = n => String(n).padStart(2, '0');
-      timeText.textContent = `${pad(deployDate.getDate())}/${pad(deployDate.getMonth()+1)}/${deployDate.getFullYear()} ${pad(deployDate.getHours())}:${pad(deployDate.getMinutes())}`;
-      badgeTime.classList.remove('hidden');
-      document.getElementById('deployBadgeInner').title = `Deploy: ${deployDate.toLocaleString('vi-VN')} · ${commit}`;
+    // Build time. deployedAt is ISO-8601 (parseable); buildTimeDisplay is a
+    // pre-formatted "DD/MM/YYYY HH:mm" string that new Date() CANNOT parse —
+    // so always parse from deployedAt, and only use buildTimeDisplay as a
+    // ready-made display string.
+    const deployDate = d.deployedAt ? new Date(d.deployedAt) : null;
+    const validDate = deployDate && !isNaN(deployDate.getTime());
+    const pad = n => String(n).padStart(2, '0');
+    const compact = validDate
+      ? `${pad(deployDate.getDate())}/${pad(deployDate.getMonth()+1)}/${deployDate.getFullYear()} ${pad(deployDate.getHours())}:${pad(deployDate.getMinutes())}`
+      : null;
+    // Prefer server-formatted string, else compact from ISO, else raw ISO.
+    const displayStr = d.buildTimeDisplay || compact || d.deployedAt || '-';
+    document.getElementById('ddTime').textContent = displayStr;
+    // Show deploy time in badge whenever we have any usable value.
+    if (displayStr && displayStr !== '-') {
+      document.getElementById('deployTimeText').textContent = d.buildTimeDisplay || compact || displayStr;
+      document.getElementById('deployTimestamp').classList.remove('hidden');
+      document.getElementById('deployBadgeInner').title = `Deploy: ${displayStr} · ${commit}`;
     }
     if (d.vercel) {
       document.getElementById('ddVercelRow').classList.remove('hidden');
