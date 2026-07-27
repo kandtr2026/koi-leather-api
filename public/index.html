@@ -210,12 +210,34 @@
     </div>
     <div class="space-y-3">
       <input type="hidden" id="editProductId">
-      <div class="grid grid-cols-2 gap-3">
-        <div class="col-span-2"><label class="block text-xs font-medium text-gray-600 mb-1">Tên sản phẩm</label><input id="pNameVi" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví đứng Epsom Navy"></div>
+
+      <!-- IMAGE UPLOAD & PREVIEW — luôn hiển thị ở đầu modal -->
+      <div>
+        <div class="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1"><i class="fas fa-image text-amber-500"></i> Hình ảnh sản phẩm <span class="font-normal text-gray-400 lowercase">(tải lên trước, nhập thông tin sau)</span></div>
+        <!-- Existing / uploaded images (edit mode) -->
+        <div id="imageGallery" class="flex flex-wrap gap-3 mb-3 min-h-[90px]"></div>
+        <!-- Pending file previews (create + edit) -->
+        <div id="pendingPreviews" class="flex flex-wrap gap-3 mb-3 min-h-[0px]"></div>
+        <!-- Drag-drop upload zone -->
+        <div id="uploadZone" class="border-2 border-dashed border-gray-300 rounded-xl p-5 text-center cursor-pointer hover:border-amber-400 hover:bg-amber-50/30 transition">
+          <div onclick="document.getElementById('fileInput').click()">
+            <i class="fas fa-cloud-upload-alt text-2xl text-gray-300 mb-1"></i>
+            <p class="text-sm text-gray-500">Kéo thả ảnh vào đây hoặc <span class="text-amber-500 font-medium">chọn file</span></p>
+            <p class="text-xs text-gray-400 mt-0.5">Tự động chuyển đổi sang WebP chất lượng cao</p>
+          </div>
+          <input id="fileInput" type="file" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
+          <div id="uploadProgress" class="hidden mt-3"><div class="w-full bg-gray-200 rounded-full h-1.5"><div id="progressBar" class="bg-amber-500 h-1.5 rounded-full" style="width:0%"></div></div><p id="progressText" class="text-xs text-gray-400 mt-1">Đang xử lý...</p></div>
+        </div>
+        <div id="uploadTypeRadios" class="flex gap-3 mt-2"></div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Tên sản phẩm</label>
+        <input id="pNameVi" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví đứng Epsom Navy">
       </div>
       <div>
         <div class="flex items-center justify-between mb-1">
-          <label class="block text-xs font-medium text-gray-600">Danh mục <span class="text-gray-400 font-normal">(tick chọn nhiều — 1 sản phẩm thuộc nhiều danh mục)</span></label>
+          <label class="block text-xs font-medium text-gray-600">Danh mục <span class="text-gray-400 font-normal">(tick chọn nhiều)</span></label>
           <span id="pCatCount" class="text-[11px] text-amber-600 font-medium"></span>
         </div>
         <div id="pCategories" class="w-full border border-gray-300 rounded-lg p-2 max-h-44 overflow-y-auto grid grid-cols-2 gap-x-4 gap-y-0.5"></div>
@@ -231,27 +253,6 @@
         </div>
         <div id="pSpecsDynamic" class="hidden"></div>
         <textarea id="pSpecs" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder='{"card_slots":8,"cash_pockets":2}'></textarea>
-      </div>
-
-
-      <!-- IMAGE GALLERY -->
-      <div class="border-t pt-4 mt-4">
-        <div class="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1"><i class="fas fa-image text-amber-500"></i> Hình ảnh sản phẩm</div>
-        <div id="imageGallery" class="flex flex-wrap gap-3 mb-3 min-h-[80px]">
-          <p class="text-gray-400 text-sm py-6 w-full text-center">Lưu sản phẩm trước để upload ảnh</p>
-        </div>
-
-        <!-- Upload zone -->
-        <div id="uploadZone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-amber-400 hover:bg-amber-50/30 transition hidden">
-          <div id="uploadTypeRadios" class="flex justify-center gap-4 mb-3"></div>
-          <div onclick="document.getElementById('fileInput').click()">
-            <i class="fas fa-cloud-upload-alt text-3xl text-gray-300 mb-2"></i>
-            <p class="text-sm text-gray-500">Kéo thả ảnh vào đây hoặc <span class="text-amber-500 font-medium">chọn file</span></p>
-            <p class="text-xs text-gray-400 mt-1">Tự động chuyển đổi sang WebP chất lượng cao</p>
-          </div>
-          <input id="fileInput" type="file" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
-          <div id="uploadProgress" class="hidden mt-3"><div class="w-full bg-gray-200 rounded-full h-1.5"><div id="progressBar" class="bg-amber-500 h-1.5 rounded-full" style="width:0%"></div></div><p id="progressText" class="text-xs text-gray-400 mt-1">Đang xử lý...</p></div>
-        </div>
       </div>
     </div>
     <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
@@ -655,6 +656,94 @@ async function checkAuth() {
 
 // ========== IMAGE UPLOAD / GALLERY ==========
 let currentProductId = null;
+let pendingFiles = [];
+
+// File drag–drop setup (init once)
+(function setupDragDrop() {
+  const zone = document.getElementById('uploadZone');
+  if (!zone) return;
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('border-amber-500', 'bg-amber-50'); });
+  zone.addEventListener('dragleave', () => { zone.classList.remove('border-amber-500', 'bg-amber-50'); });
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('border-amber-500', 'bg-amber-50');
+    addPendingFiles(e.dataTransfer.files);
+  });
+})();
+
+function addPendingFiles(fileList) {
+  const arr = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  if (!arr.length) { toast('Chỉ chấp nhận file ảnh'); return; }
+  arr.forEach(f => {
+    pendingFiles.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), file: f, preview: URL.createObjectURL(f) });
+  });
+  renderPendingPreviews();
+}
+
+function removePendingFile(id) {
+  const idx = pendingFiles.findIndex(f => f.id === id);
+  if (idx === -1) return;
+  URL.revokeObjectURL(pendingFiles[idx].preview);
+  pendingFiles.splice(idx, 1);
+  renderPendingPreviews();
+}
+
+function renderPendingPreviews() {
+  const el = document.getElementById('pendingPreviews');
+  if (!el) return;
+  if (!pendingFiles.length) { el.innerHTML = ''; return; }
+  el.innerHTML = pendingFiles.map(f => `
+    <div class="relative group w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
+      <img src="${f.preview}" alt="Ảnh chờ tải" loading="lazy" class="w-full h-full object-cover">
+      <button onclick="removePendingFile('${f.id}')" class="absolute top-0.5 right-0.5 w-5 h-5 bg-black/50 hover:bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition">&times;</button>
+      <div class="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-[9px] text-center py-0.5 leading-tight truncate px-1">Chờ lưu</div>
+    </div>
+  `).join('');
+}
+
+async function uploadPendingFiles(productId) {
+  if (!pendingFiles.length) return;
+  const progressEl = document.getElementById('uploadProgress');
+  const bar = document.getElementById('progressBar');
+  const text = document.getElementById('progressText');
+  progressEl.classList.remove('hidden');
+  const token = sessionStorage.getItem('auth_token');
+
+  for (let i = 0; i < pendingFiles.length; i++) {
+    const f = pendingFiles[i];
+    const pct = Math.round((i / pendingFiles.length) * 100);
+    bar.style.width = pct + '%';
+    text.textContent = `Đang xử lý ảnh ${i+1}/${pendingFiles.length} → WebP`;
+
+    const formData = new FormData();
+    formData.append('file', f.file);
+    formData.append('altText', f.file.name.replace(/\.[^.]+$/, ''));
+    const selectedType = document.querySelector('input[name="uploadType"]:checked');
+    if (selectedType) formData.append('imageType', selectedType.value);
+
+    try {
+      const headers = {};
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(`/products/${productId}/images/upload`, { method: 'POST', body: formData, headers });
+      if (!res.ok) { const errBody = await res.text().catch(() => ''); throw new Error(errBody || `HTTP ${res.status}`); }
+      swrCache.remove('GET /products/' + productId + '/images');
+    } catch(e) { toast('Lỗi upload ảnh ' + (i+1) + ': ' + e.message); }
+  }
+
+  bar.style.width = '100%';
+  text.textContent = 'Hoàn tất! Ảnh đã chuyển sang WebP';
+  setTimeout(() => { progressEl.classList.add('hidden'); bar.style.width = '0%'; }, 2000);
+  pendingFiles.forEach(f => URL.revokeObjectURL(f.preview));
+  pendingFiles = [];
+  renderPendingPreviews();
+  document.getElementById('fileInput').value = '';
+  if (productId) await loadGallery(productId);
+}
+
+function handleFileSelect(e) {
+  if (e.target.files?.length) addPendingFiles(e.target.files);
+  e.target.value = '';
+}
 
 async function loadGallery(productId) {
   if (!productId) return;
@@ -663,30 +752,28 @@ async function loadGallery(productId) {
   try {
     const images = await api(`/products/${productId}/images`);
     if (!images.length) {
-      el.innerHTML = '<p class="text-gray-400 text-sm py-6 w-full text-center">Chưa có ảnh — tải lên bên dưới</p>';
+      el.innerHTML = '';
     } else {
       el.innerHTML = images.map((img, i) => `
-        <div class="relative group w-36 rounded-lg overflow-hidden border bg-gray-100 flex-shrink-0">
-          <div class="h-28 overflow-hidden">
+        <div class="relative group w-28 rounded-lg overflow-hidden border bg-gray-100 flex-shrink-0">
+          <div class="h-24 overflow-hidden">
             <img src="${img.thumbnailUrl || img.url}" class="w-full h-full object-cover" alt="${img.altText || ''}" loading="lazy">
           </div>
-          <div class="p-1.5 bg-white">
-            <select onchange="updateImageType('${img.id}', this.value)" class="text-[10px] w-full border-none bg-transparent font-medium cursor-pointer text-gray-600">
-              ${imgCats.map(c => `<option value="${c.code}" ${img.imageType === c.code ? 'selected' : ''}>${c.name}</option>`).join('')}
+          <div class="p-1 bg-white flex items-center gap-1">
+            <select onchange="updateImageType('${img.id}', this.value)" class="text-[9px] w-full border-none bg-transparent font-medium cursor-pointer text-gray-600 p-0 m-0">
+              ${imgCats.map(c => `<option value="${c.code}" ${img.imageType === c.code ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
             </select>
           </div>
-          <div class="absolute top-1 left-1 flex gap-1">
-            ${img.isPrimary ? '<div class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">CHÍNH</div>' : ''}
-          </div>
-          <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition flex gap-1">
-            <button onclick="deleteImage('${img.id}')" class="bg-white/80 hover:bg-white rounded-full w-6 h-6 flex items-center justify-center text-gray-600 hover:text-red-500 shadow text-xs" title="Xoá"><i class="fas fa-trash"></i></button>
-            ${!img.isPrimary ? `<button onclick="setPrimaryImage('${img.id}')" class="bg-white/80 hover:bg-white rounded-full w-6 h-6 flex items-center justify-center text-gray-600 hover:text-amber-500 shadow text-xs" title="Đặt làm ảnh chính"><i class="fas fa-star"></i></button>` : ''}
+          ${img.isPrimary ? '<div class="absolute top-1 left-1 bg-amber-500 text-white text-[9px] px-1 py-px rounded font-bold">CHÍNH</div>' : ''}
+          <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition flex gap-0.5">
+            <button onclick="deleteImage('${img.id}')" class="bg-white/80 hover:bg-white rounded-full w-5 h-5 flex items-center justify-center text-gray-600 hover:text-red-500 shadow text-[10px]" title="Xoá"><i class="fas fa-trash"></i></button>
+            ${!img.isPrimary ? `<button onclick="setPrimaryImage('${img.id}')" class="bg-white/80 hover:bg-white rounded-full w-5 h-5 flex items-center justify-center text-gray-600 hover:text-amber-500 shadow text-[10px]" title="Đặt ảnh chính"><i class="fas fa-star"></i></button>` : ''}
           </div>
         </div>
       `).join('');
     }
   } catch(e) {
-    el.innerHTML = `<p class="text-red-400 text-sm py-6 w-full text-center">Lỗi tải ảnh: ${e.message}</p>`;
+    el.innerHTML = '';
   }
 }
 
@@ -701,68 +788,6 @@ async function updateImageType(imageId, imageType) {
     const cat = imgCats.find(c => c.code === imageType);
     toast(`Đã đặt loại: ${cat ? cat.name : imageType}`);
   } catch(e) { toast('Lỗi: ' + e.message); }
-}
-
-function handleFileSelect(e) {
-  const files = e.target.files;
-  if (!files.length) return;
-  uploadFiles(files);
-}
-
-function setupDragDrop() {
-  const zone = document.getElementById('uploadZone');
-  if (!zone) return;
-  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('border-amber-500', 'bg-amber-50'); });
-  zone.addEventListener('dragleave', () => { zone.classList.remove('border-amber-500', 'bg-amber-50'); });
-  zone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    zone.classList.remove('border-amber-500', 'bg-amber-50');
-    uploadFiles(e.dataTransfer.files);
-  });
-}
-
-async function uploadFiles(files) {
-  if (!currentProductId) { toast('Lưu sản phẩm trước'); return; }
-  const progressEl = document.getElementById('uploadProgress');
-  const bar = document.getElementById('progressBar');
-  const text = document.getElementById('progressText');
-  progressEl.classList.remove('hidden');
-  const token = sessionStorage.getItem('auth_token');
-
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    if (!file.type.startsWith('image/')) continue;
-    const pct = Math.round(((i) / files.length) * 100);
-    bar.style.width = pct + '%';
-    text.textContent = `Đang xử lý ${file.name} (${i+1}/${files.length}) → WebP`;
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('altText', file.name.replace(/\.[^.]+$/, ''));
-    const selectedType = document.querySelector('input[name="uploadType"]:checked');
-    if (selectedType) formData.append('imageType', selectedType.value);
-
-    try {
-      const headers = {};
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-      const res = await fetch(`/products/${currentProductId}/images/upload`, { method: 'POST', body: formData, headers });
-      if (!res.ok) {
-        const errBody = await res.text().catch(() => '');
-        throw new Error(errBody || `HTTP ${res.status}`);
-      }
-      swrCache.remove('GET /products/' + currentProductId + '/images');
-    } catch(e) {
-      toast('Lỗi upload ' + file.name + ': ' + e.message);
-    }
-  }
-
-  bar.style.width = '100%';
-  text.textContent = 'Hoàn tất!';
-  setTimeout(() => { progressEl.classList.add('hidden'); bar.style.width = '0%'; }, 1500);
-  await loadGallery(currentProductId);
-  const ok = files.filter(f => f.type.startsWith('image/')).length;
-  toast(`Đã upload & chuyển đổi ${ok} ảnh sang WebP`);
-  document.getElementById('fileInput').value = '';
 }
 
 async function deleteImage(imageId) {
@@ -796,20 +821,36 @@ async function loadProducts() {
   renderProducts();
 }
 
+function renderThumbnails(thumbs) {
+  const items = thumbs?.items;
+  if (!items || !items.length) return '<span class="text-gray-300 text-xs">--</span>';
+  const maxShow = 3;
+  const show = items.slice(0, maxShow);
+  const remaining = thumbs.remaining || 0;
+  const html = show.map((img, i) => {
+    const alt = esc(img.alt || `Ảnh sản phẩm Koi Leather`);
+    const isPrimary = img.isPrimary ? ' ring-1 ring-amber-400' : '';
+    const z = i === 0 ? 'z-10' : (i === 1 ? 'z-0 -ml-3' : 'z-0 -ml-3');
+    return `<img src="${esc(img.url)}" alt="${alt}" loading="lazy" class="relative w-9 h-9 rounded-md object-cover border border-gray-200 bg-white${isPrimary} ${z}">`;
+  }).join('');
+  const badge = remaining > 0 ? `<span class="relative z-0 -ml-2 inline-flex items-center justify-center w-9 h-9 rounded-md bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-500">+${remaining}</span>` : '';
+  return `<div class="flex items-center" style="min-width:112px">${html}${badge}</div>`;
+}
+
 function renderProducts() {
   const el = document.getElementById('productTable');
   // Ưu tiên tên loại từ danh mục (/categories); fallback cho dữ liệu cũ
   const typeFallback = { WALLET:'Ví', BELT:'Thắt lưng', WATCH_STRAP:'Dây đồng hồ', BAG:'Túi', ACCESSORY:'Phụ kiện' };
   const typeLabelOf = code => prodCats.find(c => c.code === code)?.name || typeFallback[code] || code;
   if (!products.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-box-open text-4xl mb-3"></i><p>Chưa có sản phẩm</p></div>'; return; }
-  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Sản phẩm</th><th class="px-4 py-3 min-w-[180px]">Danh mục</th><th class="px-4 py-3">SKU</th><th class="px-4 py-3">Giá</th><th class="px-4 py-3 min-w-[160px]">Thông số</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${products.map(p => {
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Sản phẩm</th><th class="px-4 py-3">Hình ảnh</th><th class="px-4 py-3 min-w-[180px]">Danh mục</th><th class="px-4 py-3">SKU</th><th class="px-4 py-3">Giá</th><th class="px-4 py-3 min-w-[160px]">Thông số</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${products.map(p => {
     const schemaProps = p.category?.specsSchema ? (() => { try { const s = typeof p.category.specsSchema === 'string' ? JSON.parse(p.category.specsSchema) : p.category.specsSchema; return s.properties; } catch { return null; } })() : null;
     const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
     const cats = (p.categories && p.categories.length) ? p.categories : (p.category ? [p.category] : []);
     const catBadges = cats.length
       ? cats.map(c => `<span class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1">${esc(c.name)}</span>`).join('')
       : `<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-xs">Chưa phân loại</span>`;
-    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
@@ -990,8 +1031,12 @@ function openCreateProduct() {
   document.getElementById('pSpecs').value = '';
   renderCategoryCheckboxes([]);
   currentProductId = null;
-  document.getElementById('imageGallery').innerHTML = '<p class="text-gray-400 text-sm py-6 w-full text-center">Lưu sản phẩm trước để upload ảnh</p>';
-  document.getElementById('uploadZone').classList.add('hidden');
+  // Reset pending files
+  pendingFiles.forEach(f => URL.revokeObjectURL(f.preview));
+  pendingFiles = [];
+  renderPendingPreviews();
+  document.getElementById('imageGallery').innerHTML = '';
+  document.getElementById('uploadProgress').classList.add('hidden');
   onCategorySelectionChange();
   openModal('productModal');
 }
@@ -1021,7 +1066,6 @@ async function editProduct(id) {
     document.getElementById('pSpecs').value = JSON.stringify(specs, null, 2);
   }
   openModal('productModal');
-  document.getElementById('uploadZone').classList.remove('hidden');
   await loadGallery(id);
 }
 
@@ -1047,18 +1091,17 @@ async function saveProduct() {
     if (id) {
       await api('/products/' + id, { method: 'PATCH', body: JSON.stringify(body) });
       swrCache.remove('GET /products/' + id + '/images');
+      await uploadPendingFiles(id);
       toast('Đã cập nhật sản phẩm');
     }
     else {
       const created = await api('/products', { method: 'POST', body: JSON.stringify(body) });
       newId = created.id;
+      await uploadPendingFiles(newId);
       toast('Đã thêm sản phẩm');
     }
     closeModal('productModal');
     await loadProducts();
-    if (!id && newId) {
-      await editProduct(newId);
-    }
   } catch(e) { toast('Lỗi: ' + e.message); }
 }
 
