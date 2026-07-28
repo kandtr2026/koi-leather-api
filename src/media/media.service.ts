@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { generateImageAltText } from '../seo/seo-generator.helper';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class MediaService {
+  private logger = new Logger(MediaService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async registerImage(
@@ -83,8 +87,78 @@ export class MediaService {
     const image = await this.prisma.koiProductImage.findUnique({ where: { id: imageId } });
     if (!image) throw new NotFoundException('Image not found');
 
+    // Kiểm tra xem URL ảnh có đang được tham chiếu bởi sản phẩm khác không
+    const otherRefs = await this.prisma.koiProductImage.count({
+      where: {
+        id: { not: imageId },
+        OR: [
+          { url: image.url },
+          { thumbnailUrl: image.thumbnailUrl },
+          { mediumUrl: image.mediumUrl },
+        ],
+      },
+    });
+
+    if (otherRefs === 0) {
+      // Không có tham chiếu nào khác → an toàn để xóa file vật lý
+      await this.deletePhysicalFile(image);
+    } else {
+      this.logger.warn(
+        `Image URL "${image.url}" is referenced by ${otherRefs} other record(s). Skipping physical file deletion.`,
+      );
+    }
+
     await this.prisma.koiProductImage.delete({ where: { id: imageId } });
     return { deleted: true, cloudinaryPublicId: image.url.split('/').pop()?.split('.')[0] };
+  }
+
+  private async deletePhysicalFile(image: {
+    url: string;
+    thumbnailUrl: string;
+    mediumUrl: string | null;
+  }) {
+    // Try Cloudinary deletion first
+    const deletedFromCdn = await this.deleteFromCloudinary(image.url);
+    if (!deletedFromCdn) {
+      // Fallback: delete from local storage
+      this.deleteLocalFile(image.url);
+      this.deleteLocalFile(image.thumbnailUrl);
+      if (image.mediumUrl) this.deleteLocalFile(image.mediumUrl);
+    }
+  }
+
+  private async deleteFromCloudinary(url: string): Promise<boolean> {
+    const publicId = this.extractCloudinaryPublicId(url);
+    if (!publicId) return false;
+
+    try {
+      const cloudinary = this.getCloudinaryInstance();
+      if (!cloudinary) return false;
+      await cloudinary.uploader.destroy(publicId);
+      return true;
+    } catch (err) {
+      this.logger.warn(`Failed to delete from Cloudinary: ${(err as Error).message}`);
+      return false;
+    }
+  }
+
+  private extractCloudinaryPublicId(url: string): string | null {
+    // Cloudinary URLs contain the public ID, e.g.:
+    // https://res.cloudinary.com/.../image/upload/v123456/koi/products/xxx/yyy
+    const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
+    if (!match) return null;
+    // Remove format suffix if present
+    return match[1].replace(/\.[^.]+$/, '');
+  }
+
+  private deleteLocalFile(url: string) {
+    if (!url.startsWith('/uploads/')) return;
+    const filePath = path.join(process.cwd(), url);
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (err) {
+      this.logger.warn(`Failed to delete local file ${url}: ${(err as Error).message}`);
+    }
   }
 
   async setPrimaryImage(productId: string, imageId: string) {
@@ -168,5 +242,16 @@ export class MediaService {
       results.push(updated);
     }
     return results;
+  }
+
+  private getCloudinaryInstance() {
+    const name = process.env.CLOUDINARY_CLOUD_NAME;
+    const key = process.env.CLOUDINARY_API_KEY;
+    const secret = process.env.CLOUDINARY_API_SECRET;
+    if (!name || name === 'your_cloud_name' || !key || !secret) return null;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const cloudinary = require('cloudinary').v2;
+    cloudinary.config({ cloud_name: name, api_key: key, api_secret: secret });
+    return cloudinary;
   }
 }

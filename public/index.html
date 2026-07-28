@@ -10,6 +10,7 @@
   <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #f1f5f9; }
@@ -237,7 +238,7 @@
     </div>
     <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
       <button onclick="closeModal('productModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
-      <button onclick="saveProduct()" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> Lưu</button>
+      <button id="btnSaveProduct" onclick="saveProduct()" class="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> <span id="btnSaveText">Lưu</span></button>
     </div>
   </div>
 </div>
@@ -709,6 +710,8 @@ async function checkAuth() {
 // ========== IMAGE UPLOAD / GALLERY ==========
 let currentProductId = null;
 let pendingFiles = [];
+let isSaving = false;
+const deletingSet = new Set();
 
 // File drag–drop setup (init once)
 (function setupDragDrop() {
@@ -1010,11 +1013,94 @@ function renderProducts() {
     const catBadges = cats.length
       ? cats.map(c => `<a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1 cursor-pointer hover:bg-amber-100 hover:text-amber-900 hover:border-amber-300 no-underline transition-colors" title="Lọc sản phẩm theo danh mục «${esc(c.name)}»">${esc(c.name)}</a>`).join('')
       : `<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-xs">Chưa phân loại</span>`;
-    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails, p.id)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails, p.id)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="downloadProductImages('${p.id}')" class="text-gray-400 hover:text-blue-500 mr-2 requires-auth" title="Tải ảnh JPEG"><i class="fas fa-download"></i></button><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
 function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// ========== DOWNLOAD IMAGES ==========
+async function downloadProductImages(productId) {
+  const p = products.find(x => x.id === productId);
+  if (!p) { toast('Không tìm thấy sản phẩm'); return; }
+
+  try {
+    const images = await api('/products/' + productId + '/images');
+    if (!images || !images.length) { toast('Sản phẩm chưa có ảnh'); return; }
+
+    const sku = (p.sku || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const slug = p.slug || 'product';
+    const nameVi = typeof p.name === 'object' ? (p.name?.vi || p.name?.en || '') : String(p.name || '');
+    const namePart = nameVi.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const baseName = [sku, namePart].filter(Boolean).join('-');
+
+    toast(`Đang xử lý ${images.length} ảnh...`);
+
+    if (images.length === 1) {
+      const blob = await fetchImageAsJpeg(images[0].url);
+      const typePart = (images[0].imageType || 'image').toLowerCase();
+      const filename = [baseName, typePart].filter(Boolean).join('-') + '.jpg';
+      saveBlob(blob, filename);
+      toast('Đã tải ảnh');
+    } else {
+      const zip = new JSZip();
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        const typePart = (img.imageType || `image_${i + 1}`).toLowerCase();
+        const fname = [baseName, typePart].filter(Boolean).join('-') + '.jpg';
+        try {
+          const blob = await fetchImageAsJpeg(img.url);
+          zip.file(fname, blob);
+        } catch (err) {
+          console.warn('Skip image ' + img.id + ': ' + err.message);
+        }
+      }
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipFilename = sku ? `${sku}_${slug}_images.zip` : `${slug}_images.zip`;
+      saveBlob(zipBlob, zipFilename);
+      toast('Đã tải ZIP ảnh');
+    }
+  } catch (e) {
+    toast('Lỗi tải ảnh: ' + e.message);
+  }
+}
+
+async function fetchImageAsJpeg(url) {
+  const res = await fetch(url, { mode: 'cors' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const blob = await res.blob();
+  if (blob.type === 'image/jpeg') return blob;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas 2D not supported')); return; }
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(jpegBlob => {
+        URL.revokeObjectURL(img.src);
+        if (jpegBlob) resolve(jpegBlob);
+        else reject(new Error('Canvas toBlob returned null'));
+      }, 'image/jpeg', 0.92);
+    };
+    img.onerror = () => { URL.revokeObjectURL(img.src); reject(new Error('Failed to load image')); };
+    img.crossOrigin = 'anonymous';
+    img.src = URL.createObjectURL(blob);
+  });
+}
+
+function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
 
 // ========== SPECS HELPERS ==========
 const SPECS_LABELS = {
@@ -1232,6 +1318,7 @@ async function editProduct(id) {
 }
 
 async function saveProduct() {
+  if (isSaving) return;
   const id = document.getElementById('editProductId').value;
   const name = document.getElementById('pNameVi').value.trim();
   if (!name) { toast('Nhập tên sản phẩm'); return; }
@@ -1247,6 +1334,12 @@ async function saveProduct() {
   const pt = primary ? toProductType(primary) : null;
   if (pt) body.productType = pt;
   body.technicalSpecs = collectSpecsFormValues();
+
+  const btn = document.getElementById('btnSaveProduct');
+  const btnText = document.getElementById('btnSaveText');
+  btn.disabled = true;
+  btnText.textContent = 'Đang lưu…';
+  isSaving = true;
 
   try {
     let newId = id;
@@ -1267,10 +1360,17 @@ async function saveProduct() {
     swrCache.clearProductCache();
     await loadProducts();
   } catch(e) { toast('Lỗi: ' + e.message); }
+  finally {
+    btn.disabled = false;
+    btnText.textContent = 'Lưu';
+    isSaving = false;
+  }
 }
 
 async function deleteProduct(id) {
+  if (deletingSet.has(id)) return;
   if (!confirm('Xoá sản phẩm này?')) return;
+  deletingSet.add(id);
   try {
     await api('/products/' + id, { method: 'DELETE' });
     swrCache.remove('GET /products/' + id);
@@ -1278,6 +1378,7 @@ async function deleteProduct(id) {
     toast('Đã xoá');
     await loadProducts();
   } catch(e) { toast('Lỗi: ' + e.message); }
+  finally { deletingSet.delete(id); }
 }
 
 // ========== MATERIALS ==========
