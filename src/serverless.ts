@@ -37,6 +37,11 @@ async function bootstrapServer() {
   });
 
   app.use('/', express.static(path.join(process.cwd(), 'public')));
+  // SPA fallback — serve index.html for /admin/* (path-based routing).
+  // Mirrors main.ts so production behaves like local.
+  app.use('/admin', (_req: any, res: any) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
+  });
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // Swagger doc generation scans every controller/DTO and adds noticeable
