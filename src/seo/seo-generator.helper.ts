@@ -29,3 +29,20 @@ export function generateCategorySeo(name: string): SeoOutput {
     metaDescription: `Khám phá bộ sưu tập ${safeName} thủ công cao cấp tại Koi Leather. Đa dạng mẫu mã, chất liệu da nhập khẩu, bảo hành trọn đời.`,
   };
 }
+
+export function generateImageAltText(
+  productName: string,
+  imageType: string,
+  materialInfo?: string,
+): string {
+  const safeName = productName || 'Sản phẩm da thủ công';
+  const typeLabels: Record<string, string> = {
+    STUDIO: 'Ảnh Studio',
+    LIFESTYLE: 'Ảnh Lifestyle',
+    CRAFTING: 'Ảnh Chế tác',
+    TEXTURE: 'Ảnh Vân da',
+  };
+  const prefix = typeLabels[imageType] || 'Ảnh';
+  const material = materialInfo ? ` - ${materialInfo}` : '';
+  return `${prefix} ${safeName}${material} - Koi Leather`;
+}

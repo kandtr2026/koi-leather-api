@@ -73,3 +73,24 @@ export enum EntityType {
   ARTICLE = 'ARTICLE',
   PAGE = 'PAGE',
 }
+
+export enum KoiImageType {
+  STUDIO = 'STUDIO',
+  LIFESTYLE = 'LIFESTYLE',
+  CRAFTING = 'CRAFTING',
+  TEXTURE = 'TEXTURE',
+}
+
+export const ImageTypeLabel: Record<KoiImageType, string> = {
+  [KoiImageType.STUDIO]: 'Studio',
+  [KoiImageType.LIFESTYLE]: 'Lifestyle',
+  [KoiImageType.CRAFTING]: 'Crafting',
+  [KoiImageType.TEXTURE]: 'Texture',
+};
+
+export const ImageTypeAltTemplate: Record<KoiImageType, string> = {
+  [KoiImageType.STUDIO]: 'Ảnh Studio {product_name} - Koi Leather',
+  [KoiImageType.LIFESTYLE]: 'Ảnh Lifestyle {product_name} - Koi Leather',
+  [KoiImageType.CRAFTING]: 'Ảnh Chế tác {product_name} - Koi Leather',
+  [KoiImageType.TEXTURE]: 'Ảnh Vân da {product_name} - Koi Leather',
+};

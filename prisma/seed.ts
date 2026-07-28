@@ -66,9 +66,10 @@ async function main() {
   // === IMAGE CATEGORIES ===
   await prisma.koiImageCategory.createMany({
     data: [
-      { code: 'STUDIO', name: 'Studio', description: 'Ảnh chụp studio — nền sạch, ánh sáng chuẩn', sortOrder: 1 },
-      { code: 'LIFESTYLE', name: 'Lifestyle', description: 'Ảnh phong cách sống — sản phẩm trong bối cảnh thực tế', sortOrder: 2 },
-      { code: 'INVENTORY', name: 'Lưu kho', description: 'Ảnh lưu kho — phục vụ kiểm kê, quản lý', sortOrder: 3 },
+      { code: 'STUDIO', name: 'Studio', description: 'Ảnh chụp studio — nền sạch, ánh sáng chuẩn, tôn lên từng đường nét sản phẩm', sortOrder: 1 },
+      { code: 'LIFESTYLE', name: 'Lifestyle', description: 'Ảnh phong cách sống — sản phẩm trong bối cảnh thực tế, phối đồ hoặc tình huống sử dụng', sortOrder: 2 },
+      { code: 'CRAFTING', name: 'Chế tác', description: 'Ảnh quá trình chế tác thủ công — lạng da, đục xiên, khâu mũi yên, sơn cạnh', sortOrder: 3 },
+      { code: 'TEXTURE', name: 'Vân da', description: 'Ảnh cận cảnh vân da, chỉ khâu, bề mặt chất liệu — macro texture', sortOrder: 4 },
     ],
   });
   console.log('  Image categories created');

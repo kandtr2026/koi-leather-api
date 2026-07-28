@@ -94,7 +94,7 @@ export class MediaController {
       properties: {
         file: { type: 'string', format: 'binary' },
         altText: { type: 'string' },
-        imageType: { type: 'string', enum: ['STUDIO', 'LIFESTYLE', 'INVENTORY'], description: 'Phân loại ảnh' },
+        imageType: { type: 'string', enum: ['STUDIO', 'LIFESTYLE', 'CRAFTING', 'TEXTURE'], description: 'Phân loại ảnh: Studio, Lifestyle, Chế tác, Vân da' },
         isPrimary: { type: 'boolean' },
         variantId: { type: 'string' },
       },
@@ -221,13 +221,23 @@ export class MediaController {
   }
 
   @Patch(':imageId/type')
-  @ApiOperation({ summary: 'Update image type (STUDIO, LIFESTYLE, INVENTORY)' })
+  @ApiOperation({ summary: 'Update image type (STUDIO, LIFESTYLE, CRAFTING, TEXTURE) with auto SEO alt text' })
   updateType(
     @Param('imageId', ParseUUIDPipe) imageId: string,
     @Body('imageType') imageType: string,
+    @Body('autoGenerateAlt') autoGenerateAlt?: string,
   ) {
     if (!imageType) throw new BadRequestException('imageType is required');
-    return this.mediaService.updateImageType(imageId, imageType);
+    return this.mediaService.updateImageType(imageId, imageType, autoGenerateAlt !== 'false');
+  }
+
+  @Patch(':imageId')
+  @ApiOperation({ summary: 'Update image metadata (imageType, altText)' })
+  updateMetadata(
+    @Param('imageId', ParseUUIDPipe) imageId: string,
+    @Body() dto: { imageType?: string; altText?: string },
+  ) {
+    return this.mediaService.updateImageMetadata(imageId, dto);
   }
 
   @Patch('reorder')
@@ -240,5 +250,17 @@ export class MediaController {
       throw new BadRequestException('items array is required');
     }
     return this.mediaService.reorderImages(productId, dto.items);
+  }
+
+  @Patch('bulk-metadata')
+  @ApiOperation({ summary: 'Bulk update image metadata (types, alt texts)' })
+  bulkUpdateMetadata(
+    @Param('productId', ParseUUIDPipe) productId: string,
+    @Body('items') items: { id: string; imageType?: string; altText?: string }[],
+  ) {
+    if (!items || !Array.isArray(items)) {
+      throw new BadRequestException('items array is required');
+    }
+    return this.mediaService.bulkUpdateImageMetadata(productId, items);
   }
 }

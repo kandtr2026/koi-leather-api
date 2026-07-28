@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { generateImageAltText } from '../seo/seo-generator.helper';
 
 @Injectable()
 export class MediaService {
@@ -114,16 +115,59 @@ export class MediaService {
     return this.getProductImages(productId);
   }
 
-  async updateImageType(imageId: string, imageType: string) {
+  async updateImageType(imageId: string, imageType: string, autoGenerateAlt = true) {
     const cat = await this.prisma.koiImageCategory.findUnique({ where: { code: imageType } });
     if (!cat) {
       const all = await this.prisma.koiImageCategory.findMany({ orderBy: { sortOrder: 'asc' } });
       const codes = all.map(c => c.code).join(', ');
       throw new BadRequestException(`imageType must be one of: ${codes}`);
     }
-    return this.prisma.koiProductImage.update({
+    const existing = await this.prisma.koiProductImage.findUnique({
       where: { id: imageId },
-      data: { imageType },
+      include: { product: { select: { name: true, slug: true } } },
     });
+    if (!existing) throw new NotFoundException('Image not found');
+
+    const data: any = { imageType };
+    if (autoGenerateAlt) {
+      const nameObj = existing.product.name as any;
+      const productName = nameObj?.vi || nameObj?.en || 'Koi Leather product';
+      data.altText = generateImageAltText(productName, imageType);
+    }
+    return this.prisma.koiProductImage.update({ where: { id: imageId }, data });
+  }
+
+  async updateImageMetadata(imageId: string, dto: { imageType?: string; altText?: string }) {
+    const existing = await this.prisma.koiProductImage.findUnique({ where: { id: imageId } });
+    if (!existing) throw new NotFoundException('Image not found');
+
+    const data: any = {};
+    if (dto.imageType) {
+      const cat = await this.prisma.koiImageCategory.findUnique({ where: { code: dto.imageType } });
+      if (!cat) {
+        const all = await this.prisma.koiImageCategory.findMany({ orderBy: { sortOrder: 'asc' } });
+        const codes = all.map(c => c.code).join(', ');
+        throw new BadRequestException(`imageType must be one of: ${codes}`);
+      }
+      data.imageType = dto.imageType;
+    }
+    if (dto.altText !== undefined) data.altText = dto.altText;
+
+    return this.prisma.koiProductImage.update({ where: { id: imageId }, data });
+  }
+
+  async bulkUpdateImageMetadata(
+    productId: string,
+    items: { id: string; imageType?: string; altText?: string }[],
+  ) {
+    const results: any[] = [];
+    for (const item of items) {
+      const updated = await this.updateImageMetadata(item.id, {
+        imageType: item.imageType,
+        altText: item.altText,
+      });
+      results.push(updated);
+    }
+    return results;
   }
 }
