@@ -544,6 +544,16 @@ const swrCache = {
   },
   remove(key) {
     try { sessionStorage.removeItem('swr_' + key); } catch {}
+  },
+  /** Xoá toàn bộ cache liên quan đến products (list + detail) */
+  clearProductCache() {
+    const prefix = 'swr_GET /products';
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const k = sessionStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        sessionStorage.removeItem(k);
+      }
+    }
   }
 };
 
@@ -759,7 +769,6 @@ async function uploadPendingFiles(productId) {
 
     const formData = new FormData();
     formData.append('file', f.file);
-    formData.append('altText', f.file.name.replace(/\.[^.]+$/, ''));
     const selectedType = document.querySelector('input[name="uploadType"]:checked');
     if (selectedType) formData.append('imageType', selectedType.value);
 
@@ -820,7 +829,6 @@ async function loadGallery(productId) {
             <select onchange="updateImageType('${img.id}', this.value)" class="img-type-select w-full text-[10px] border border-gray-200 rounded-lg px-1.5 py-1 bg-white text-gray-600 cursor-pointer">
               ${typeCats.map(c => `<option value="${c.code}" ${img.imageType === c.code ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
             </select>
-            <div class="text-[9px] text-gray-400 truncate leading-tight" title="${esc(img.altText || '')}"><i class="fas fa-tag mr-0.5"></i>${esc(img.altText || 'Chưa có alt text')}</div>
             <div class="flex items-center justify-between">
               <button onclick="setPrimaryImage('${img.id}')" class="text-[10px] ${isPrimary ? 'text-amber-500' : 'text-gray-400 hover:text-amber-500'} transition" title="${isPrimary ? 'Đã là ảnh chính' : 'Đặt làm ảnh chính'}"><i class="fas fa-star"></i></button>
               <button onclick="deleteImage('${img.id}')" class="text-[10px] text-gray-400 hover:text-red-500 transition" title="Xoá ảnh"><i class="fas fa-trash-alt"></i></button>
@@ -1244,6 +1252,7 @@ async function saveProduct() {
     let newId = id;
     if (id) {
       await api('/products/' + id, { method: 'PATCH', body: JSON.stringify(body) });
+      swrCache.remove('GET /products/' + id);
       swrCache.remove('GET /products/' + id + '/images');
       await uploadPendingFiles(id);
       toast('Đã cập nhật sản phẩm');
@@ -1255,13 +1264,20 @@ async function saveProduct() {
       toast('Đã thêm sản phẩm');
     }
     closeModal('productModal');
+    swrCache.clearProductCache();
     await loadProducts();
   } catch(e) { toast('Lỗi: ' + e.message); }
 }
 
 async function deleteProduct(id) {
   if (!confirm('Xoá sản phẩm này?')) return;
-  try { await api('/products/' + id, { method: 'DELETE' }); toast('Đã xoá'); await loadProducts(); } catch(e) { toast('Lỗi: ' + e.message); }
+  try {
+    await api('/products/' + id, { method: 'DELETE' });
+    swrCache.remove('GET /products/' + id);
+    swrCache.clearProductCache();
+    toast('Đã xoá');
+    await loadProducts();
+  } catch(e) { toast('Lỗi: ' + e.message); }
 }
 
 // ========== MATERIALS ==========
@@ -1637,13 +1653,19 @@ async function saveProdCat() {
     if (id) { await api('/categories/' + id, { method: 'PATCH', body: JSON.stringify(body) }); toast('Đã cập nhật'); }
     else { await api('/categories', { method: 'POST', body: JSON.stringify(body) }); toast('Đã thêm loại sản phẩm'); }
     closeModal('prodCatModal');
+    swrCache.remove('GET /categories');
     await loadProdCats();
   } catch(e) { toast('Lỗi: ' + e.message); }
 }
 
 async function deleteProdCat(id) {
   if (!confirm('Xoá loại sản phẩm này?')) return;
-  try { await api('/categories/' + id, { method: 'DELETE' }); toast('Đã xoá'); await loadProdCats(); } catch(e) { toast('Lỗi: ' + e.message); }
+  try {
+    await api('/categories/' + id, { method: 'DELETE' });
+    swrCache.remove('GET /categories');
+    toast('Đã xoá');
+    await loadProdCats();
+  } catch(e) { toast('Lỗi: ' + e.message); }
 }
 
 // ========== IMAGE CATEGORIES ==========

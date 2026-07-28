@@ -3,6 +3,17 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { KoiProductType, KoiProductStatus } from '../../common/enums';
 
+export function parseJsonString(value: any): any {
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
 export class SeoMetadataDto {
   @ApiPropertyOptional({ description: 'Meta title' })
   metaTitle?: string;
@@ -117,14 +128,16 @@ export class CreateProductDto {
   @IsEnum(KoiProductStatus)
   status?: KoiProductStatus;
 
-  @ApiPropertyOptional({ description: 'Thông số kỹ thuật (JSONB - validated against category specsSchema)' })
+  @ApiPropertyOptional({ description: 'Thông số kỹ thuật (JSONB - validated against category specsSchema). Hỗ trợ cả Object và JSON string.' })
   @IsOptional()
   @IsObject()
+  @Transform(({ value }) => parseJsonString(value))
   technicalSpecs?: Record<string, any>;
 
   @ApiPropertyOptional({ description: '[Deprecated] Use technicalSpecs instead' })
   @IsOptional()
   @IsObject()
+  @Transform(({ value }) => parseJsonString(value))
   specs?: Record<string, any>;
 
   @ApiPropertyOptional({ description: 'Meta title for SEO' })

@@ -50,9 +50,8 @@ export class MediaService {
     }
 
     const nameObj = product.name as any;
-    const finalAltText =
-      data.altText ||
-      `${nameObj?.vi || nameObj?.en || 'Koi Leather product'} - ${product.sku || ''}`;
+    const productName = nameObj?.vi || nameObj?.en || 'Koi Leather product';
+    const finalAltText = data.altText || generateImageAltText(productName, data.imageType || 'STUDIO');
 
     return this.prisma.koiProductImage.create({
       data: {
