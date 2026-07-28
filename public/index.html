@@ -55,6 +55,17 @@
     .lightbox-counter { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 70; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: #fff; font-size: 13px; font-weight: 500; padding: 6px 18px; border-radius: 20px; letter-spacing: 0.5px; white-space: nowrap; }
     .lightbox-loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 65; color: rgba(255,255,255,0.5); font-size: 14px; }
     #lightboxModal.modal-overlay { background: rgba(0,0,0,0.92); z-index: 60; }
+    .image-carousel { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+    .image-carousel::-webkit-scrollbar { height: 3px; }
+    .image-carousel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+    .image-carousel::-webkit-scrollbar-track { background: transparent; }
+    .nav-btn { transition: all 0.15s; }
+    .nav-btn:active { transform: scale(0.92); }
+    .img-card { transition: all 0.15s; }
+    .img-card:hover { border-color: #f59e0b; }
+    .img-card.primary { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.25); }
+    .img-type-select { transition: border-color 0.15s; }
+    .img-type-select:focus { border-color: #f59e0b; --tw-ring-color: #f59e0b; }
   </style>
 </head>
 <body>
@@ -167,22 +178,37 @@
 
       <!-- IMAGE UPLOAD & PREVIEW — luôn hiển thị ở đầu modal -->
       <div>
-        <div class="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1"><i class="fas fa-image text-amber-500"></i> Hình ảnh sản phẩm <span class="font-normal text-gray-400 lowercase">(tải lên trước, nhập thông tin sau)</span></div>
-        <!-- Existing / uploaded images (edit mode) -->
-        <div id="imageGallery" class="flex flex-wrap gap-3 mb-3 min-h-[90px]"></div>
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><i class="fas fa-image text-amber-500"></i> Hình ảnh sản phẩm</div>
+          <button onclick="document.getElementById('fileInput').click()" class="flex items-center gap-1 text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-1.5 rounded-lg transition"><i class="fas fa-upload"></i> Tải lên</button>
+        </div>
+        <!-- Carousel wrapper -->
+        <div id="imageCarouselContainer" class="relative mb-2">
+          <div id="imageGalleryEmpty" class="p-4 bg-gray-50 rounded-lg border text-center">
+            <i class="fas fa-image text-2xl text-gray-300 mb-1"></i>
+            <p class="text-xs text-gray-400">Chưa có ảnh. Tải lên ảnh sản phẩm để quản lý.</p>
+          </div>
+          <div id="imageCarouselWrapper" class="hidden">
+            <div class="flex items-center gap-1">
+              <button onclick="scrollGallery(-1)" class="nav-btn flex items-center justify-center w-6 h-6 rounded-full border border-gray-300 bg-white text-gray-400 hover:bg-gray-800 hover:text-white text-xs shrink-0 transition" title="Trái"><i class="fas fa-chevron-left"></i></button>
+              <div id="imageGallery" class="image-carousel flex gap-2 overflow-x-auto py-1 px-0.5 flex-1 scroll-smooth"></div>
+              <button onclick="scrollGallery(1)" class="nav-btn flex items-center justify-center w-6 h-6 rounded-full border border-gray-300 bg-white text-gray-400 hover:bg-gray-800 hover:text-white text-xs shrink-0 transition" title="Phải"><i class="fas fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </div>
         <!-- Pending file previews (create + edit) -->
         <div id="pendingPreviews" class="flex flex-wrap gap-3 mb-3 min-h-[0px]"></div>
         <!-- Drag-drop upload zone -->
-        <div id="uploadZone" class="border-2 border-dashed border-gray-300 rounded-xl p-5 text-center cursor-pointer hover:border-amber-400 hover:bg-amber-50/30 transition">
+        <div id="uploadZone" class="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center cursor-pointer hover:border-amber-400 hover:bg-amber-50/30 transition">
           <div onclick="document.getElementById('fileInput').click()">
-            <i class="fas fa-cloud-upload-alt text-2xl text-gray-300 mb-1"></i>
+            <i class="fas fa-cloud-upload-alt text-xl text-gray-300 mb-1"></i>
             <p class="text-sm text-gray-500">Kéo thả ảnh vào đây hoặc <span class="text-amber-500 font-medium">chọn file</span></p>
             <p class="text-xs text-gray-400 mt-0.5">Tự động chuyển đổi sang WebP chất lượng cao</p>
           </div>
           <input id="fileInput" type="file" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
           <div id="uploadProgress" class="hidden mt-3"><div class="w-full bg-gray-200 rounded-full h-1.5"><div id="progressBar" class="bg-amber-500 h-1.5 rounded-full" style="width:0%"></div></div><p id="progressText" class="text-xs text-gray-400 mt-1">Đang xử lý...</p></div>
         </div>
-        <div id="uploadTypeRadios" class="flex gap-3 mt-2"></div>
+        <div id="uploadTypeRadios" class="flex gap-2 mt-2"></div>
       </div>
 
       <div>
@@ -761,34 +787,51 @@ function handleFileSelect(e) {
   e.target.value = '';
 }
 
+function scrollGallery(dir) {
+  const el = document.getElementById('imageGallery');
+  if (el) el.scrollBy({ left: dir * 260, behavior: 'smooth' });
+}
+
 async function loadGallery(productId) {
   if (!productId) return;
   currentProductId = productId;
   const el = document.getElementById('imageGallery');
+  const empty = document.getElementById('imageGalleryEmpty');
+  const wrapper = document.getElementById('imageCarouselWrapper');
   try {
     const images = await api(`/products/${productId}/images`);
     if (!images.length) {
+      empty.classList.remove('hidden');
+      wrapper.classList.add('hidden');
       el.innerHTML = '';
     } else {
-      el.innerHTML = images.map((img, i) => `
-        <div class="relative group w-28 rounded-lg overflow-hidden border bg-gray-100 flex-shrink-0">
-          <div class="h-24 overflow-hidden">
-            <img src="${img.thumbnailUrl || img.url}" class="w-full h-full object-cover" alt="${img.altText || ''}" loading="lazy">
+      empty.classList.add('hidden');
+      wrapper.classList.remove('hidden');
+      const primaryId = images.find(i => i.isPrimary)?.id || images[0]?.id;
+      el.innerHTML = images.map((img) => {
+        const isPrimary = img.id === primaryId;
+        const typeCats = Array.isArray(imgCats) && imgCats.length ? imgCats : [{ code: 'STUDIO', name: 'Studio' }, { code: 'LIFESTYLE', name: 'Lifestyle' }, { code: 'CRAFTING', name: 'Crafting' }, { code: 'TEXTURE', name: 'Texture' }];
+        return `<div class="img-card flex flex-col bg-white rounded-lg border ${isPrimary ? 'primary' : 'border-gray-200'} p-1.5 min-w-[155px] max-w-[155px] shrink-0 relative">
+          <div class="relative w-full aspect-[4/5] rounded-md overflow-hidden bg-gray-100 mb-1.5">
+            ${isPrimary ? '<span class="absolute top-1 left-1 bg-amber-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10"><i class="fas fa-star"></i> Chính</span>' : ''}
+            <img src="${img.thumbnailUrl || img.url}" alt="${esc(img.altText || '')}" class="w-full h-full object-cover cursor-pointer" onclick="openLightbox('${productId}', ${images.indexOf(img)})" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full text-gray-300\\'><i class=\\'fas fa-image fa-lg\\'></i></div>'">
           </div>
-          <div class="p-1 bg-white flex items-center gap-1">
-            <select onchange="updateImageType('${img.id}', this.value)" class="text-[9px] w-full border-none bg-transparent font-medium cursor-pointer text-gray-600 p-0 m-0">
-              ${imgCats.map(c => `<option value="${c.code}" ${img.imageType === c.code ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+          <div class="space-y-1">
+            <select onchange="updateImageType('${img.id}', this.value)" class="img-type-select w-full text-[10px] border border-gray-200 rounded-lg px-1.5 py-1 bg-white text-gray-600 cursor-pointer">
+              ${typeCats.map(c => `<option value="${c.code}" ${img.imageType === c.code ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
             </select>
+            <div class="text-[9px] text-gray-400 truncate leading-tight" title="${esc(img.altText || '')}"><i class="fas fa-tag mr-0.5"></i>${esc(img.altText || 'Chưa có alt text')}</div>
+            <div class="flex items-center justify-between">
+              <button onclick="setPrimaryImage('${img.id}')" class="text-[10px] ${isPrimary ? 'text-amber-500' : 'text-gray-400 hover:text-amber-500'} transition" title="${isPrimary ? 'Đã là ảnh chính' : 'Đặt làm ảnh chính'}"><i class="fas fa-star"></i></button>
+              <button onclick="deleteImage('${img.id}')" class="text-[10px] text-gray-400 hover:text-red-500 transition" title="Xoá ảnh"><i class="fas fa-trash-alt"></i></button>
+            </div>
           </div>
-          ${img.isPrimary ? '<div class="absolute top-1 left-1 bg-amber-500 text-white text-[9px] px-1 py-px rounded font-bold">CHÍNH</div>' : ''}
-          <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition flex gap-0.5">
-            <button onclick="deleteImage('${img.id}')" class="bg-white/80 hover:bg-white rounded-full w-5 h-5 flex items-center justify-center text-gray-600 hover:text-red-500 shadow text-[10px]" title="Xoá"><i class="fas fa-trash"></i></button>
-            ${!img.isPrimary ? `<button onclick="setPrimaryImage('${img.id}')" class="bg-white/80 hover:bg-white rounded-full w-5 h-5 flex items-center justify-center text-gray-600 hover:text-amber-500 shadow text-[10px]" title="Đặt ảnh chính"><i class="fas fa-star"></i></button>` : ''}
-          </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     }
   } catch(e) {
+    empty.classList.remove('hidden');
+    wrapper.classList.add('hidden');
     el.innerHTML = '';
   }
 }
@@ -797,12 +840,12 @@ async function updateImageType(imageId, imageType) {
   try {
     await api(`/products/${currentProductId}/images/${imageId}/type`, {
       method: 'PATCH',
-      body: JSON.stringify({ imageType }),
+      body: JSON.stringify({ imageType, autoGenerateAlt: 'true' }),
     });
     swrCache.remove('GET /products/' + currentProductId + '/images');
     await loadGallery(currentProductId);
-    const cat = imgCats.find(c => c.code === imageType);
-    toast(`Đã đặt loại: ${cat ? cat.name : imageType}`);
+    const cat = (Array.isArray(imgCats) ? imgCats : []).find(c => c.code === imageType);
+    toast(`Ảnh đã đổi sang "${cat ? cat.name : imageType}" — Alt text SEO đã cập nhật`);
   } catch(e) { toast('Lỗi: ' + e.message); }
 }
 
@@ -1145,6 +1188,8 @@ function openCreateProduct() {
   pendingFiles = [];
   renderPendingPreviews();
   document.getElementById('imageGallery').innerHTML = '';
+  document.getElementById('imageGalleryEmpty').classList.remove('hidden');
+  document.getElementById('imageCarouselWrapper').classList.add('hidden');
   document.getElementById('uploadProgress').classList.add('hidden');
   onCategorySelectionChange();
   openModal('productModal');
