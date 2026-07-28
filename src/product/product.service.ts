@@ -5,7 +5,7 @@ import { InventorySyncService } from '../inventory-sync/inventory-sync.service';
 import { CreateProductDto, VariantDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Prisma } from '@prisma/client';
-import slugify from 'slugify';
+import { generateSlug, generateSlugAndCode, ensureUniqueSlug, extractNameForGeneration } from '../common/slugAndCodeGenerator';
 import { generateProductSeo, generateProductJsonLd, generateImageAltText } from '../seo/seo-generator.helper';
 
 @Injectable()
@@ -19,9 +19,8 @@ export class ProductService {
   ) {}
 
   private generateSlug(nameVi: string): string {
-    let slug = slugify(nameVi, { lower: true, strict: true, locale: 'vi' });
-    if (!slug) slug = `product-${Date.now()}`;
-    return slug;
+    const slug = generateSlug(nameVi);
+    return slug || `product-${Date.now()}`;
   }
 
   private resolveCategoryIds(dto: { categoryId?: string; categoryIds?: string[] }): string[] {
@@ -54,14 +53,10 @@ export class ProductService {
 
   private async ensureUniqueSlug(baseSlug: string, excludeId?: string, tx?: any): Promise<string> {
     const client = tx || this.prisma;
-    let slug = baseSlug;
-    let counter = 0;
-    while (true) {
-      const existing = await client.koiProduct.findUnique({ where: { slug } });
-      if (!existing || (excludeId && existing.id === excludeId)) return slug;
-      counter++;
-      slug = `${baseSlug}-${counter}`;
-    }
+    return ensureUniqueSlug(baseSlug, async (s) => {
+      const existing = await client.koiProduct.findUnique({ where: { slug: s } });
+      return !!existing && existing.id !== excludeId;
+    });
   }
 
   private safeParseSpecs(value: any): Record<string, any> {
@@ -166,7 +161,7 @@ export class ProductService {
       await this.validateTechnicalSpecs(primaryCategoryId, technicalSpecs);
 
       // Pre-compute SEO metadata (outside transaction — read-only, no side effects)
-      const nameVi = dto.name?.vi || '';
+      const nameVi = extractNameForGeneration(dto.name);
       const providedTitle = dto.metaTitle ?? dto.seo?.metaTitle;
       const providedDesc = dto.metaDescription ?? dto.seo?.metaDescription;
       let categoryName: string | undefined;
@@ -182,7 +177,7 @@ export class ProductService {
 
       // Atomic transaction: slug check, SKU check, create, and variants upsert
       const result = await this.prisma.$transaction(async (tx) => {
-        const slug = await this.ensureUniqueSlug(this.generateSlug(dto.name?.vi || ''), undefined, tx);
+        const slug = await this.ensureUniqueSlug(this.generateSlug(nameVi), undefined, tx);
 
         if (dto.sku) {
           const existing = await tx.koiProduct.findFirst({ where: { sku: dto.sku } });
@@ -337,7 +332,13 @@ export class ProductService {
     let resolvedCategoryId = categoryId;
     if (categorySlug) {
       const cat = await this.prisma.koiCategory.findUnique({ where: { slug: categorySlug } });
-      if (cat) resolvedCategoryId = cat.id;
+      // A stale slug (e.g. a bookmarked link from before a category rename) must
+      // not silently fall through to "no filter" — that returns the full catalog
+      // while the UI still claims the filter is active.
+      if (!cat) {
+        throw new NotFoundException(`Không tìm thấy danh mục có slug "${categorySlug}"`);
+      }
+      resolvedCategoryId = cat.id;
     }
     if (resolvedCategoryId) {
       where.categoryLinks = { some: { categoryId: resolvedCategoryId } };
@@ -469,7 +470,7 @@ export class ProductService {
       data.canonicalUrl = dto.seo.canonicalUrl;
     }
 
-    const nameVi = dto.name?.vi || (existing.name as any)?.vi || '';
+    const nameVi = extractNameForGeneration(dto.name) || extractNameForGeneration(existing.name) || '';
     let categoryName: string | undefined;
     const catId = (newCategoryIds ? newCategoryIds[0] : undefined) || existing.categoryId;
     if (catId) {

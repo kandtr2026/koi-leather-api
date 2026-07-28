@@ -207,7 +207,7 @@
       <div>
         <div class="flex items-center justify-between mb-2">
           <div class="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><i class="fas fa-image text-amber-500"></i> Hình ảnh sản phẩm</div>
-          <button onclick="document.getElementById('fileInput').click()" class="flex items-center gap-1 text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-1.5 rounded-lg transition"><i class="fas fa-upload"></i> Tải lên</button>
+          
         </div>
         <!-- Carousel wrapper -->
         <div id="imageCarouselContainer" class="relative mb-2">
@@ -235,7 +235,7 @@
           <input id="fileInput" type="file" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
           <div id="uploadProgress" class="hidden mt-3"><div class="w-full bg-gray-200 rounded-full h-1.5"><div id="progressBar" class="bg-amber-500 h-1.5 rounded-full" style="width:0%"></div></div><p id="progressText" class="text-xs text-gray-400 mt-1">Đang xử lý...</p></div>
         </div>
-        <div id="uploadTypeRadios" class="flex gap-2 mt-2"></div>
+          
       </div>
 
       <div>
@@ -392,11 +392,20 @@
     </div>
     <div class="space-y-3">
       <input type="hidden" id="editProdCatId">
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="block text-xs font-medium text-gray-600 mb-1">Code</label><input id="pcCode" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="WALLET"></div>
-        <div><label class="block text-xs font-medium text-gray-600 mb-1">Tên</label><input id="pcName" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví / Bóp"></div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Tên</label>
+        <input id="pcName" oninput="onProdCatNameChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví / Bóp" autofocus>
       </div>
-      <div><label class="block text-xs font-medium text-gray-600 mb-1">Slug</label><input id="pcSlug" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="vi-bop"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Code <span class="text-gray-400 font-normal">(tự động)</span></label>
+          <div id="pcCodePreview" class="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500 font-mono">—</div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Slug <span class="text-gray-400 font-normal">(tự động)</span></label>
+          <div id="pcSlugPreview" class="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500 font-mono">—</div>
+        </div>
+      </div>
       <div><label class="block text-xs font-medium text-gray-600 mb-1">Mô tả</label><textarea id="pcDesc" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></textarea></div>
   <div>
     <div class="flex justify-between items-center mb-1">
@@ -1091,7 +1100,22 @@ async function loadProducts() {
   if (currentCategoryFilter) {
     url += '&category=' + encodeURIComponent(currentCategoryFilter);
   }
-  const data = await api(url);
+  let data;
+  try {
+    data = await api(url);
+  } catch (e) {
+    // Backend now 404s an unknown category slug instead of silently returning
+    // the whole catalog. That happens with a bookmarked/stale filter (e.g. the
+    // category was renamed) — drop the filter and reload unfiltered.
+    if (e.status === 404 && currentCategoryFilter) {
+      toast('Danh mục lọc không còn tồn tại — đã bỏ lọc');
+      currentCategoryFilter = null;
+      navigateTo('/admin/products');
+      data = await api('/products?limit=50');
+    } else {
+      throw e;
+    }
+  }
   products = data.data;
   document.getElementById('headerStatus').textContent = `${products.length} sản phẩm · ${materials.length} nguyên liệu · ${orders.length} lệnh SX`;
   renderProducts();
@@ -1142,7 +1166,7 @@ function renderProducts() {
     const catBadges = cats.length
       ? cats.map(c => c.slug ? `<a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1 cursor-pointer hover:bg-amber-100 hover:text-amber-900 hover:border-amber-300 no-underline transition-colors" title="Lọc sản phẩm theo danh mục «${esc(c.name)}»">${esc(c.name)}</a>` : `<span class="inline-block px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs mr-1 mb-1">${esc(c.name)}</span>`).join('')
       : `<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-xs">Chưa phân loại</span>`;
-    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails, p.id)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="downloadProductImages('${p.id}')" class="text-gray-400 hover:text-blue-500 mr-2 requires-auth" title="Tải ảnh JPEG"><i class="fas fa-download"></i></button><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails, p.id)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="downloadProductImages('${p.id}')" class="text-gray-400 hover:text-blue-500 mr-2 requires-auth" title="Tải ảnh JPEG"><i class="fas fa-download"></i></button><button onclick="editProduct('${p.id}')" class="text-amber-500 hover:text-amber-600 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
@@ -1849,27 +1873,90 @@ function renderProdCats() {
   el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats('name')">Tên${icon('name')}</th><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats('productCount')">Số SP${icon('productCount')}</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${sorted.map(c => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium"><a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem sản phẩm thuộc danh mục này">${c.name}</a></td><td class="px-4 py-3"><a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="font-medium text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem ${c.productCount??0} sản phẩm">${c.productCount??0}</a>${c._count?.categoryLinks > (c.productCount??0) ? ` <span class="text-xs text-gray-400">/ ${c._count.categoryLinks}</span>` : ''}</td><td class="px-4 py-3 text-right"><button onclick="editProdCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteProdCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`;
 }
 
+// ========== SLUG & CODE AUTO-GENERATOR (matches backend slugAndCodeGenerator.ts) ==========
+function removeVietnameseAccents(str) {
+  const map = {
+    'à':'a','á':'a','ả':'a','ã':'a','ạ':'a',
+    'â':'a','ầ':'a','ấ':'a','ẩ':'a','ẫ':'a','ậ':'a',
+    'ă':'a','ằ':'a','ắ':'a','ẳ':'a','ẵ':'a','ặ':'a',
+    'è':'e','é':'e','ẻ':'e','ẽ':'e','ẹ':'e',
+    'ê':'e','ề':'e','ế':'e','ể':'e','ễ':'e','ệ':'e',
+    'ì':'i','í':'i','ỉ':'i','ĩ':'i','ị':'i',
+    'ò':'o','ó':'o','ỏ':'o','õ':'o','ọ':'o',
+    'ô':'o','ồ':'o','ố':'o','ổ':'o','ỗ':'o','ộ':'o',
+    'ơ':'o','ờ':'o','ớ':'o','ở':'o','ỡ':'o','ợ':'o',
+    'ù':'u','ú':'u','ủ':'u','ũ':'u','ụ':'u',
+    'ư':'u','ừ':'u','ứ':'u','ử':'u','ữ':'u','ự':'u',
+    'ỳ':'y','ý':'y','ỷ':'y','ỹ':'y','ỵ':'y',
+    'đ':'d',
+  };
+  return str.replace(/[àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/g, m => map[m] || m);
+}
+
+function normalizeNameForCode(str) {
+  return str
+    .replace(/\s*\/\s*/g, '/')
+    .replace(/\s*–\s*/g, '-')
+    .replace(/\s*—\s*/g, '-')
+    .replace(/\s*-\s*/g, '-')
+    .trim();
+}
+
+function generateSlugPreview(name) {
+  const normalized = normalizeNameForCode(name);
+  const noAccent = removeVietnameseAccents(normalized);
+  return noAccent
+    .toLowerCase()
+    .replace(/[^a-z0-9\s\-/\\\.]/g, '')
+    .replace(/[/\\]+/g, '-')
+    .replace(/[\.\s]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'untitled';
+}
+
+function generateCodePreview(name) {
+  const normalized = normalizeNameForCode(name);
+  const noAccent = removeVietnameseAccents(normalized);
+  return noAccent
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s\-/\\\.]/g, '')
+    .replace(/[/\\]+/g, '-')
+    .replace(/[\.\s]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'UNTITLED';
+}
+
+function onProdCatNameChange() {
+  const name = document.getElementById('pcName').value.trim();
+  document.getElementById('pcCodePreview').textContent = name ? generateCodePreview(name) : '—';
+  document.getElementById('pcSlugPreview').textContent = name ? generateSlugPreview(name) : '—';
+}
+
 function openCreateProdCat() {
   document.getElementById('prodCatModalTitle').textContent = 'Thêm loại sản phẩm';
   document.getElementById('editProdCatId').value = '';
-  document.getElementById('pcCode').value = '';
+  _origProdCatName = '';
   document.getElementById('pcName').value = '';
-  document.getElementById('pcSlug').value = '';
   document.getElementById('pcDesc').value = '';
+  document.getElementById('pcCodePreview').textContent = '—';
+  document.getElementById('pcSlugPreview').textContent = '—';
   _schemaFields = [];
   renderSchemaBuilder();
   openModal('prodCatModal');
 }
+
+let _origProdCatName = '';
 
 async function editProdCat(id) {
   const c = prodCats.find(x => x.id === id);
   if (!c) return;
   document.getElementById('prodCatModalTitle').textContent = 'Sửa loại sản phẩm';
   document.getElementById('editProdCatId').value = id;
-  document.getElementById('pcCode').value = c.code;
+  _origProdCatName = c.name;
   document.getElementById('pcName').value = c.name;
-  document.getElementById('pcSlug').value = c.slug;
   document.getElementById('pcDesc').value = c.description || '';
+  document.getElementById('pcCodePreview').textContent = c.code;
+  document.getElementById('pcSlugPreview').textContent = c.slug;
   // Load specsSchema into schema builder
   try {
     const full = await api('/categories/' + id);
@@ -1959,15 +2046,20 @@ function jsonToSchemaBuilder(jsonStr) {
 
 async function saveProdCat() {
   const id = document.getElementById('editProdCatId').value;
+  const name = document.getElementById('pcName').value.trim();
+  if (!name) { toast('Tên loại sản phẩm là bắt buộc'); return; }
   const specsSchema = schemaBuilderToJSON();
   const body = {
-    code: document.getElementById('pcCode').value,
-    name: document.getElementById('pcName').value,
-    slug: document.getElementById('pcSlug').value || undefined,
     description: document.getElementById('pcDesc').value || undefined,
     specsSchema,
   };
-  if (!body.code || !body.name) { toast('Code và tên là bắt buộc'); return; }
+  if (!id) {
+    // Tạo mới: không gửi code & slug → backend tự sinh
+    body.name = name;
+  } else {
+    // Chỉ gửi name nếu thay đổi → backend không regenerate code/slug không cần thiết
+    if (name !== _origProdCatName) body.name = name;
+  }
   try {
     if (id) { await api('/categories/' + id, { method: 'PATCH', body: JSON.stringify(body) }); toast('Đã cập nhật'); }
     else { await api('/categories', { method: 'POST', body: JSON.stringify(body) }); toast('Đã thêm loại sản phẩm'); }

@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { generateCategorySeo } from '../seo/seo-generator.helper';
+import { generateSlug, generateCode, ensureUniqueSlug, ensureUniqueCode } from '../common/slugAndCodeGenerator';
 
 @Injectable()
 export class CategoryService {
@@ -71,11 +72,27 @@ export class CategoryService {
     return category;
   }
 
-  async create(dto: CreateCategoryDto) {
-    const existing = await this.prisma.koiCategory.findUnique({
-      where: { code: dto.code as any },
+  /** Resolve a slug that is free, ignoring the row being updated. */
+  private uniqueSlug(base: string, excludeId?: string) {
+    return ensureUniqueSlug(base, async (s) => {
+      const existing = await this.prisma.koiCategory.findUnique({ where: { slug: s } });
+      return !!existing && existing.id !== excludeId;
     });
-    if (existing) throw new ConflictException(`Category with code "${dto.code}" already exists`);
+  }
+
+  /** Resolve a code that is free, ignoring the row being updated. */
+  private uniqueCode(base: string, excludeId?: string) {
+    return ensureUniqueCode(base, async (c) => {
+      const existing = await this.prisma.koiCategory.findUnique({ where: { code: c as any } });
+      return !!existing && existing.id !== excludeId;
+    });
+  }
+
+  async create(dto: CreateCategoryDto) {
+    const [finalCode, finalSlug] = await Promise.all([
+      this.uniqueCode(dto.code || generateCode(dto.name)),
+      this.uniqueSlug(dto.slug || generateSlug(dto.name)),
+    ]);
 
     if (!dto.metaTitle || !dto.metaDescription) {
       const generated = generateCategorySeo(dto.name);
@@ -85,9 +102,9 @@ export class CategoryService {
 
     return this.prisma.koiCategory.create({
       data: {
-        code: dto.code,
+        code: finalCode,
         name: dto.name,
-        slug: dto.slug || dto.code.toLowerCase().replace(/_/g, '-'),
+        slug: finalSlug,
         description: dto.description,
         specsSchema: JSON.stringify(dto.specsSchema || {}),
         metaTitle: dto.metaTitle,
@@ -102,17 +119,30 @@ export class CategoryService {
     const category = await this.prisma.koiCategory.findUnique({ where: { id } });
     if (!category) throw new NotFoundException('Category not found');
 
+    const name = dto.name ?? category.name;
     const data: any = {};
     if (dto.name !== undefined) data.name = dto.name;
-    if (dto.slug !== undefined) data.slug = dto.slug;
+
+    // Slug follows the name (the admin form previews this), unless sent explicitly.
+    if (dto.slug !== undefined) {
+      data.slug = await this.uniqueSlug(dto.slug, id);
+    } else if (dto.name !== undefined && dto.name !== category.name) {
+      data.slug = await this.uniqueSlug(generateSlug(name), id);
+    }
+
+    // `code` is an identity key, not a display field: findByCode() resolves
+    // categories by it and the admin infers productType from it (WALLET, BELT…).
+    // Never rewrite it on rename — only when the caller asks explicitly.
+    if (dto.code !== undefined) {
+      data.code = await this.uniqueCode(dto.code, id);
+    }
+
     if (dto.description !== undefined) data.description = dto.description;
-    if (dto.code !== undefined) data.code = dto.code;
     if (dto.specsSchema !== undefined) data.specsSchema = JSON.stringify(dto.specsSchema);
     if (dto.displayOrder !== undefined) data.displayOrder = dto.displayOrder;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
 
     // Auto-generate SEO if not explicitly provided and no existing value
-    const name = dto.name ?? category.name;
     if (dto.metaTitle !== undefined) {
       data.metaTitle = dto.metaTitle;
     } else if (!category.metaTitle) {
