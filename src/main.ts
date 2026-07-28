@@ -26,6 +26,11 @@ async function bootstrap() {
   // Serve admin dashboard at root
   app.use('/', express.static(path.join(process.cwd(), 'public')));
 
+  // SPA fallback — serve index.html for all /admin/* paths (path-based routing)
+  app.use('/admin', (req: express.Request, res: express.Response) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
+  });
+
   // Serve uploaded media
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 

@@ -38,6 +38,24 @@ export class ProductController {
     return this.productService.findAll(page, limit, type, status, categoryId, categorySlug);
   }
 
+  @Get('deleted')
+  @ApiOperation({ summary: 'List soft-deleted products (for admin restore)' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  findDeleted(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.productService.findDeleted(page, limit);
+  }
+
+  @Post(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted product' })
+  @ApiParam({ name: 'id', description: 'Product UUID' })
+  restore(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productService.restore(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get product by ID with images, variants, specs, category' })
   @ApiParam({ name: 'id', description: 'UUID or slug' })

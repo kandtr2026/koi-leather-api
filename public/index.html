@@ -426,97 +426,80 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function fm(n) { return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ'; }
 
-// ========== TAB ROUTING ==========
-const TAB_MAP = {
-  'products':         { panel: 'products', label: 'Sản phẩm' },
-  'categories':       { panel: 'prodcats', label: 'Loại sản phẩm' },
-  'image-types':      { panel: 'imgcats',  label: 'Loại ảnh' },
+// ========== PATH-BASED ROUTING ==========
+const ROUTE_MAP = {
+  '/admin/products':    { panel: 'products', label: 'Sản phẩm' },
+  '/admin/categories':  { panel: 'prodcats', label: 'Loại sản phẩm' },
+  '/admin/media-types': { panel: 'imgcats',  label: 'Loại ảnh' },
 };
-const URL_TABS = Object.keys(TAB_MAP);
-const DEFAULT_TAB = 'products';
+const ROUTES = Object.keys(ROUTE_MAP);
+const DEFAULT_ROUTE = '/admin/products';
 
-function getTabFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  const tab = params.get('tab');
-  return URL_TABS.includes(tab) ? tab : null;
+function getRouteFromPath() {
+  const path = window.location.pathname.replace(/\/+$/g, '') || '/';
+  if (ROUTES.includes(path)) return path;
+  return null;
 }
 
-function switchTab(urlTab) {
-  const entry = TAB_MAP[urlTab];
+function applyRoute(route) {
+  const entry = ROUTE_MAP[route];
   if (!entry) return;
-  const internal = entry.panel;
 
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.tab === internal);
-  });
-  document.querySelectorAll('.panel').forEach(p => {
-    p.classList.toggle('active', p.id === 'panel-' + internal);
-  });
-
-  const url = new URL(window.location);
-  url.searchParams.set('tab', urlTab);
-  history.pushState({ tab: urlTab }, '', url);
-}
-
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', function() {
-    const internal = this.dataset.tab;
-    const urlTab = Object.keys(TAB_MAP).find(k => TAB_MAP[k].panel === internal) || DEFAULT_TAB;
-    switchTab(urlTab);
-  });
-});
-
-window.addEventListener('popstate', function(e) {
-  const tab = getTabFromUrl() || DEFAULT_TAB;
-  const entry = TAB_MAP[tab];
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === entry.panel);
   });
   document.querySelectorAll('.panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + entry.panel);
   });
-  // Sync category filter from URL on back/forward navigation
-  if (tab === 'products') {
-    const urlCat = getCategoryFromUrl();
-    if (urlCat !== currentCategoryFilter) {
-      currentCategoryFilter = urlCat;
-      loadProducts();
+}
+
+function navigateTo(route) {
+  applyRoute(route);
+  history.pushState({ route }, '', route);
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const internal = this.dataset.tab;
+    const route = Object.keys(ROUTE_MAP).find(k => ROUTE_MAP[k].panel === internal) || DEFAULT_ROUTE;
+    navigateTo(route);
+  });
+});
+
+window.addEventListener('popstate', function() {
+  const route = getRouteFromPath();
+  if (route) {
+    applyRoute(route);
+    const entry = ROUTE_MAP[route];
+    if (entry && entry.panel === 'products') {
+      const urlCat = getCategoryFromUrl();
+      if (urlCat !== currentCategoryFilter) {
+        currentCategoryFilter = urlCat;
+        loadProducts();
+      }
     }
   }
 });
 
-/**
- * Get category slug from URL search params
- */
 function getCategoryFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return params.get('category') || null;
 }
 
-/**
- * Navigate from Categories tab to Products tab, filtering by category slug.
- * Updates URL for refresh persistence.
- */
 let currentCategoryFilter = null;
 
 function navigateToCategoryProducts(categoryId, categorySlug) {
   currentCategoryFilter = categorySlug;
-  // Switch to products tab
-  switchTab('products');
-  // Update URL with category filter param
+  navigateTo('/admin/products');
   const url = new URL(window.location);
-  url.searchParams.set('tab', 'products');
   url.searchParams.set('category', categorySlug);
-  history.pushState({ tab: 'products', category: categorySlug }, '', url);
-  // Reload products with category filter
+  history.replaceState({ route: '/admin/products', category: categorySlug }, '', url);
   loadProducts();
 }
 
 function clearCategoryFilter() {
   currentCategoryFilter = null;
-  const url = new URL(window.location);
-  url.searchParams.delete('category');
-  history.pushState({ tab: 'products' }, '', url);
+  navigateTo('/admin/products');
   loadProducts();
 }
 
@@ -900,12 +883,22 @@ async function openLightboxFromProduct(productId, startIndex) {
   } catch(e) { toast('Lỗi tải ảnh: ' + e.message); }
 }
 
-// Keyboard navigation for lightbox
+// Keyboard: ESC đóng modal đang mở · Arrow keys điều hướng lightbox
 document.addEventListener('keydown', function(e) {
-  if (!document.getElementById('lightboxModal').classList.contains('open')) return;
-  if (e.key === 'Escape') { closeLightbox(); e.preventDefault(); }
-  else if (e.key === 'ArrowRight') { nextLightboxImage(); e.preventDefault(); }
-  else if (e.key === 'ArrowLeft') { prevLightboxImage(); e.preventDefault(); }
+  const target = e.target;
+  const isFormField = target.matches('input, textarea, select, [contenteditable]');
+
+  if (e.key === 'Escape') {
+    const lightbox = document.getElementById('lightboxModal');
+    if (lightbox.classList.contains('open')) { closeLightbox(); e.preventDefault(); return; }
+    const openModal = document.querySelector('.modal-overlay.open');
+    if (openModal) { closeModal(openModal.id); e.preventDefault(); }
+  } else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && !isFormField) {
+    if (document.getElementById('lightboxModal').classList.contains('open')) {
+      e.preventDefault();
+      if (e.key === 'ArrowRight') nextLightboxImage(); else prevLightboxImage();
+    }
+  }
 });
 
 // ========== PRODUCTS ==========
@@ -964,7 +957,7 @@ function renderProducts() {
     const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
     const cats = (p.categories && p.categories.length) ? p.categories : (p.category ? [p.category] : []);
     const catBadges = cats.length
-      ? cats.map(c => `<span class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1">${esc(c.name)}</span>`).join('')
+      ? cats.map(c => `<a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1 cursor-pointer hover:bg-amber-100 hover:text-amber-900 hover:border-amber-300 no-underline transition-colors" title="Lọc sản phẩm theo danh mục «${esc(c.name)}»">${esc(c.name)}</a>`).join('')
       : `<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-xs">Chưa phân loại</span>`;
     return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails, p.id)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3 font-mono text-xs">${p.sku}</td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
   }).join('')}</tbody></table></div>`;
@@ -1431,6 +1424,31 @@ function toProductType(cat) {
   return null;
 }
 
+// Sort state for products category table
+let prodCatSortBy = null;
+let prodCatSortOrder = 'asc';
+
+function sortProdCats(key) {
+  if (prodCatSortBy === key) {
+    prodCatSortOrder = prodCatSortOrder === 'asc' ? 'desc' : 'asc';
+  } else {
+    prodCatSortBy = key;
+    prodCatSortOrder = 'asc';
+  }
+  renderProdCats();
+}
+
+function sortProdCatsFn(a, b) {
+  if (!prodCatSortBy) return 0;
+  let va = a[prodCatSortBy], vb = b[prodCatSortBy];
+  if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb||'').toLowerCase(); }
+  if (va == null) va = 0;
+  if (vb == null) vb = 0;
+  if (va < vb) return prodCatSortOrder === 'asc' ? -1 : 1;
+  if (va > vb) return prodCatSortOrder === 'asc' ? 1 : -1;
+  return 0;
+}
+
 async function loadProdCats() {
   try {
     const raw = await api('/categories');
@@ -1446,7 +1464,9 @@ async function loadProdCats() {
 function renderProdCats() {
   const el = document.getElementById('prodCatTable');
   if (!prodCats.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-layer-group text-4xl mb-3"></i><p>Chưa có loại sản phẩm</p></div>'; return; }
-  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Code</th><th class="px-4 py-3">Tên</th><th class="px-4 py-3">Slug</th><th class="px-4 py-3">Số SP</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${prodCats.map(c => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-mono text-xs font-medium">${c.code}</td><td class="px-4 py-3 font-medium"><a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem sản phẩm thuộc danh mục này">${c.name}</a></td><td class="px-4 py-3 text-xs text-gray-500">${c.slug}</td><td class="px-4 py-3"><a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="font-medium text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem ${c.productCount??0} sản phẩm">${c.productCount??0}</a>${c._count?.categoryLinks > (c.productCount??0) ? ` <span class="text-xs text-gray-400">/ ${c._count.categoryLinks}</span>` : ''}</td><td class="px-4 py-3 text-right"><button onclick="editProdCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteProdCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`;
+  const sorted = [...prodCats].sort(sortProdCatsFn);
+  const icon = (key) => prodCatSortBy === key ? (prodCatSortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats('name')">Tên${icon('name')}</th><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats('productCount')">Số SP${icon('productCount')}</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${sorted.map(c => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium"><a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem sản phẩm thuộc danh mục này">${c.name}</a></td><td class="px-4 py-3"><a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="font-medium text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem ${c.productCount??0} sản phẩm">${c.productCount??0}</a>${c._count?.categoryLinks > (c.productCount??0) ? ` <span class="text-xs text-gray-400">/ ${c._count.categoryLinks}</span>` : ''}</td><td class="px-4 py-3 text-right"><button onclick="editProdCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteProdCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`;
 }
 
 function openCreateProdCat() {
@@ -1749,20 +1769,23 @@ function updateHeaderStatus() {
 
 // Load each dataset independently — no Promise.all bottleneck
 async function init() {
-  // Restore tab from URL or default to products
-  const urlTab = getTabFromUrl() || DEFAULT_TAB;
-  const entry = TAB_MAP[urlTab];
-  if (entry) {
-    document.querySelectorAll('.tab-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.tab === entry.panel);
-    });
-    document.querySelectorAll('.panel').forEach(p => {
-      p.classList.toggle('active', p.id === 'panel-' + entry.panel);
-    });
-    // Set initial URL without creating a history entry
-    const url = new URL(window.location);
-    url.searchParams.set('tab', urlTab);
-    history.replaceState({ tab: urlTab }, '', url);
+  // Resolve route from pathname
+  const path = window.location.pathname.replace(/\/+$/g, '') || '/';
+
+  // Redirect root → default route
+  if (path === '/') {
+    history.replaceState({ route: DEFAULT_ROUTE }, '', DEFAULT_ROUTE);
+    applyRoute(DEFAULT_ROUTE);
+  } else {
+    const route = getRouteFromPath();
+    if (route) {
+      applyRoute(route);
+      history.replaceState({ route }, '', route);
+    } else {
+      // Unknown path → fallback to default
+      history.replaceState({ route: DEFAULT_ROUTE }, '', DEFAULT_ROUTE);
+      applyRoute(DEFAULT_ROUTE);
+    }
   }
 
   // Restore category filter from URL

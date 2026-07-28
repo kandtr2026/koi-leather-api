@@ -39,6 +39,21 @@
     .toast.show { transform: translateY(0); opacity: 1; }
     .stat-card { transition: transform 0.2s; }
     .stat-card:hover { transform: translateY(-2px); }
+    .image-carousel { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+    .image-carousel::-webkit-scrollbar { height: 4px; }
+    .image-carousel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+    .image-carousel::-webkit-scrollbar-track { background: transparent; }
+    .nav-btn { transition: all 0.2s; }
+    .nav-btn:hover { background: #1f2937; color: white; }
+    .nav-btn:active { transform: scale(0.95); }
+    .image-card { transition: all 0.2s; }
+    .image-card:hover { border-color: #f59e0b; }
+    .image-card.primary { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.3); }
+    .image-type-select { transition: all 0.15s; }
+    .image-type-select:focus { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.15); }
+    .primary-badge { position: absolute; top: 6px; left: 6px; background: #f59e0b; color: white; font-size: 10px; font-weight: 600; padding: 1px 8px; border-radius: 999px; }
+    .image-upload-zone { transition: all 0.2s; }
+    .image-upload-zone:hover { border-color: #f59e0b; background: #fffbeb; }
   </style>
 </head>
 <body>
@@ -174,17 +189,7 @@
         <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full">
-              <thead>
-                <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  <th class="px-5 py-3">Loại sản phẩm</th>
-                  <th class="px-5 py-3">Code</th>
-                  <th class="px-5 py-3">Slug</th>
-                  <th class="px-5 py-3">Specs fields</th>
-                  <th class="px-5 py-3">Số SP</th>
-                  <th class="px-5 py-3">Trạng thái</th>
-                  <th class="px-5 py-3 text-right">Thao tác</th>
-                </tr>
-              </thead>
+              <thead id="categoryTableHead"></thead>
               <tbody id="categoryTableBody" class="divide-y divide-gray-100 text-sm">
               </tbody>
             </table>
@@ -349,6 +354,40 @@
           <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">động theo loại</span>
         </div>
         <div id="dynamicSpecs" class="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-lg border">
+        </div>
+      </div>
+
+      <!-- Image Management -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-images text-amber-500 text-xs"></i>
+            <label class="text-sm font-medium text-gray-700">Hình ảnh sản phẩm</label>
+            <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">carousel</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="document.getElementById('imageUploadInput').click()" class="flex items-center gap-1 text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-1.5 rounded-lg transition">
+              <i class="fas fa-upload"></i> Tải lên
+            </button>
+            <input id="imageUploadInput" type="file" accept="image/*" multiple style="display:none" onchange="handleImageUpload(this)">
+          </div>
+        </div>
+        <div id="imageCarouselContainer" class="relative">
+          <div id="imageCarouselEmpty" class="p-6 bg-gray-50 rounded-lg border text-center">
+            <i class="fas fa-image text-3xl text-gray-300 mb-2"></i>
+            <p class="text-sm text-gray-400">Chưa có ảnh nào. Tải lên ảnh sản phẩm để quản lý.</p>
+          </div>
+          <div id="imageCarouselWrapper" style="display:none">
+            <div class="flex items-center gap-1 mb-2">
+              <button onclick="scrollCarousel(-1)" class="nav-btn flex items-center justify-center w-7 h-7 rounded-full border border-gray-300 bg-white text-gray-500 text-xs shrink-0" title="Trái">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <div id="imageCarousel" class="image-carousel flex gap-3 overflow-x-auto py-1 px-0.5 flex-1"></div>
+              <button onclick="scrollCarousel(1)" class="nav-btn flex items-center justify-center w-7 h-7 rounded-full border border-gray-300 bg-white text-gray-500 text-xs shrink-0" title="Phải">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -644,26 +683,60 @@ const productMaterialMap = {
   ],
 };
 
+const imageTypeOptions = [
+  { code: 'STUDIO', label: 'Studio', desc: 'Ảnh nền trắng/phông trơn' },
+  { code: 'LIFESTYLE', label: 'Lifestyle', desc: 'Ảnh bối cảnh thực tế/phối đồ' },
+  { code: 'CRAFTING', label: 'Crafting', desc: 'Ảnh quá trình chế tác thủ công' },
+  { code: 'TEXTURE', label: 'Texture', desc: 'Ảnh cận cảnh vân da/chỉ khâu' },
+];
+
+const imageTypeAltTemplate = {
+  STUDIO: 'Ảnh Studio {name} - Koi Leather',
+  LIFESTYLE: 'Ảnh Lifestyle {name} - Koi Leather',
+  CRAFTING: 'Ảnh Chế tác {name} - Koi Leather',
+  TEXTURE: 'Ảnh Vân da {name} - Koi Leather',
+};
+
+function generateImageAlt(productName, imageType) {
+  const template = imageTypeAltTemplate[imageType] || 'Ảnh {name} - Koi Leather';
+  return template.replace('{name}', productName || 'Sản phẩm da thủ công');
+}
+
 let products = [
   { id: 1, name: 'Ví đứng Epsom Navy', type: 'Ví', sku: 'WD-EPS-NAVY-001', websiteId: 'KL-001',
     technicalSpecs: { wallet_style: 'standing', card_slots: 8, cash_pockets: 2, thread_pitch_mm: 3.38 },
     specs: { wallet_style: 'standing', card_slots: 8, cash_pockets: 2, thread_pitch_mm: 3.38 },
     seo: { title: 'Ví đứng cao cấp Epsom Navy | Koi Leather', desc: 'Ví da cao cấp từ nhà máy Haas, 8 ngăn thẻ, 2 ngăn tiền.', canonical: '/san-pham/vi-dung-epsom-navy', keywords: ['ví da', 'epsom navy', 'cardholder', 'quà tặng'] },
+    images: [
+      { id: 'img-1-1', url: 'https://placehold.co/400x500/f59e0b/white?text=Vi+Dung+Front', thumbnailUrl: 'https://placehold.co/80x100/f59e0b/white?text=Front', altText: 'Ảnh Studio Ví đứng Epsom Navy - Koi Leather', imageType: 'STUDIO', isPrimary: true, displayOrder: 0 },
+      { id: 'img-1-2', url: 'https://placehold.co/400x500/92400e/white?text=Vi+Dung+Back', thumbnailUrl: 'https://placehold.co/80x100/92400e/white?text=Back', altText: 'Ảnh Lifestyle Ví đứng Epsom Navy - Koi Leather', imageType: 'LIFESTYLE', isPrimary: false, displayOrder: 1 },
+      { id: 'img-1-3', url: 'https://placehold.co/400x500/78350f/white?text=Vi+Dung+Open', thumbnailUrl: 'https://placehold.co/80x100/78350f/white?text=Open', altText: 'Ảnh Chế tác Ví đứng Epsom Navy - Koi Leather', imageType: 'CRAFTING', isPrimary: false, displayOrder: 2 },
+      { id: 'img-1-4', url: 'https://placehold.co/400x500/d97706/white?text=Da+Epsom+Navy', thumbnailUrl: 'https://placehold.co/80x100/d97706/white?text=Texture', altText: 'Ảnh Vân da Ví đứng Epsom Navy - Koi Leather', imageType: 'TEXTURE', isPrimary: false, displayOrder: 3 },
+    ],
     createdAt: '2026-07-01', active: true },
   { id: 2, name: 'Thắt lưng da bò Buttero Havana', type: 'Thắt lưng', sku: 'TL-BUT-HAV-002', websiteId: 'KL-002',
     technicalSpecs: { belt_width_cm: 3.4, buckle_type: 'pin_buckle', strap_length_cm: 110, hole_count: 7 },
     specs: { belt_width_cm: 3.4, buckle_type: 'pin_buckle', strap_length_cm: 110, hole_count: 7 },
     seo: { title: 'Thắt lưng da bò Buttero Havana | Koi Leather', desc: 'Thắt lưng da bò Ý, khóa inox mờ, 7 lỗ điều chỉnh.', canonical: '/san-pham/that-lung-buttero-havana', keywords: ['thắt lưng da', 'buttero havana', 'da bò ý'] },
+    images: [
+      { id: 'img-2-1', url: 'https://placehold.co/400x500/78716c/white?text=Buttero+Belt', thumbnailUrl: 'https://placehold.co/80x100/78716c/white?text=Belt', altText: 'Ảnh Studio Thắt lưng da bò Buttero Havana - Koi Leather', imageType: 'STUDIO', isPrimary: true, displayOrder: 0 },
+      { id: 'img-2-2', url: 'https://placehold.co/400x500/57534e/white?text=Belt+Lifestyle', thumbnailUrl: 'https://placehold.co/80x100/57534e/white?text=Lifestyle', altText: 'Ảnh Lifestyle Thắt lưng da bò Buttero Havana - Koi Leather', imageType: 'LIFESTYLE', isPrimary: false, displayOrder: 1 },
+    ],
     createdAt: '2026-07-05', active: true },
   { id: 3, name: 'Watch Strap Epsom 20-18mm', type: 'Watch Strap', sku: 'WS-EPS-20-18-003', websiteId: 'KL-003',
     technicalSpecs: { lug_width_mm: 20, buckle_width_mm: 18, short_strap_mm: 115, long_strap_mm: 75, padding_type: 'padded' },
     specs: { lug_width_mm: 20, buckle_width_mm: 18, short_strap_mm: 115, long_strap_mm: 75, padding_type: 'padded' },
     seo: { title: 'Watch Strap Da Epsom 20-18mm | Koi Leather', desc: 'Dây đồng hồ da Epsom, Lug 20mm, khóa 18mm.', canonical: '/san-pham/watch-strap-epsom-20-18', keywords: ['dây đồng hồ da', 'epsom', 'watch strap 20mm'] },
+    images: [],
     createdAt: '2026-07-10', active: false },
   { id: 4, name: 'Túi tote Pueblo Mini', type: 'Túi', sku: 'TT-PUE-MINI-004', websiteId: 'KL-004',
     technicalSpecs: { bag_type: 'tote', length_cm: 28, width_cm: 10, height_cm: 22 },
     specs: { bag_type: 'tote', length_cm: 28, width_cm: 10, height_cm: 22 },
     seo: { title: 'Túi Tote Pueblo Mini | Koi Leather', desc: 'Túi tote mini da Pueblo Ý, phù hợp hàng ngày.', canonical: '/san-pham/tui-tote-pueblo-mini', keywords: ['túi tote', 'pueblo', 'túi da mini'] },
+    images: [
+      { id: 'img-4-1', url: 'https://placehold.co/400x500/a8a29e/white?text=Pueblo+Tote', thumbnailUrl: 'https://placehold.co/80x100/a8a29e/white?text=Tote', altText: 'Ảnh Studio Túi tote Pueblo Mini - Koi Leather', imageType: 'STUDIO', isPrimary: true, displayOrder: 0 },
+      { id: 'img-4-2', url: 'https://placehold.co/400x500/78716c/white?text=Tote+Texture', thumbnailUrl: 'https://placehold.co/80x100/78716c/white?text=Texture', altText: 'Ảnh Vân da Túi tote Pueblo Mini - Koi Leather', imageType: 'TEXTURE', isPrimary: false, displayOrder: 1 },
+    ],
     createdAt: '2026-07-15', active: true },
 ];
 
@@ -705,8 +778,144 @@ let orders = [
 ];
 
 let nextProductId = 5;
+let nextImageId = 100;
 let nextMaterialId = 16;
 let nextOrderNum = 3;
+
+// ======================== IMAGE MANAGEMENT ========================
+
+let editingProductImages = [];
+let editingProductName = '';
+
+function scrollCarousel(direction) {
+  const carousel = document.getElementById('imageCarousel');
+  if (!carousel) return;
+  const scrollAmount = 280;
+  carousel.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+}
+
+function renderImageCarousel() {
+  const carousel = document.getElementById('imageCarousel');
+  const empty = document.getElementById('imageCarouselEmpty');
+  const wrapper = document.getElementById('imageCarouselWrapper');
+
+  if (!editingProductImages || editingProductImages.length === 0) {
+    empty.style.display = 'block';
+    wrapper.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  wrapper.style.display = 'block';
+
+  const nameInput = document.getElementById('prodName')?.value?.trim();
+  const productName = nameInput || editingProductName || 'Sản phẩm da thủ công';
+  const primaryId = editingProductImages.find(img => img.isPrimary)?.id || editingProductImages[0]?.id;
+
+  carousel.innerHTML = editingProductImages.map(img => {
+    const isPrimary = img.id === primaryId;
+    return `<div class="image-card flex flex-col bg-white rounded-lg border ${isPrimary ? 'primary' : 'border-gray-200'} p-2 min-w-[180px] max-w-[180px] shrink-0 relative">
+      <div class="relative w-full aspect-[4/5] rounded-md overflow-hidden bg-gray-100 mb-2">
+        ${isPrimary ? '<span class="primary-badge"><i class="fas fa-star"></i> Chính</span>' : ''}
+        <img src="${img.thumbnailUrl || img.url}" alt="${escHtml(img.altText || '')}"
+          class="w-full h-full object-cover"
+          onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full text-gray-300\\'><i class=\\'fas fa-image fa-2x\\'></i></div>'">
+      </div>
+      <div class="space-y-1.5">
+        <select onchange="onImageTypeChange('${img.id}', this.value, '${escHtml(productName)}')"
+          class="image-type-select w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 cursor-pointer">
+          ${imageTypeOptions.map(opt =>
+            `<option value="${opt.code}" ${img.imageType === opt.code ? 'selected' : ''}>${opt.label}</option>`
+          ).join('')}
+        </select>
+        <div class="text-[10px] text-gray-400 truncate" title="${escHtml(img.altText || '')}">
+          <i class="fas fa-tag mr-0.5"></i> ${escHtml(img.altText || 'Chưa có alt text')}
+        </div>
+        <div class="flex items-center justify-between pt-0.5">
+          <button onclick="setPrimaryImage('${img.id}')" class="text-[10px] ${isPrimary ? 'text-amber-500' : 'text-gray-400 hover:text-amber-500'} transition" title="${isPrimary ? 'Đã là ảnh chính' : 'Đặt làm ảnh chính'}">
+            <i class="fas ${isPrimary ? 'fa-star' : 'fa-star'}"></i>
+          </button>
+          <button onclick="deleteProductImage('${img.id}')" class="text-[10px] text-gray-400 hover:text-red-500 transition" title="Xoá ảnh">
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function onImageTypeChange(imageId, newType, productName) {
+  const img = editingProductImages.find(i => i.id === imageId);
+  if (!img) return;
+  const nameInput = document.getElementById('prodName').value.trim();
+  const effectiveName = nameInput || productName || 'Sản phẩm da thủ công';
+  img.imageType = newType;
+  img.altText = generateImageAlt(effectiveName, newType);
+  renderImageCarousel();
+  const typeLabel = imageTypeOptions.find(o => o.code === newType)?.label || newType;
+  toast(`Đã đổi loại ảnh → ${typeLabel}. Alt text SEO đã cập nhật.`);
+}
+
+function setPrimaryImage(imageId) {
+  editingProductImages.forEach(img => img.isPrimary = img.id === imageId);
+  renderImageCarousel();
+  toast('Đã đặt ảnh chính');
+}
+
+function deleteProductImage(imageId) {
+  if (!confirm('Xoá ảnh này?')) return;
+  editingProductImages = editingProductImages.filter(i => i.id !== imageId);
+  if (editingProductImages.length > 0 && !editingProductImages.some(i => i.isPrimary)) {
+    editingProductImages[0].isPrimary = true;
+  }
+  renderImageCarousel();
+  toast('Đã xoá ảnh');
+}
+
+function handleImageUpload(input) {
+  const files = input.files;
+  if (!files || files.length === 0) return;
+  const nameInput = document.getElementById('prodName').value.trim();
+  const productName = nameInput || editingProductName || 'Sản phẩm da thủ công';
+
+  for (const file of files) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const dataUrl = e.target.result;
+      const newImg = {
+        id: 'img-new-' + (nextImageId++),
+        url: dataUrl,
+        thumbnailUrl: dataUrl,
+        altText: generateImageAlt(productName, 'STUDIO'),
+        imageType: 'STUDIO',
+        isPrimary: editingProductImages.length === 0,
+        displayOrder: editingProductImages.length,
+      };
+      editingProductImages.push(newImg);
+      renderImageCarousel();
+    };
+    reader.readAsDataURL(file);
+  }
+  input.value = '';
+  toast(`Đã tải lên ${files.length} ảnh`);
+}
+
+function collectImagesData() {
+  return editingProductImages.map(img => ({
+    id: img.id,
+    url: img.url,
+    thumbnailUrl: img.thumbnailUrl,
+    altText: img.altText,
+    imageType: img.imageType,
+    isPrimary: img.isPrimary,
+    displayOrder: img.displayOrder,
+  }));
+}
+function escHtml(s) {
+  if (typeof s !== 'string') return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
 
 // ======================== CATEGORIES (MOCK + SEED DATA) ========================
 
@@ -1070,6 +1279,7 @@ function openProductModal(editId) {
   document.getElementById('prodType').value = 'Ví';
   renderSeoKeywords();
   onProductTypeChange();
+  editingProductImages = [];
 
   if (editId) {
     const p = products.find(x => x.id === editId);
@@ -1084,7 +1294,10 @@ function openProductModal(editId) {
     if (p.seo.keywords) seoKeywords = [...p.seo.keywords];
     renderSeoKeywords();
     renderDynamicSpecs(getSchemaForType(p.type), p.technicalSpecs || p.specs || {});
+    editingProductImages = (p.images || []).map(img => ({ ...img }));
+    editingProductName = p.name;
   }
+  renderImageCarousel();
   document.getElementById('productModal').classList.add('open');
 }
 
@@ -1106,12 +1319,14 @@ function saveProduct() {
     keywords: seoKeywords,
   };
 
+  const images = collectImagesData();
+
   if (id) {
     const p = products.find(x => x.id === Number(id));
-    if (p) { Object.assign(p, { name, type, sku, websiteId, specs: technicalSpecs, technicalSpecs, seo }); toast('Đã cập nhật sản phẩm'); }
+    if (p) { Object.assign(p, { name, type, sku, websiteId, specs: technicalSpecs, technicalSpecs, seo, images }); toast('Đã cập nhật sản phẩm'); }
   } else {
     products.push({
-      id: nextProductId++, name, type, sku, websiteId, specs: technicalSpecs, technicalSpecs, seo,
+      id: nextProductId++, name, type, sku, websiteId, specs: technicalSpecs, technicalSpecs, seo, images,
       createdAt: new Date().toISOString().slice(0, 10), active: true,
     });
     toast('Đã thêm sản phẩm mới');
@@ -1737,6 +1952,27 @@ function renderAll() {
   renderOrders();
 }
 
+let catSortBy = null;
+let catSortOrder = 'asc';
+
+function sortCategories(key) {
+  if (catSortBy === key) {
+    catSortOrder = catSortOrder === 'asc' ? 'desc' : 'asc';
+  } else {
+    catSortBy = key;
+    catSortOrder = 'asc';
+  }
+  renderCategories();
+}
+
+function catSortValue(c, key) {
+  if (key === 'fieldCount') return getSpecsFieldCount(c);
+  if (key === 'productCount') return c.productCount || 0;
+  if (key === 'isActive') return c.isActive ? 1 : 0;
+  const v = c[key];
+  return typeof v === 'string' ? v.toLowerCase() : v;
+}
+
 function renderCategories() {
   const tbody = document.getElementById('categoryTableBody');
   const empty = document.getElementById('categoryEmpty');
@@ -1758,15 +1994,26 @@ function renderCategories() {
   document.getElementById('statsActiveCategories').textContent = active;
   document.getElementById('statsSpecFields').textContent = totalFields;
 
-  const codeClassMap = {
-    WALLET: 'bg-blue-100 text-blue-700',
-    BELT: 'bg-emerald-100 text-emerald-700',
-    WATCH_STRAP: 'bg-purple-100 text-purple-700',
-    BAG: 'bg-rose-100 text-rose-700',
-    ACCESSORY: 'bg-amber-100 text-amber-700'
-  };
+  const sorted = [...categories].sort((a, b) => {
+    if (!catSortBy) return 0;
+    const va = catSortValue(a, catSortBy), vb = catSortValue(b, catSortBy);
+    if (va < vb) return catSortOrder === 'asc' ? -1 : 1;
+    if (va > vb) return catSortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
 
-  tbody.innerHTML = categories.map(c => {
+  const sortIcon = (key) => catSortBy === key ? (catSortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+  const thClass = 'px-5 py-3 cursor-pointer select-none hover:text-amber-700';
+  document.getElementById('categoryTableHead').innerHTML = `<tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+    <th class="${thClass}" onclick="sortCategories('name')">Loại sản phẩm${sortIcon('name')}</th>
+    <th class="${thClass}" onclick="sortCategories('slug')">Slug${sortIcon('slug')}</th>
+    <th class="${thClass}" onclick="sortCategories('fieldCount')">Specs fields${sortIcon('fieldCount')}</th>
+    <th class="${thClass}" onclick="sortCategories('productCount')">Số SP${sortIcon('productCount')}</th>
+    <th class="${thClass}" onclick="sortCategories('isActive')">Trạng thái${sortIcon('isActive')}</th>
+    <th class="px-5 py-3 text-right">Thao tác</th>
+  </tr>`;
+
+  tbody.innerHTML = sorted.map(c => {
     const fieldCount = getSpecsFieldCount(c);
     const specPreview = fieldCount > 0
       ? Object.keys(c.specsSchema.properties).slice(0, 3).join(', ') + (fieldCount > 3 ? `...` : '')
@@ -1780,9 +2027,6 @@ function renderCategories() {
             <div class="text-xs text-gray-400">${c.slug}</div>
           </div>
         </div>
-      </td>
-      <td class="px-5 py-3">
-        <span class="px-2 py-1 rounded text-xs font-medium ${codeClassMap[c.code] || 'bg-gray-100 text-gray-600'}">${c.code}</span>
       </td>
       <td class="px-5 py-3 font-mono text-xs text-gray-500">${c.slug}</td>
       <td class="px-5 py-3">
@@ -1832,11 +2076,26 @@ function renderProducts() {
 
   tbody.innerHTML = products.map(p => {
     const specSummary = Object.entries(p.specs).slice(0, 2).map(([k, v]) => `${v}`).join(' | ');
+    const imgs = p.images || [];
+    const primaryImg = imgs.find(i => i.isPrimary) || imgs[0];
+    const imgCount = imgs.length;
     return `<tr>
       <td class="px-5 py-3">
-        <div class="flex items-center gap-2">
-          <div class="w-2 h-2 rounded-full ${p.active ? 'bg-green-500' : 'bg-gray-300'}"></div>
-          <span class="font-medium text-gray-800">${p.name}</span>
+        <div class="flex items-center gap-3">
+          <div class="relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 shrink-0 flex items-center justify-center">
+            ${primaryImg
+              ? `<img src="${primaryImg.thumbnailUrl || primaryImg.url}" alt="${escHtml(primaryImg.altText || '')}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-image text-gray-300\\'></i>'">`
+              : `<i class="fas fa-image text-gray-300"></i>`
+            }
+            ${imgCount > 1 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">${imgCount}</span>` : ''}
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <div class="w-2 h-2 rounded-full ${p.active ? 'bg-green-500' : 'bg-gray-300'}"></div>
+              <span class="font-medium text-gray-800">${p.name}</span>
+            </div>
+            ${imgCount > 0 ? `<div class="text-[10px] text-gray-400 mt-0.5">${imgCount} ảnh · Loại: ${imgs.map(i => imageTypeOptions.find(o => o.code === i.imageType)?.label || i.imageType).join(', ')}</div>` : ''}
+          </div>
         </div>
       </td>
       <td class="px-5 py-3"><span class="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-600">${p.type}</span></td>

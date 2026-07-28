@@ -450,6 +450,52 @@ export class ProductService {
     return { deleted: true, id, deletedAt };
   }
 
+  async findDeleted(page = 1, limit = 20) {
+    const where: Prisma.KoiProductWhereInput = { isDeleted: true };
+
+    const [data, total] = await Promise.all([
+      this.prisma.koiProduct.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { deletedAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          productType: true,
+          sku: true,
+          basePrice: true,
+          status: true,
+          isDeleted: true,
+          deletedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          categoryId: true,
+          category: { select: { id: true, code: true, name: true } },
+          _count: { select: { variants: true, images: true } },
+        },
+      }),
+      this.prisma.koiProduct.count({ where }),
+    ]);
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async restore(id: string) {
+    const product = await this.prisma.koiProduct.findFirst({
+      where: { id, isDeleted: true },
+    });
+    if (!product) throw new NotFoundException('Deleted product not found');
+
+    const updated = await this.prisma.koiProduct.update({
+      where: { id },
+      data: { isDeleted: false, deletedAt: null },
+    });
+
+    return { restored: true, id, updatedAt: updated.updatedAt };
+  }
+
   async toggleStatus(id: string) {
     const product = await this.findById(id);
     const newStatus = product.status === 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
