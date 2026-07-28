@@ -1392,7 +1392,7 @@ function renderCategoryCheckboxes(selectedIds = []) {
   const sel = new Set(selectedIds);
   box.innerHTML = prodCats.map(c => `
     <label class="flex items-center gap-2 py-1 px-1 rounded hover:bg-gray-50 cursor-pointer text-sm">
-      <input type="checkbox" class="pcat-cb w-4 h-4 accent-amber-500 rounded border-gray-300" value="${c.id}" ${sel.has(c.id) ? 'checked' : ''} onchange="onCategorySelectionChange()">
+      <input type="checkbox" class="pcat-cb w-4 h-4 accent-amber-500 rounded border-gray-300" value="${c.id}" ${sel.has(c.id) ? 'checked' : ''}>
       <span class="truncate">${esc(c.name)}</span>
       
     </label>`).join('');
@@ -1427,8 +1427,7 @@ function onCategorySelectionChange() {
 
 function openCreateProduct() {
   document.getElementById('productModalTitle').textContent = 'Thêm sản phẩm';
-  ['editProductId','pNameVi','pPrice','pExtId'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('pSpecs').value = '';
+  ['editProductId','pNameVi','pPrice'].forEach(id => document.getElementById(id).value = '');
   renderCategoryCheckboxes([]);
   currentProductId = null;
   // Reset pending files
@@ -1439,7 +1438,6 @@ function openCreateProduct() {
   document.getElementById('imageGalleryEmpty').classList.remove('hidden');
   document.getElementById('imageCarouselWrapper').classList.add('hidden');
   document.getElementById('uploadProgress').classList.add('hidden');
-  onCategorySelectionChange();
   openModal('productModal');
 }
 
@@ -1459,14 +1457,7 @@ async function editProduct(id) {
     : (p.categoryId ? [p.categoryId] : []);
   renderCategoryCheckboxes(selIds);
   document.getElementById('pPrice').value = p.basePrice || '';
-  document.getElementById('pExtId').value = p.externalId || '';
-  const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
-  const primary = getPrimaryCategory();
-  const schema = primary ? parseSchema(primary.specsSchema) : null;
-  buildSpecsForm(schema, specs);
-  if (!schema || !schema.properties || Object.keys(schema.properties).length === 0) {
-    document.getElementById('pSpecs').value = JSON.stringify(specs, null, 2);
-  }
+
   openModal('productModal');
   await loadGallery(id);
 }
@@ -1530,12 +1521,11 @@ async function saveProduct() {
     name: { vi: name },
     categoryIds,
     basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
-    externalId: document.getElementById('pExtId').value || undefined,
   };
   const primary = categoryIds.length ? prodCats.find(c => c.id === categoryIds[0]) : null;
   const pt = primary ? toProductType(primary) : null;
   if (pt) body.productType = pt;
-  body.technicalSpecs = collectSpecsFormValues();
+
 
   isSaving = true;
   showProcessing(id ? 'save' : 'upload');
