@@ -320,7 +320,16 @@ export class ProductService {
     }
   }
 
-  async findAll(page = 1, limit = 20, type?: string, status?: string, categoryId?: string, categorySlug?: string) {
+  async findAll(
+    page = 1,
+    limit = 20,
+    type?: string,
+    status?: string,
+    categoryId?: string,
+    categorySlug?: string,
+    search?: string, // <--- Add search parameter
+  ) {
+
     const where: Prisma.KoiProductWhereInput = { isDeleted: false };
     if (type) where.productType = type as any;
     if (status) where.status = status as any;
@@ -333,6 +342,22 @@ export class ProductService {
     if (resolvedCategoryId) {
       where.categoryLinks = { some: { categoryId: resolvedCategoryId } };
     }
+
+    // --- Search Logic Added ---
+    if (search) {
+      // `name` and `technicalSpecs` are stored as stringified JSON in text columns
+      // (see PrismaService JSON middleware), so a plain string `contains` matches
+      // the embedded vi/en values — a JSON path filter is invalid on a String column.
+      const searchConditions: Prisma.KoiProductWhereInput[] = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { slug: { contains: search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
+        { technicalSpecs: { contains: search, mode: 'insensitive' } },
+      ];
+
+      where.OR = searchConditions;
+    }
+    // --- End Search Logic ---
 
     const [data, total] = await Promise.all([
       this.prisma.koiProduct.findMany({
@@ -355,7 +380,7 @@ export class ProductService {
           createdAt: true,
           updatedAt: true,
           categoryId: true,
-          category: { select: { id: true, code: true, name: true, specsSchema: true } },
+          category: { select: { id: true, code: true, name: true, slug: true, specsSchema: true } },
           categoryLinks: { select: { category: { select: { id: true, code: true, name: true, slug: true } } } },
           _count: { select: { variants: true, images: true } },
           images: {
