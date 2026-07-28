@@ -10,7 +10,7 @@
   <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #f1f5f9; }
@@ -67,6 +67,13 @@
     .img-card.primary { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.25); }
     .img-type-select { transition: border-color 0.15s; }
     .img-type-select:focus { border-color: #f59e0b; --tw-ring-color: #f59e0b; }
+    /* Processing overlay */
+    .processing-overlay { display: none; }
+    .processing-overlay.active { display: flex; }
+    .processing-overlay ~ .modal-footer { pointer-events: none; opacity: 0.5; }
+    #processingProgressBar { transition: width 0.4s ease; }
+    .processing-pulse { animation: pulse-dot 1.2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   </style>
 </head>
 <body>
@@ -82,6 +89,25 @@
       </div>
     </div>
     <div class="flex items-center gap-3">
+      <!-- Cloudinary storage widget -->
+      <div id="storageWidget" class="hidden relative group cursor-default select-none" title="">
+        <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+          <i class="fas fa-cloud text-gray-400 text-xs"></i>
+          <div class="flex flex-col leading-tight min-w-[92px]">
+            <div class="flex items-center justify-between gap-2">
+              <span id="storagePrimary" class="text-xs font-semibold text-gray-700">—</span>
+              <span id="storagePct" class="text-[10px] text-gray-400"></span>
+            </div>
+            <div class="w-full h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
+              <div id="storageBar" class="h-full rounded-full bg-amber-500 transition-all" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+        <!-- hover detail -->
+        <div class="absolute right-0 top-full mt-1 z-50 hidden group-hover:block w-56 bg-gray-900/95 backdrop-blur text-white text-[11px] p-3 rounded-xl shadow-2xl border border-gray-700 space-y-1">
+          <div id="stDetail" class="space-y-1"></div>
+        </div>
+      </div>
       <!-- Auth state: login button or user avatar -->
       <div id="authSection">
         <div id="gSignInWrapper"></div>
@@ -169,10 +195,10 @@
 
 <!-- PRODUCT MODAL -->
 <div class="modal-overlay" id="productModal">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-6 fade-in max-h-[90vh] overflow-y-auto">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-6 fade-in max-h-[90vh] overflow-y-auto relative">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold" id="productModalTitle">Thêm sản phẩm</h2>
-      <button onclick="closeModal('productModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+      <button id="btnCloseProductModal" onclick="closeModal('productModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
     </div>
     <div class="space-y-3">
       <input type="hidden" id="editProductId">
@@ -237,8 +263,22 @@
       </div>
     </div>
     <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
-      <button onclick="closeModal('productModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+      <button id="btnCancelProduct" onclick="closeModal('productModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
       <button id="btnSaveProduct" onclick="saveProduct()" class="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> <span id="btnSaveText">Lưu</span></button>
+    </div>
+
+    <!-- Processing State Overlay -->
+    <div id="processingOverlay" class="processing-overlay absolute inset-0 bg-white/95 backdrop-blur-sm rounded-2xl z-10 flex-col items-center justify-center p-6">
+      <div class="w-full max-w-sm text-center">
+        <div class="mb-3">
+          <i class="fas fa-cloud-upload-alt text-3xl text-amber-500" id="processingIcon"></i>
+        </div>
+        <p id="processingStatus" class="text-sm font-medium text-gray-700 mb-3">Đang xử lý...</p>
+        <div class="w-full bg-gray-200 rounded-full h-2.5 mb-1.5 overflow-hidden">
+          <div id="processingProgressBar" class="bg-amber-500 h-2.5 rounded-full" style="width:0%"></div>
+        </div>
+        <p id="processingProgressText" class="text-xs text-gray-400">0%</p>
+      </div>
     </div>
   </div>
 </div>
@@ -420,6 +460,23 @@
   </div>
 </div>
 
+<!-- CONFIRM DIALOG -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 fade-in text-center" style="transform:translateY(0)">
+    <div class="mb-3">
+      <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto" id="confirmIconWrap">
+        <i class="fas fa-exclamation-triangle text-red-500 text-xl" id="confirmIcon"></i>
+      </div>
+    </div>
+    <h3 class="text-base font-semibold text-gray-900 mb-2" id="confirmTitle">Xác nhận</h3>
+    <p class="text-sm text-gray-500 mb-6 leading-relaxed" id="confirmMessage">Bạn có chắc chắn?</p>
+    <div class="flex gap-3 justify-center">
+      <button id="confirmCancelBtn" class="px-5 py-2.5 text-sm font-medium text-gray-600 rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors">Huỷ</button>
+      <button id="confirmOkBtn" class="px-5 py-2.5 text-sm font-medium text-white rounded-xl bg-red-500 hover:bg-red-600 transition-colors">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
 <!-- Deploy badge -->
 <div id="deployBadge" class="fixed bottom-3 right-3 z-50 cursor-pointer" onclick="showDeployDetail()">
   <div class="flex items-center gap-1.5 bg-gray-900/80 backdrop-blur text-white text-[10px] px-2.5 py-1.5 rounded-full shadow-lg border border-gray-700 hover:bg-gray-800 transition" id="deployBadgeInner">
@@ -452,6 +509,38 @@ function toast(msg) { const t=document.getElementById('toast'); t.textContent=ms
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function fm(n) { return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ'; }
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function showConfirm({ title, message, confirmText, cancelText, danger }) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal');
+    const titleEl = document.getElementById('confirmTitle');
+    const msgEl = document.getElementById('confirmMessage');
+    const okBtn = document.getElementById('confirmOkBtn');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    const iconWrap = document.getElementById('confirmIconWrap');
+    const icon = document.getElementById('confirmIcon');
+    titleEl.textContent = title || 'Xác nhận';
+    msgEl.innerHTML = message || 'Bạn có chắc chắn?';
+    okBtn.textContent = confirmText || 'Xác nhận';
+    cancelBtn.textContent = cancelText || 'Huỷ';
+    if (danger) {
+      okBtn.className = 'px-5 py-2.5 text-sm font-medium text-white rounded-xl bg-red-500 hover:bg-red-600 transition-colors';
+      iconWrap.className = 'w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto';
+      icon.className = 'fas fa-exclamation-triangle text-red-500 text-xl';
+    } else {
+      okBtn.className = 'px-5 py-2.5 text-sm font-medium text-white rounded-xl bg-amber-500 hover:bg-amber-600 transition-colors';
+      iconWrap.className = 'w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto';
+      icon.className = 'fas fa-question-circle text-amber-500 text-xl';
+    }
+    const cleanup = () => { closeModal('confirmModal'); okBtn.removeEventListener('click', onConfirm); cancelBtn.removeEventListener('click', onCancel); };
+    const onConfirm = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    okBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    openModal('confirmModal');
+  });
+}
 
 // ========== PATH-BASED ROUTING ==========
 const ROUTE_MAP = {
@@ -510,12 +599,14 @@ window.addEventListener('popstate', function() {
 
 function getCategoryFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  return params.get('category') || null;
+  const val = params.get('category');
+  return (val && val !== 'undefined') ? val : null;
 }
 
 let currentCategoryFilter = null;
 
 function navigateToCategoryProducts(categoryId, categorySlug) {
+  if (!categorySlug || categorySlug === 'undefined') return;
   currentCategoryFilter = categorySlug;
   navigateTo('/admin/products');
   const url = new URL(window.location);
@@ -756,41 +847,78 @@ function renderPendingPreviews() {
   `).join('');
 }
 
-async function uploadPendingFiles(productId) {
-  if (!pendingFiles.length) return;
-  const progressEl = document.getElementById('uploadProgress');
-  const bar = document.getElementById('progressBar');
-  const text = document.getElementById('progressText');
-  progressEl.classList.remove('hidden');
-  const token = sessionStorage.getItem('auth_token');
-
-  for (let i = 0; i < pendingFiles.length; i++) {
-    const f = pendingFiles[i];
-    const pct = Math.round((i / pendingFiles.length) * 100);
-    bar.style.width = pct + '%';
-    text.textContent = `Đang xử lý ảnh ${i+1}/${pendingFiles.length} → WebP`;
-
+function uploadFileXHR(productId, fileEntry, imageType, token) {
+  return new Promise((resolve, reject) => {
     const formData = new FormData();
-    formData.append('file', f.file);
-    const selectedType = document.querySelector('input[name="uploadType"]:checked');
-    if (selectedType) formData.append('imageType', selectedType.value);
+    formData.append('file', fileEntry.file);
+    if (imageType) formData.append('imageType', imageType);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/products/${productId}/images/upload`);
+
+    if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+
+    xhr.upload.onprogress = function(e) {
+      if (e.lengthComputable && fileEntry._onProgress) {
+        fileEntry._onProgress(e.loaded, e.total);
+      }
+    };
+
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        swrCache.remove('GET /products/' + productId + '/images');
+        resolve();
+      } else {
+        let msg = 'HTTP ' + xhr.status;
+        try { const body = JSON.parse(xhr.responseText); msg = body.message || msg; } catch {}
+        reject(new Error(msg));
+      }
+    };
+
+    xhr.onerror = function() { reject(new Error('Lỗi mạng khi upload ảnh')); };
+    xhr.ontimeout = function() { reject(new Error('Upload ảnh quá thời gian')); };
+    xhr.timeout = 60000;
+
+    xhr.send(formData);
+  });
+}
+
+async function uploadPendingFiles(productId, onProgress) {
+  if (!pendingFiles.length) { if (onProgress) onProgress(1); return; }
+  const token = sessionStorage.getItem('auth_token');
+  const selectedType = document.querySelector('input[name="uploadType"]:checked');
+  const imageType = selectedType ? selectedType.value : null;
+  const total = pendingFiles.length;
+
+  // Pre-calculate total bytes for accurate progress
+  let totalBytes = 0;
+  pendingFiles.forEach(f => { totalBytes += f.file.size; });
+
+  let loadedBytes = 0;
+
+  for (let i = 0; i < total; i++) {
+    const f = pendingFiles[i];
+
+    f._onProgress = function(loaded, totalFile) {
+      const fileLoaded = loadedBytes + loaded;
+      const overall = fileLoaded / totalBytes;
+      if (onProgress) onProgress(overall);
+    };
 
     try {
-      const headers = {};
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-      const res = await fetch(`/products/${productId}/images/upload`, { method: 'POST', body: formData, headers });
-      if (!res.ok) { const errBody = await res.text().catch(() => ''); throw new Error(errBody || `HTTP ${res.status}`); }
-      swrCache.remove('GET /products/' + productId + '/images');
-    } catch(e) { toast('Lỗi upload ảnh ' + (i+1) + ': ' + e.message); }
+      await uploadFileXHR(productId, f, imageType, token);
+      loadedBytes += f.file.size;
+      if (onProgress) onProgress(loadedBytes / totalBytes);
+    } catch(e) {
+      toast('Lỗi upload ảnh ' + (i+1) + ': ' + e.message);
+    }
   }
 
-  bar.style.width = '100%';
-  text.textContent = 'Hoàn tất! Ảnh đã chuyển sang WebP';
-  setTimeout(() => { progressEl.classList.add('hidden'); bar.style.width = '0%'; }, 2000);
   pendingFiles.forEach(f => URL.revokeObjectURL(f.preview));
   pendingFiles = [];
   renderPendingPreviews();
   document.getElementById('fileInput').value = '';
+  if (onProgress) onProgress(1);
   if (productId) await loadGallery(productId);
 }
 
@@ -861,7 +989,8 @@ async function updateImageType(imageId, imageType) {
 }
 
 async function deleteImage(imageId) {
-  if (!confirm('Xoá ảnh này?')) return;
+  const ok = await showConfirm({ title: 'Xoá ảnh', message: 'Bạn có chắc chắn muốn xoá ảnh này?', confirmText: 'Xoá', danger: true });
+  if (!ok) return;
   try {
     await api(`/products/${currentProductId}/images/${imageId}`, { method: 'DELETE' });
     swrCache.remove('GET /products/' + currentProductId + '/images');
@@ -992,7 +1121,7 @@ function renderProducts() {
   if (!products.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-box-open text-4xl mb-3"></i><p>Chưa có sản phẩm</p></div>'; return; }
   // Show category filter banner if active
   let filterBanner = '';
-  if (currentCategoryFilter) {
+  if (currentCategoryFilter && currentCategoryFilter !== 'undefined') {
     const cat = prodCats.find(c => c.slug === currentCategoryFilter);
     const catName = cat ? cat.name : currentCategoryFilter;
     filterBanner = `<div class="flex items-center justify-between px-4 py-2.5 bg-amber-50 border-b border-amber-200 text-sm">
@@ -1011,7 +1140,7 @@ function renderProducts() {
     const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
     const cats = (p.categories && p.categories.length) ? p.categories : (p.category ? [p.category] : []);
     const catBadges = cats.length
-      ? cats.map(c => `<a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1 cursor-pointer hover:bg-amber-100 hover:text-amber-900 hover:border-amber-300 no-underline transition-colors" title="Lọc sản phẩm theo danh mục «${esc(c.name)}»">${esc(c.name)}</a>`).join('')
+      ? cats.map(c => c.slug ? `<a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1 cursor-pointer hover:bg-amber-100 hover:text-amber-900 hover:border-amber-300 no-underline transition-colors" title="Lọc sản phẩm theo danh mục «${esc(c.name)}»">${esc(c.name)}</a>` : `<span class="inline-block px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs mr-1 mb-1">${esc(c.name)}</span>`).join('')
       : `<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-xs">Chưa phân loại</span>`;
     return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails, p.id)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="downloadProductImages('${p.id}')" class="text-gray-400 hover:text-blue-500 mr-2 requires-auth" title="Tải ảnh JPEG"><i class="fas fa-download"></i></button><button onclick="editProduct('${p.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
   }).join('')}</tbody></table></div>`;
@@ -1028,38 +1157,40 @@ async function downloadProductImages(productId) {
     const images = await api('/products/' + productId + '/images');
     if (!images || !images.length) { toast('Sản phẩm chưa có ảnh'); return; }
 
-    const sku = (p.sku || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const name = esc(p.name?.vi || p.name?.en || p.sku);
+    const confirmed = await showConfirm({
+      title: 'Tải ảnh JPEG',
+      message: `Bạn có chắc chắn muốn tải toàn bộ <strong>${images.length}</strong> ảnh JPEG của sản phẩm <strong>${name}</strong>?`,
+      confirmText: `Tải ${images.length} ảnh`,
+      cancelText: 'Huỷ',
+      danger: false,
+    });
+    if (!confirmed) return;
+
     const slug = p.slug || 'product';
-    const nameVi = typeof p.name === 'object' ? (p.name?.vi || p.name?.en || '') : String(p.name || '');
-    const namePart = nameVi.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const baseName = [sku, namePart].filter(Boolean).join('-');
+    const sku = p.sku || 'nosku';
+    toast(`Đang tải ${images.length} ảnh JPEG...`);
 
-    toast(`Đang xử lý ${images.length} ảnh...`);
+    let successCount = 0;
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      const typePart = (img.imageType || 'image').toLowerCase();
+      const filename = `${sku}_${slug}_${typePart}_${i + 1}.jpg`;
 
-    if (images.length === 1) {
-      const blob = await fetchImageAsJpeg(images[0].url);
-      const typePart = (images[0].imageType || 'image').toLowerCase();
-      const filename = [baseName, typePart].filter(Boolean).join('-') + '.jpg';
-      saveBlob(blob, filename);
-      toast('Đã tải ảnh');
-    } else {
-      const zip = new JSZip();
-      for (let i = 0; i < images.length; i++) {
-        const img = images[i];
-        const typePart = (img.imageType || `image_${i + 1}`).toLowerCase();
-        const fname = [baseName, typePart].filter(Boolean).join('-') + '.jpg';
-        try {
-          const blob = await fetchImageAsJpeg(img.url);
-          zip.file(fname, blob);
-        } catch (err) {
-          console.warn('Skip image ' + img.id + ': ' + err.message);
-        }
+      try {
+        const blob = await fetchImageAsJpeg(img.url);
+        saveBlob(blob, filename);
+        successCount++;
+      } catch (err) {
+        console.warn('Skip image ' + img.id + ': ' + err.message);
       }
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const zipFilename = sku ? `${sku}_${slug}_images.zip` : `${slug}_images.zip`;
-      saveBlob(zipBlob, zipFilename);
-      toast('Đã tải ZIP ảnh');
+
+      if (i < images.length - 1) {
+        await delay(500);
+      }
     }
+
+    toast(`Đã tải ${successCount}/${images.length} ảnh JPEG`);
   } catch (e) {
     toast('Lỗi tải ảnh: ' + e.message);
   }
@@ -1096,10 +1227,16 @@ function saveBlob(blob, filename) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.style.display = 'none';
+  a.setAttribute('target', '_blank');
   document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  requestAnimationFrame(() => {
+    a.click();
+    requestAnimationFrame(() => {
+      document.body.removeChild(a);
+    });
+  });
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
 }
 
 // ========== SPECS HELPERS ==========
@@ -1317,11 +1454,60 @@ async function editProduct(id) {
   await loadGallery(id);
 }
 
+// ========== PROCESSING STATE HELPERS ==========
+
+function showProcessing(phase) {
+  const overlay = document.getElementById('processingOverlay');
+  const icon = document.getElementById('processingIcon');
+  overlay.classList.add('active');
+
+  const icons = {
+    upload: 'fa-cloud-upload-alt',
+    save: 'fa-database',
+    complete: 'fa-check-circle'
+  };
+  icon.className = 'fas ' + (icons[phase] || 'fa-spinner fa-spin') + ' text-3xl text-amber-500';
+
+  ['btnSaveProduct', 'btnCancelProduct', 'btnCloseProductModal'].forEach(id => {
+    document.getElementById(id).disabled = true;
+  });
+  document.getElementById('btnCancelProduct').classList.add('opacity-40', 'cursor-not-allowed');
+  document.getElementById('btnCloseProductModal').classList.add('opacity-40', 'cursor-not-allowed');
+}
+
+function hideProcessing() {
+  const overlay = document.getElementById('processingOverlay');
+  overlay.classList.remove('active');
+
+  ['btnSaveProduct', 'btnCancelProduct', 'btnCloseProductModal'].forEach(id => {
+    document.getElementById(id).disabled = false;
+  });
+  document.getElementById('btnCancelProduct').classList.remove('opacity-40', 'cursor-not-allowed');
+  document.getElementById('btnCloseProductModal').classList.remove('opacity-40', 'cursor-not-allowed');
+}
+
+function setProgress(pct, statusText) {
+  const bar = document.getElementById('processingProgressBar');
+  const text = document.getElementById('processingProgressText');
+  const status = document.getElementById('processingStatus');
+  const clamped = Math.min(100, Math.max(0, pct));
+  bar.style.width = clamped + '%';
+  text.textContent = clamped + '%';
+  if (statusText) status.textContent = statusText;
+}
+
+function mapUploadToPhase(uploadPct, phaseStart, phaseEnd) {
+  return phaseStart + uploadPct * (phaseEnd - phaseStart);
+}
+
 async function saveProduct() {
   if (isSaving) return;
-  const id = document.getElementById('editProductId').value;
+
+  // Validate
   const name = document.getElementById('pNameVi').value.trim();
   if (!name) { toast('Nhập tên sản phẩm'); return; }
+
+  const id = document.getElementById('editProductId').value;
   const categoryIds = getSelectedCategoryIds();
   const body = {
     name: { vi: name },
@@ -1329,47 +1515,78 @@ async function saveProduct() {
     basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
     externalId: document.getElementById('pExtId').value || undefined,
   };
-  // productType (legacy enum) suy từ danh mục chính; nếu không map được, để backend mặc định ACCESSORY
   const primary = categoryIds.length ? prodCats.find(c => c.id === categoryIds[0]) : null;
   const pt = primary ? toProductType(primary) : null;
   if (pt) body.productType = pt;
   body.technicalSpecs = collectSpecsFormValues();
 
-  const btn = document.getElementById('btnSaveProduct');
-  const btnText = document.getElementById('btnSaveText');
-  btn.disabled = true;
-  btnText.textContent = 'Đang lưu…';
   isSaving = true;
+  showProcessing(id ? 'save' : 'upload');
+  setProgress(0, 'Đang chuẩn bị...');
 
   try {
+    // ── Phase 1 (0% – 60%): Upload ảnh + lưu sản phẩm ──
+    const isUpdate = !!id;
     let newId = id;
-    if (id) {
+
+    if (isUpdate) {
+      showProcessing('save');
+      setProgress(5, 'Đang cập nhật thông tin sản phẩm...');
       await api('/products/' + id, { method: 'PATCH', body: JSON.stringify(body) });
       swrCache.remove('GET /products/' + id);
       swrCache.remove('GET /products/' + id + '/images');
-      await uploadPendingFiles(id);
-      toast('Đã cập nhật sản phẩm');
-    }
-    else {
+      setProgress(15, 'Đã cập nhật thông tin');
+
+      showProcessing('upload');
+      await uploadPendingFiles(id, function(uploadOverall) {
+        const pct = mapUploadToPhase(uploadOverall, 15, 60);
+        setProgress(pct, 'Đang tải ảnh lên CDN...');
+      });
+    } else {
+      showProcessing('upload');
+      setProgress(5, 'Đang tạo sản phẩm...');
       const created = await api('/products', { method: 'POST', body: JSON.stringify(body) });
       newId = created.id;
-      await uploadPendingFiles(newId);
-      toast('Đã thêm sản phẩm');
+      setProgress(15, 'Đã tạo sản phẩm');
+
+      await uploadPendingFiles(newId, function(uploadOverall) {
+        const pct = mapUploadToPhase(uploadOverall, 15, 60);
+        setProgress(pct, 'Đang tải ảnh lên CDN...');
+      });
     }
-    closeModal('productModal');
+
+    // ── Phase 2 (60% – 90%): Đồng bộ & hoàn tất ──
+    showProcessing('save');
+    setProgress(65, 'Đang đồng bộ dữ liệu...');
     swrCache.clearProductCache();
+    setProgress(75, 'Đang tải lại danh sách...');
     await loadProducts();
-  } catch(e) { toast('Lỗi: ' + e.message); }
-  finally {
-    btn.disabled = false;
-    btnText.textContent = 'Lưu';
+    setProgress(85, 'Đã cập nhật danh sách');
+    setProgress(90, 'Hoàn tất');
+
+    // ── Phase 3 (90% – 100%): Thông báo & đóng modal ──
+    showProcessing('complete');
+    setProgress(95, isUpdate ? 'Đã cập nhật sản phẩm' : 'Đã thêm sản phẩm');
+    toast(isUpdate ? 'Đã cập nhật sản phẩm' : 'Đã thêm sản phẩm');
+    await new Promise(r => setTimeout(r, 400));
+
+    setProgress(100, 'Hoàn tất');
+    await new Promise(r => setTimeout(r, 200));
+    closeModal('productModal');
+  } catch(e) {
+    toast('Lỗi: ' + e.message);
+  } finally {
+    hideProcessing();
     isSaving = false;
   }
 }
 
 async function deleteProduct(id) {
   if (deletingSet.has(id)) return;
-  if (!confirm('Xoá sản phẩm này?')) return;
+  const p = products.find(x => x.id === id);
+  const name = p ? esc(p.name?.vi || p.name?.en || p.sku) : 'này';
+  const ok = await showConfirm({ title: 'Xoá sản phẩm', message: `Bạn có chắc chắn muốn xoá sản phẩm <strong>${name}</strong>?`, confirmText: 'Xoá', danger: true });
+  if (!ok) return;
   deletingSet.add(id);
   try {
     await api('/products/' + id, { method: 'DELETE' });
@@ -1434,7 +1651,8 @@ async function saveMaterial() {
 }
 
 async function deleteMaterial(id) {
-  if (!confirm('Xoá nguyên liệu này?')) return;
+  const ok = await showConfirm({ title: 'Xoá nguyên liệu', message: 'Bạn có chắc chắn muốn xoá nguyên liệu này?', confirmText: 'Xoá', danger: true });
+  if (!ok) return;
   try { await api('/raw-materials/' + id, { method: 'DELETE' }); toast('Đã xoá'); await loadMaterials(); } catch(e) { toast('Lỗi: ' + e.message); }
 }
 
@@ -1760,7 +1978,8 @@ async function saveProdCat() {
 }
 
 async function deleteProdCat(id) {
-  if (!confirm('Xoá loại sản phẩm này?')) return;
+  const ok = await showConfirm({ title: 'Xoá loại sản phẩm', message: 'Bạn có chắc chắn muốn xoá loại sản phẩm này?', confirmText: 'Xoá', danger: true });
+  if (!ok) return;
   try {
     await api('/categories/' + id, { method: 'DELETE' });
     swrCache.remove('GET /categories');
@@ -1830,7 +2049,8 @@ async function saveImgCat() {
 }
 
 async function deleteImgCat(id) {
-  if (!confirm('Xoá loại ảnh này?')) return;
+  const ok = await showConfirm({ title: 'Xoá loại ảnh', message: 'Bạn có chắc chắn muốn xoá loại ảnh này?', confirmText: 'Xoá', danger: true });
+  if (!ok) return;
   try { await api('/image-categories/' + id, { method: 'DELETE' }); toast('Đã xoá'); await loadImgCats(); } catch(e) { toast('Lỗi: ' + e.message); }
 }
 
@@ -1885,6 +2105,67 @@ async function saveSpec() {
     toast('Tính năng tạo spec qua API đang được hoàn thiện. Dùng Swagger docs để thử.');
     closeModal('specModal');
   } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+// ========== CLOUDINARY STORAGE WIDGET ==========
+function fmtBytes(bytes) {
+  if (bytes == null) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let v = bytes / 1024, i = 0;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return (v >= 100 ? Math.round(v) : v.toFixed(1)) + ' ' + units[i];
+}
+
+async function loadStorageUsage() {
+  const widget = document.getElementById('storageWidget');
+  try {
+    const u = await api('/storage/usage');
+    if (!u || u.configured === false) return; // stay hidden if Cloudinary not set up
+
+    const primary = document.getElementById('storagePrimary');
+    const pctEl = document.getElementById('storagePct');
+    const bar = document.getElementById('storageBar');
+    const detail = document.getElementById('stDetail');
+
+    if (u.error) {
+      primary.textContent = 'Lỗi';
+      pctEl.textContent = '';
+      detail.innerHTML = `<div class="text-red-300">${u.error}</div>`;
+      widget.classList.remove('hidden');
+      return;
+    }
+
+    // Prefer a real byte limit (paid plans); otherwise show credits % (free plan).
+    const storedPct = u.storage?.usedPct;
+    const creditsPct = u.credits?.usedPct;
+    const shownPct = storedPct != null ? storedPct : (creditsPct != null ? creditsPct : null);
+
+    primary.textContent = fmtBytes(u.storage?.usedBytes ?? 0);
+    pctEl.textContent = shownPct != null ? shownPct + '%' : '';
+    if (shownPct != null) {
+      bar.style.width = Math.min(100, shownPct) + '%';
+      bar.className = 'h-full rounded-full transition-all ' +
+        (shownPct >= 90 ? 'bg-red-500' : shownPct >= 70 ? 'bg-amber-500' : 'bg-green-500');
+    } else {
+      bar.parentElement.classList.add('hidden');
+    }
+
+    const rows = [];
+    rows.push(`<div class="flex justify-between"><span class="text-gray-400">Cloud</span><span class="font-mono">${u.cloudName || '-'}</span></div>`);
+    rows.push(`<div class="flex justify-between"><span class="text-gray-400">Gói</span><span>${u.plan || '-'}</span></div>`);
+    rows.push(`<div class="flex justify-between"><span class="text-gray-400">Lưu trữ</span><span>${fmtBytes(u.storage?.usedBytes ?? 0)}${u.storage?.limitBytes ? ' / ' + fmtBytes(u.storage.limitBytes) : ''}</span></div>`);
+    if (u.credits) rows.push(`<div class="flex justify-between"><span class="text-gray-400">Credits</span><span>${u.credits.used ?? '?'} / ${u.credits.limit} (${u.credits.usedPct}%)</span></div>`);
+    if (u.bandwidth) rows.push(`<div class="flex justify-between"><span class="text-gray-400">Băng thông</span><span>${fmtBytes(u.bandwidth.usedBytes ?? 0)}</span></div>`);
+    if (u.objects != null) rows.push(`<div class="flex justify-between"><span class="text-gray-400">Số ảnh</span><span>${u.objects}</span></div>`);
+    if (u.lastUpdated) rows.push(`<div class="flex justify-between pt-1 border-t border-gray-700"><span class="text-gray-400">Cập nhật</span><span>${new Date(u.lastUpdated).toLocaleDateString('vi-VN')}</span></div>`);
+    detail.innerHTML = rows.join('');
+
+    widget.title = `Cloudinary ${u.cloudName} — ${fmtBytes(u.storage?.usedBytes ?? 0)}${shownPct != null ? ' ('+shownPct+'%)' : ''}`;
+    widget.classList.remove('hidden');
+  } catch (e) {
+    // network/500 — keep widget hidden, non-critical
+  }
 }
 
 // ========== DEPLOY BADGE ==========
@@ -1964,6 +2245,7 @@ async function init() {
   // callable in this scope — calling setupDragDrop() here throws ReferenceError
   // and aborts init(), leaving every tab stuck on its loading skeleton.
   loadDeployInfo();
+  loadStorageUsage();
   fetchAuthConfig();
   checkAuth();
   loadProducts().then(updateHeaderStatus).catch(() => {});
