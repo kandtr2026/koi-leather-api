@@ -2069,7 +2069,7 @@ async function saveProduct() {
   const body = {
     name: { vi: name },
     categoryIds,
-    materialCategoryId: materialCategoryId || undefined,
+
     basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
   };
   const primary = categoryIds.length ? prodCats.find(c => c.id === categoryIds[0]) : null;
