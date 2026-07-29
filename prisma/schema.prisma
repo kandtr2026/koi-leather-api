@@ -263,7 +263,9 @@ model KoiProduct {
   deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  materialCategoryId String?
   category    KoiCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  materialCategory KoiMaterialCategory? @relation(fields: [materialCategoryId], references: [id], onDelete: SetNull)
   categoryLinks KoiProductCategory[]
   images      KoiProductImage[]
   variants    KoiProductVariant[]
@@ -275,6 +277,7 @@ model KoiProduct {
   @@index([categoryId])
   @@index([createdAt])
   @@index([categoryId, status])
+  @@index([materialCategoryId])
   @@map("koi_products")
   @@schema("koi_free_style")
 }
@@ -463,6 +466,7 @@ model KoiMaterialCategory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   materials   KoiRawMaterial[]
+  products    KoiProduct[]
   @@index([code])
   @@map("koi_material_categories")
   @@schema("koi_free_style")

@@ -285,6 +285,7 @@ export class ProductService {
             hasVariants: computed.hasVariants,
             status: dto.status ?? "DRAFT",
             externalId: dto.externalId,
+            materialCategoryId: dto.materialCategoryId ?? null,
             technicalSpecs: technicalSpecs as any,
             metaTitle,
             metaDescription,
@@ -545,6 +546,7 @@ export class ProductService {
           createdAt: true,
           updatedAt: true,
           categoryId: true,
+          materialCategoryId: true,
           category: {
             select: {
               id: true,
@@ -670,6 +672,9 @@ export class ProductService {
     if (dto.status) data.status = dto.status;
     if (dto.externalId !== undefined) data.externalId = dto.externalId;
     if (dto.sku !== undefined) data.sku = dto.sku;
+    // null = bỏ chọn danh mục da; undefined = client không gửi field, giữ nguyên.
+    if (dto.materialCategoryId !== undefined)
+      data.materialCategoryId = dto.materialCategoryId ?? null;
     if (technicalSpecs)
       data.technicalSpecs = this.safeParseSpecs(technicalSpecs);
 

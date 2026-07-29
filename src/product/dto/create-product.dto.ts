@@ -222,8 +222,12 @@ export class CreateProductDto {
   @Type(() => VariantDto)
   variants?: VariantDto[];
 
-  @ApiPropertyOptional({ description: '[Bypass] Material category ID from frontend (should not be here)' })
+  @ApiPropertyOptional({
+    description:
+      'ID danh mục loại da (KoiMaterialCategory). null hoặc bỏ trống = không gán.',
+    nullable: true,
+  })
   @IsOptional()
   @IsUUID()
-  materialCategoryId?: string;
+  materialCategoryId?: string | null;
 }

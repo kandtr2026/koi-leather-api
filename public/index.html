@@ -1958,7 +1958,9 @@ async function saveProduct() {
   const body = {
     name: { vi: name },
     categoryIds,
-    materialCategoryId: materialCategoryId || undefined, // Thêm vào payload
+    // null (khong phai undefined) de bo chon duoc: undefined bi JSON.stringify
+    // loai bo, backend se giu nguyen gia tri cu.
+    materialCategoryId: materialCategoryId,
 
     basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
   };

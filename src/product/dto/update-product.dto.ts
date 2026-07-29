@@ -32,8 +32,13 @@ export class UpdateProductDto extends PartialType(
   @Type(() => VariantDto)
   variants?: VariantDto[];
 
-  @ApiPropertyOptional({ description: '[Bypass] Material category ID from frontend (should not be here)' })
+  @ApiPropertyOptional({
+    description:
+      'ID danh mục loại da (KoiMaterialCategory). Gửi null để bỏ chọn; ' +
+      'bỏ hẳn field để giữ nguyên giá trị cũ.',
+    nullable: true,
+  })
   @IsOptional()
   @IsUUID()
-  materialCategoryId?: string;
+  materialCategoryId?: string | null;
 }
