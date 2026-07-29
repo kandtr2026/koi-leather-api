@@ -326,6 +326,13 @@
         <div id="pSelectedCategoriesContainer" class="flex flex-wrap gap-1.5 mt-2 empty:mt-0"></div>
         <input type="hidden" id="pCategoriesHiddenInput" value="">
       </div>
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-medium text-gray-600">Danh mục da <span class="text-gray-400 font-normal">(tick chọn)</span></label>
+          <span id="pMatCatCount" class="text-[11px] text-amber-600 font-medium"></span>
+        </div>
+        <div id="pMaterialCategories" class="w-full border border-gray-300 rounded-lg p-2 max-h-44 overflow-y-auto grid grid-cols-2 gap-x-4 gap-y-0.5"></div>
+      </div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2500000"></div>
 
@@ -1970,6 +1977,7 @@ function openCreateProduct() {
   ['editProductId','pNameVi','pPrice'].forEach(id => document.getElementById(id).value = '');
   initCategorySelector([]);
   renderMaterialCategoryCheckboxes(null); // Clear selected material category
+  renderMaterialCategoryCheckboxes(null); // Clear selected material category
   currentProductId = null;
   // Reset pending files
   pendingFiles.forEach(f => URL.revokeObjectURL(f.preview));
@@ -1998,6 +2006,7 @@ async function editProduct(id) {
     : (p.categoryId ? [p.categoryId] : []);
   initCategorySelector(selIds);
 
+  renderMaterialCategoryCheckboxes(p.materialCategoryId); // Select material category
   document.getElementById('pPrice').value = p.basePrice || '';
 
   openModal('productModal');
@@ -2059,10 +2068,12 @@ async function saveProduct() {
 
   const id = document.getElementById('editProductId').value;
   const categoryIds = getSelectedCategoryIds();
+  const materialCategoryId = getSelectedMaterialCategoryId(); // Lấy giá trị từ UI
 
   const body = {
     name: { vi: name },
     categoryIds,
+    materialCategoryId: materialCategoryId || undefined, // Thêm vào payload
 
     basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
   };
