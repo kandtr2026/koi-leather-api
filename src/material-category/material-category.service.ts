@@ -10,7 +10,7 @@ export class MaterialCategoryService {
 
   async findAll() {
     return this.prisma.koiMaterialCategory.findMany({
-      orderBy: { sortOrder: 'asc', name: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: { _count: { select: { materials: true } } },
     });
   }
