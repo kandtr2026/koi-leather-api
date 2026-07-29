@@ -1,5 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class InventoryService {
@@ -11,7 +15,7 @@ export class InventoryService {
 
     return this.prisma.koiInventoryTransaction.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
       include: { material: { select: { id: true, name: true, unit: true } } },
     });
@@ -22,11 +26,11 @@ export class InventoryService {
       where: { id: orderId },
       include: { variant: true },
     });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
 
     const allocations = order.materialsAllocated as unknown as any[];
     if (!allocations || allocations.length === 0) {
-      throw new BadRequestException('No materials allocated in this order');
+      throw new BadRequestException("No materials allocated in this order");
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -59,7 +63,7 @@ export class InventoryService {
           data: {
             materialId: alloc.material_id,
             orderId,
-            transactionType: 'RESERVATION',
+            transactionType: "RESERVATION",
             quantity: -qtyToReserve,
             costAtTransaction: alloc.cost_at_snapshot,
           },
@@ -74,7 +78,7 @@ export class InventoryService {
     const order = await this.prisma.koiProductionOrder.findUnique({
       where: { id: orderId },
     });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
 
     const allocations = order.materialsAllocated as unknown as any[];
     if (!allocations || allocations.length === 0) return [];
@@ -94,8 +98,12 @@ export class InventoryService {
         await tx.koiRawMaterial.update({
           where: { id: alloc.material_id },
           data: {
-            reservedQuantity: Math.max(0, Number(material.reservedQuantity) - qtyToRelease),
-            availableQuantity: Number(material.availableQuantity) + qtyToRelease,
+            reservedQuantity: Math.max(
+              0,
+              Number(material.reservedQuantity) - qtyToRelease,
+            ),
+            availableQuantity:
+              Number(material.availableQuantity) + qtyToRelease,
           },
         });
 
@@ -103,7 +111,7 @@ export class InventoryService {
           data: {
             materialId: alloc.material_id,
             orderId,
-            transactionType: 'RELEASE',
+            transactionType: "RELEASE",
             quantity: qtyToRelease,
           },
         });
@@ -117,7 +125,7 @@ export class InventoryService {
     const order = await this.prisma.koiProductionOrder.findUnique({
       where: { id: orderId },
     });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
 
     const allocations = order.materialsAllocated as unknown as any[];
     if (!allocations || allocations.length === 0) return [];
@@ -137,8 +145,14 @@ export class InventoryService {
         await tx.koiRawMaterial.update({
           where: { id: alloc.material_id },
           data: {
-            totalQuantity: Math.max(0, Number(material.totalQuantity) - qtyToConsume),
-            reservedQuantity: Math.max(0, Number(material.reservedQuantity) - qtyToConsume),
+            totalQuantity: Math.max(
+              0,
+              Number(material.totalQuantity) - qtyToConsume,
+            ),
+            reservedQuantity: Math.max(
+              0,
+              Number(material.reservedQuantity) - qtyToConsume,
+            ),
           },
         });
 
@@ -146,7 +160,7 @@ export class InventoryService {
           data: {
             materialId: alloc.material_id,
             orderId,
-            transactionType: 'CONSUMPTION',
+            transactionType: "CONSUMPTION",
             quantity: -qtyToConsume,
             costAtTransaction: alloc.cost_at_snapshot,
           },
@@ -159,15 +173,25 @@ export class InventoryService {
 
   async getInventorySummary() {
     const materials = await this.prisma.koiRawMaterial.findMany();
-    const totalValue = materials.reduce((sum, m) => sum + Number(m.unitCost) * Number(m.totalQuantity), 0);
-    const lowStock = materials.filter(m => Number(m.totalQuantity) < 10);
-    const syncedCount = materials.filter(m => m.syncStatus === 'SYNCED').length;
+    const totalValue = materials.reduce(
+      (sum, m) => sum + Number(m.unitCost) * Number(m.totalQuantity),
+      0,
+    );
+    const lowStock = materials.filter((m) => Number(m.totalQuantity) < 10);
+    const syncedCount = materials.filter(
+      (m) => m.syncStatus === "SYNCED",
+    ).length;
 
     return {
       totalMaterials: materials.length,
       totalInventoryValue: totalValue,
       lowStockCount: lowStock.length,
-      lowStockItems: lowStock.map(m => ({ id: m.id, name: m.name, stock: Number(m.totalQuantity), unit: m.unit })),
+      lowStockItems: lowStock.map((m) => ({
+        id: m.id,
+        name: m.name,
+        stock: Number(m.totalQuantity),
+        unit: m.unit,
+      })),
       syncedCount,
       pendingSync: materials.length - syncedCount,
     };

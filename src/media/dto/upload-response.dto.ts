@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class UploadedImageDto {
   @ApiProperty() id: string;
@@ -21,11 +21,11 @@ export class UploadResponseDto {
 }
 
 export class ReorderImagesDto {
-  @ApiProperty({ description: 'Array of { id, displayOrder }' })
+  @ApiProperty({ description: "Array of { id, displayOrder }" })
   items: { id: string; displayOrder: number }[];
 }
 
 export class SetPrimaryImageDto {
-  @ApiProperty({ description: 'Image ID to set as primary' })
+  @ApiProperty({ description: "Image ID to set as primary" })
   imageId: string;
 }

@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateRawMaterialDto } from './dto/create-raw-material.dto';
-import { UpdateRawMaterialDto } from './dto/update-raw-material.dto';
-import { Prisma } from '@prisma/client';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateRawMaterialDto } from "./dto/create-raw-material.dto";
+import { UpdateRawMaterialDto } from "./dto/update-raw-material.dto";
+import { Prisma } from "@prisma/client";
 
 const catalogSelect = {
   id: true,
@@ -37,7 +37,7 @@ export class RawMaterialService {
         thicknessMm: dto.thicknessMm,
         unitCost: dto.unitCost,
         externalId: dto.externalId,
-        syncStatus: dto.externalId ? 'PENDING' : 'SYNCED',
+        syncStatus: dto.externalId ? "PENDING" : "SYNCED",
         materialCategoryId: dto.materialCategoryId,
       },
       select: catalogSelect,
@@ -52,7 +52,7 @@ export class RawMaterialService {
 
     return this.prisma.koiRawMaterial.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       select: catalogSelect,
     });
   }
@@ -62,10 +62,10 @@ export class RawMaterialService {
       where: { id },
       select: {
         ...catalogSelect,
-        transactions: { orderBy: { createdAt: 'desc' }, take: 20 },
+        transactions: { orderBy: { createdAt: "desc" }, take: 20 },
       },
     });
-    if (!material) throw new NotFoundException('Raw material not found');
+    if (!material) throw new NotFoundException("Raw material not found");
     return material;
   }
 
@@ -80,7 +80,8 @@ export class RawMaterialService {
     if (dto.color !== undefined) data.color = dto.color;
     if (dto.thicknessMm !== undefined) data.thicknessMm = dto.thicknessMm;
     if (dto.unitCost !== undefined) data.unitCost = dto.unitCost;
-    if (dto.materialCategoryId !== undefined) data.materialCategoryId = dto.materialCategoryId;
+    if (dto.materialCategoryId !== undefined)
+      data.materialCategoryId = dto.materialCategoryId;
 
     return this.prisma.koiRawMaterial.update({
       where: { id },
@@ -91,7 +92,9 @@ export class RawMaterialService {
 
   async remove(id: string) {
     await this.findById(id);
-    await this.prisma.koiInventoryTransaction.deleteMany({ where: { materialId: id } });
+    await this.prisma.koiInventoryTransaction.deleteMany({
+      where: { materialId: id },
+    });
     return this.prisma.koiRawMaterial.delete({ where: { id } });
   }
 }

@@ -1,21 +1,27 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateSEORecordDto, UpdateSEORecordDto } from './dto/seo-record.dto';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateSEORecordDto, UpdateSEORecordDto } from "./dto/seo-record.dto";
 
 @Injectable()
 export class SeoService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateSEORecordDto) {
-    const existing = await this.prisma.koiSEORecord.findUnique({ where: { slug: dto.slug } });
-    if (existing) throw new ConflictException('Slug already exists');
+    const existing = await this.prisma.koiSEORecord.findUnique({
+      where: { slug: dto.slug },
+    });
+    if (existing) throw new ConflictException("Slug already exists");
 
     return this.prisma.koiSEORecord.create({
       data: {
         entityType: dto.entityType,
         entityId: dto.entityId,
         slug: dto.slug,
-        slugHistory: '[]',
+        slugHistory: "[]",
         jsonLd: (dto.jsonLd || {}) as any,
         ogTitle: dto.ogTitle,
         ogDescription: dto.ogDescription,
@@ -23,7 +29,9 @@ export class SeoService {
         metaTitle: dto.metaTitle,
         metaDescription: dto.metaDescription,
         noIndex: dto.noIndex ?? false,
-        sitemapPriority: dto.sitemapPriority ? parseFloat(dto.sitemapPriority) : undefined,
+        sitemapPriority: dto.sitemapPriority
+          ? parseFloat(dto.sitemapPriority)
+          : undefined,
         sitemapChangeFreq: dto.sitemapChangeFreq,
       },
     });
@@ -36,24 +44,31 @@ export class SeoService {
   }
 
   async findBySlug(slug: string) {
-    const record = await this.prisma.koiSEORecord.findUnique({ where: { slug } });
-    if (!record) throw new NotFoundException('SEO record not found');
+    const record = await this.prisma.koiSEORecord.findUnique({
+      where: { slug },
+    });
+    if (!record) throw new NotFoundException("SEO record not found");
     return record;
   }
 
   async update(id: string, dto: UpdateSEORecordDto) {
     const record = await this.prisma.koiSEORecord.findUnique({ where: { id } });
-    if (!record) throw new NotFoundException('SEO record not found');
+    if (!record) throw new NotFoundException("SEO record not found");
 
     const data: any = {};
 
     // If slug changes, save old slug to history
     if (dto.slug && dto.slug !== record.slug) {
-      const existing = await this.prisma.koiSEORecord.findUnique({ where: { slug: dto.slug } });
-      if (existing) throw new ConflictException('Slug already in use');
+      const existing = await this.prisma.koiSEORecord.findUnique({
+        where: { slug: dto.slug },
+      });
+      if (existing) throw new ConflictException("Slug already in use");
 
       const history = (record.slugHistory as unknown as any[]) || [];
-      history.push({ slug: record.slug, redirectedAt: new Date().toISOString() });
+      history.push({
+        slug: record.slug,
+        redirectedAt: new Date().toISOString(),
+      });
       data.slugHistory = history;
       data.slug = dto.slug;
     }
@@ -63,9 +78,11 @@ export class SeoService {
     if (dto.ogDescription !== undefined) data.ogDescription = dto.ogDescription;
     if (dto.ogImage !== undefined) data.ogImage = dto.ogImage;
     if (dto.metaTitle !== undefined) data.metaTitle = dto.metaTitle;
-    if (dto.metaDescription !== undefined) data.metaDescription = dto.metaDescription;
+    if (dto.metaDescription !== undefined)
+      data.metaDescription = dto.metaDescription;
     if (dto.noIndex !== undefined) data.noIndex = dto.noIndex;
-    if (dto.sitemapPriority) data.sitemapPriority = parseFloat(dto.sitemapPriority);
+    if (dto.sitemapPriority)
+      data.sitemapPriority = parseFloat(dto.sitemapPriority);
     if (dto.sitemapChangeFreq) data.sitemapChangeFreq = dto.sitemapChangeFreq;
 
     return this.prisma.koiSEORecord.update({ where: { id }, data });
@@ -83,12 +100,23 @@ export class SeoService {
       where: { id: productId },
       include: {
         images: { where: { isPrimary: true }, take: 1 },
-        variants: { select: { sku: true, title: true, price: true, stockStatus: true, hardwareOption: true } },
+        variants: {
+          select: {
+            sku: true,
+            title: true,
+            price: true,
+            stockStatus: true,
+            hardwareOption: true,
+          },
+        },
       },
     });
-    if (!product) throw new NotFoundException('Product not found');
+    if (!product) throw new NotFoundException("Product not found");
 
-    const name = (product.name as any)?.vi || (product.name as any)?.en || 'Koi Leather Product';
+    const name =
+      (product.name as any)?.vi ||
+      (product.name as any)?.en ||
+      "Koi Leather Product";
     const offers: any[] = [];
     const variants = product.variants || [];
 
@@ -96,34 +124,35 @@ export class SeoService {
       for (const v of variants) {
         if (v.price == null) continue;
         offers.push({
-          '@type': 'Offer',
+          "@type": "Offer",
           name: v.title || name,
           sku: v.sku,
           price: Number(v.price),
-          priceCurrency: 'VND',
-          availability: v.stockStatus === 'IN_STOCK'
-            ? 'https://schema.org/InStock'
-            : 'https://schema.org/LimitedAvailability',
+          priceCurrency: "VND",
+          availability:
+            v.stockStatus === "IN_STOCK"
+              ? "https://schema.org/InStock"
+              : "https://schema.org/LimitedAvailability",
           url: `https://koileather.vn/san-pham/${product.slug}?variant=${v.sku}`,
         });
       }
     }
 
     const schema: Record<string, any> = {
-      '@context': 'https://schema.org',
-      '@type': 'Product',
+      "@context": "https://schema.org",
+      "@type": "Product",
       name,
       sku: (product as any).sku || product.id,
-      description: (product.description as any)?.vi || '',
-      brand: { '@type': 'Brand', name: 'Koi Leather' },
+      description: (product.description as any)?.vi || "",
+      brand: { "@type": "Brand", name: "Koi Leather" },
       image: product.images?.[0]?.url || undefined,
     };
 
     if (offers.length > 1) {
       const prices = offers.map((o: any) => o.price).filter(Boolean);
       schema.offers = {
-        '@type': 'AggregateOffer',
-        priceCurrency: 'VND',
+        "@type": "AggregateOffer",
+        priceCurrency: "VND",
         lowPrice: Math.min(...prices),
         highPrice: Math.max(...prices),
         offerCount: offers.length,
@@ -133,10 +162,10 @@ export class SeoService {
       schema.offers = offers[0];
     } else if (product.basePrice != null) {
       schema.offers = {
-        '@type': 'Offer',
+        "@type": "Offer",
         price: Number(product.basePrice),
-        priceCurrency: 'VND',
-        availability: 'https://schema.org/InStock',
+        priceCurrency: "VND",
+        availability: "https://schema.org/InStock",
         url: `https://koileather.vn/san-pham/${product.slug}`,
       };
     }
@@ -146,10 +175,10 @@ export class SeoService {
 
   async generateBreadcrumbJsonLd(items: { name: string; url: string }[]) {
     return {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
       itemListElement: items.map((item, i) => ({
-        '@type': 'ListItem',
+        "@type": "ListItem",
         position: i + 1,
         name: item.name,
         item: `https://koileather.vn${item.url}`,
@@ -158,20 +187,23 @@ export class SeoService {
   }
 
   async generateCraftActionJsonLd(productId: string) {
-    const product = await this.prisma.koiProduct.findUnique({ where: { id: productId } });
-    if (!product) throw new NotFoundException('Product not found');
+    const product = await this.prisma.koiProduct.findUnique({
+      where: { id: productId },
+    });
+    if (!product) throw new NotFoundException("Product not found");
 
-    const name = (product.name as any)?.vi || 'Sản phẩm da thủ công';
+    const name = (product.name as any)?.vi || "Sản phẩm da thủ công";
 
     return {
-      '@context': 'https://schema.org',
-      '@type': 'CraftAction',
+      "@context": "https://schema.org",
+      "@type": "CraftAction",
       name: `Chế tác ${name}`,
       result: {
-        '@type': 'Product',
+        "@type": "Product",
         name,
       },
-      description: 'Thủ công 100% — từ lạng da, đục xiên, khâu mũi yên đến sơn cạnh Fenice.',
+      description:
+        "Thủ công 100% — từ lạng da, đục xiên, khâu mũi yên đến sơn cạnh Fenice.",
     };
   }
 
@@ -179,11 +211,16 @@ export class SeoService {
 
   async generateSitemapXml(baseUrl: string): Promise<string> {
     const products = await this.prisma.koiProduct.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: "ACTIVE" },
       select: { slug: true, updatedAt: true },
     });
     const seoRecords = await this.prisma.koiSEORecord.findMany({
-      select: { slug: true, updatedAt: true, sitemapPriority: true, sitemapChangeFreq: true },
+      select: {
+        slug: true,
+        updatedAt: true,
+        sitemapPriority: true,
+        sitemapChangeFreq: true,
+      },
     });
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
@@ -204,10 +241,10 @@ export class SeoService {
       xml += `  <url><loc>${baseUrl}/${s.slug}</loc>`;
       xml += `<lastmod>${s.updatedAt.toISOString()}</lastmod>`;
       xml += `<priority>${s.sitemapPriority || 0.5}</priority>`;
-      xml += `<changefreq>${s.sitemapChangeFreq || 'monthly'}</changefreq></url>\n`;
+      xml += `<changefreq>${s.sitemapChangeFreq || "monthly"}</changefreq></url>\n`;
     }
 
-    xml += '</urlset>';
+    xml += "</urlset>";
     return xml;
   }
 }

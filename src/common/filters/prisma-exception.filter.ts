@@ -1,6 +1,12 @@
-import { Catch, ExceptionFilter, ArgumentsHost, HttpStatus, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { Response } from 'express';
+import {
+  Catch,
+  ExceptionFilter,
+  ArgumentsHost,
+  HttpStatus,
+  Logger,
+} from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { Response } from "express";
 
 @Catch(Prisma.PrismaClientKnownRequestError)
 export class PrismaExceptionFilter implements ExceptionFilter {
@@ -13,47 +19,52 @@ export class PrismaExceptionFilter implements ExceptionFilter {
     const meta = (exception.meta || {}) as Record<string, any>;
 
     switch (exception.code) {
-      case 'P2002': {
+      case "P2002": {
         const target = (meta?.target as string[]) || [];
-        const field = target.length > 0 ? target.join(', ') : 'unknown';
-        const value = meta?.field_value || meta?.name || '';
+        const field = target.length > 0 ? target.join(", ") : "unknown";
+        const value = meta?.field_value || meta?.name || "";
 
-        const message = field.startsWith('slug')
-          ? `Slug "${value || ''}" đã tồn tại`
-          : field.startsWith('sku')
-            ? `SKU "${value || ''}" đã tồn tại`
+        const message = field.startsWith("slug")
+          ? `Slug "${value || ""}" đã tồn tại`
+          : field.startsWith("sku")
+            ? `SKU "${value || ""}" đã tồn tại`
             : `Giá trị trùng lặp: ${field}`;
 
         return response.status(HttpStatus.CONFLICT).json({
           statusCode: HttpStatus.CONFLICT,
           message,
-          error: 'Conflict',
+          error: "Conflict",
           fields: target,
         });
       }
 
-      case 'P2025': {
+      case "P2025": {
         return response.status(HttpStatus.NOT_FOUND).json({
           statusCode: HttpStatus.NOT_FOUND,
-          message: exception.message?.replace?.(/\n/g, ' ') || 'Không tìm thấy bản ghi',
-          error: 'Not Found',
+          message:
+            exception.message?.replace?.(/\n/g, " ") ||
+            "Không tìm thấy bản ghi",
+          error: "Not Found",
         });
       }
 
-      case 'P2003': {
+      case "P2003": {
         return response.status(HttpStatus.BAD_REQUEST).json({
           statusCode: HttpStatus.BAD_REQUEST,
-          message: `Dữ liệu tham chiếu không hợp lệ: ${meta?.field_name || 'foreign key'}`,
-          error: 'Bad Request',
+          message: `Dữ liệu tham chiếu không hợp lệ: ${meta?.field_name || "foreign key"}`,
+          error: "Bad Request",
         });
       }
 
       default: {
-        this.logger.error(`Unhandled Prisma error: ${exception.code}`, exception.stack);
+        this.logger.error(
+          `Unhandled Prisma error: ${exception.code}`,
+          exception.stack,
+        );
         return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: 'Lỗi cơ sở dữ liệu, vui lòng thử lại sau',
-          error: 'Internal Server Error',
+          message: "Lỗi cơ sở dữ liệu, vui lòng thử lại sau",
+          error: "Internal Server Error",
         });
       }
     }

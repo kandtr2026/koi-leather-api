@@ -1,7 +1,11 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateImageCategoryDto } from './dto/create-image-category.dto';
-import { UpdateImageCategoryDto } from './dto/update-image-category.dto';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateImageCategoryDto } from "./dto/create-image-category.dto";
+import { UpdateImageCategoryDto } from "./dto/update-image-category.dto";
 
 @Injectable()
 export class ImageCategoryService {
@@ -9,7 +13,7 @@ export class ImageCategoryService {
 
   async findAll() {
     return this.prisma.koiImageCategory.findMany({
-      orderBy: { sortOrder: 'asc' },
+      orderBy: { sortOrder: "asc" },
     });
   }
 
@@ -17,7 +21,7 @@ export class ImageCategoryService {
     const category = await this.prisma.koiImageCategory.findUnique({
       where: { id },
     });
-    if (!category) throw new NotFoundException('Image category not found');
+    if (!category) throw new NotFoundException("Image category not found");
     return category;
   }
 
@@ -25,16 +29,20 @@ export class ImageCategoryService {
     const category = await this.prisma.koiImageCategory.findUnique({
       where: { code },
     });
-    if (!category) throw new NotFoundException('Image category not found');
+    if (!category) throw new NotFoundException("Image category not found");
     return category;
   }
 
   private nameToCode(name: string): string {
     return name
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd').replace(/Đ/g, 'D')
-      .replace(/[^a-zA-Z0-9\s]/g, '')
-      .trim().toUpperCase().replace(/\s+/g, '_');
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D")
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "_");
   }
 
   async create(dto: CreateImageCategoryDto) {
@@ -42,7 +50,10 @@ export class ImageCategoryService {
     const existing = await this.prisma.koiImageCategory.findUnique({
       where: { code },
     });
-    if (existing) throw new ConflictException(`Image category with code "${code}" already exists`);
+    if (existing)
+      throw new ConflictException(
+        `Image category with code "${code}" already exists`,
+      );
 
     return this.prisma.koiImageCategory.create({
       data: { code, name: dto.name },
@@ -50,8 +61,10 @@ export class ImageCategoryService {
   }
 
   async update(id: string, dto: UpdateImageCategoryDto) {
-    const category = await this.prisma.koiImageCategory.findUnique({ where: { id } });
-    if (!category) throw new NotFoundException('Image category not found');
+    const category = await this.prisma.koiImageCategory.findUnique({
+      where: { id },
+    });
+    if (!category) throw new NotFoundException("Image category not found");
 
     const data: any = {};
     if (dto.name !== undefined) data.name = dto.name;
@@ -60,8 +73,10 @@ export class ImageCategoryService {
   }
 
   async remove(id: string) {
-    const category = await this.prisma.koiImageCategory.findUnique({ where: { id } });
-    if (!category) throw new NotFoundException('Image category not found');
+    const category = await this.prisma.koiImageCategory.findUnique({
+      where: { id },
+    });
+    if (!category) throw new NotFoundException("Image category not found");
 
     return this.prisma.koiImageCategory.delete({ where: { id } });
   }

@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import Ajv, { ValidateFunction } from 'ajv';
-import addFormats from 'ajv-formats';
+import { Injectable } from "@nestjs/common";
+import Ajv, { ValidateFunction } from "ajv";
+import addFormats from "ajv-formats";
 
 interface ValidationResult {
   valid: boolean;
@@ -31,7 +31,10 @@ export class SpecsValidatorService {
     return validate;
   }
 
-  validate(schema: Record<string, any>, data: Record<string, any>): ValidationResult {
+  validate(
+    schema: Record<string, any>,
+    data: Record<string, any>,
+  ): ValidationResult {
     if (!schema || Object.keys(schema).length === 0) {
       return { valid: true, errors: [] };
     }
@@ -41,7 +44,7 @@ export class SpecsValidatorService {
 
     if (!valid) {
       const errors = (validate.errors || []).map(
-        (err) => `${err.instancePath || '/'} ${err.message}`,
+        (err) => `${err.instancePath || "/"} ${err.message}`,
       );
       return { valid: false, errors };
     }

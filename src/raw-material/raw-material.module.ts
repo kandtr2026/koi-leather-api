@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { RawMaterialController } from './raw-material.controller';
-import { RawMaterialService } from './raw-material.service';
+import { Module } from "@nestjs/common";
+import { RawMaterialController } from "./raw-material.controller";
+import { RawMaterialService } from "./raw-material.service";
 
 @Module({
   controllers: [RawMaterialController],

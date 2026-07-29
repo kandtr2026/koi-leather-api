@@ -1,16 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { InventoryService } from '../inventory/inventory.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { InventoryService } from "../inventory/inventory.service";
 
 interface SyncPayload {
   materialId: string;
   externalId: string;
   quantity: number;
-  action: 'UPDATE' | 'DEDUCT' | 'RESTOCK';
+  action: "UPDATE" | "DEDUCT" | "RESTOCK";
 }
 
 interface WebhookPayload {
-  event: 'stock.updated' | 'stock.received' | 'product.updated';
+  event: "stock.updated" | "stock.received" | "product.updated";
   data: {
     externalId: string;
     quantity: number;
@@ -32,8 +32,9 @@ export class InventorySyncService {
     private prisma: PrismaService,
     private inventoryService: InventoryService,
   ) {
-    this.apiBaseUrl = process.env.KITLEATHER_API_BASE_URL || 'https://kitleather.vn/api';
-    this.apiKey = process.env.KITLEATHER_API_KEY || '';
+    this.apiBaseUrl =
+      process.env.KITLEATHER_API_BASE_URL || "https://kitleather.vn/api";
+    this.apiKey = process.env.KITLEATHER_API_KEY || "";
   }
 
   /**
@@ -49,8 +50,10 @@ export class InventorySyncService {
     }
 
     if (!material.externalId) {
-      this.logger.warn(`Material ${material.name} has no externalId, skipping sync`);
-      await this.markSyncStatus(materialId, 'FAILED');
+      this.logger.warn(
+        `Material ${material.name} has no externalId, skipping sync`,
+      );
+      await this.markSyncStatus(materialId, "FAILED");
       return false;
     }
 
@@ -58,7 +61,7 @@ export class InventorySyncService {
       materialId: material.id,
       externalId: material.externalId,
       quantity: Number(material.totalQuantity),
-      action: 'UPDATE',
+      action: "UPDATE",
     };
 
     try {
@@ -69,12 +72,17 @@ export class InventorySyncService {
       //   body: JSON.stringify(payload),
       // });
 
-      this.logger.log(`[MOCK] Synced ${material.name} to kitleather.vn: ${payload.quantity} ${material.unit}`);
-      await this.markSyncStatus(materialId, 'SYNCED');
+      this.logger.log(
+        `[MOCK] Synced ${material.name} to kitleather.vn: ${payload.quantity} ${material.unit}`,
+      );
+      await this.markSyncStatus(materialId, "SYNCED");
       return true;
     } catch (error) {
-      this.logger.error(`Failed to sync ${material.name} to kitleather.vn`, error.message);
-      await this.markSyncStatus(materialId, 'FAILED');
+      this.logger.error(
+        `Failed to sync ${material.name} to kitleather.vn`,
+        error.message,
+      );
+      await this.markSyncStatus(materialId, "FAILED");
       return false;
     }
   }
@@ -86,11 +94,11 @@ export class InventorySyncService {
     this.logger.log(`Received webhook: ${payload.event}`);
 
     switch (payload.event) {
-      case 'stock.updated':
-      case 'stock.received':
+      case "stock.updated":
+      case "stock.received":
         await this.handleStockUpdate(payload);
         break;
-      case 'product.updated':
+      case "product.updated":
         await this.handleProductUpdate(payload);
         break;
       default:
@@ -114,13 +122,16 @@ export class InventorySyncService {
 
     const updateData: any = {
       lastSyncedAt: new Date(),
-      syncStatus: 'SYNCED',
+      syncStatus: "SYNCED",
     };
 
     if (quantity !== undefined) {
       const newTotal = Number(material.totalQuantity) + quantity;
       updateData.totalQuantity = Math.max(0, newTotal);
-      updateData.availableQuantity = Math.max(0, newTotal - Number(material.reservedQuantity));
+      updateData.availableQuantity = Math.max(
+        0,
+        newTotal - Number(material.reservedQuantity),
+      );
     }
     if (unitCost !== undefined) {
       updateData.unitCost = unitCost;
@@ -136,7 +147,7 @@ export class InventorySyncService {
       await this.prisma.koiInventoryTransaction.create({
         data: {
           materialId: material.id,
-          transactionType: 'RECEIPT',
+          transactionType: "RECEIPT",
           quantity,
           costAtTransaction: material.unitCost,
           notes: `Synced from kitleather.vn (${payload.event})`,
@@ -144,7 +155,9 @@ export class InventorySyncService {
       });
     }
 
-    this.logger.log(`Updated stock for ${material.name} from kitleather.vn webhook`);
+    this.logger.log(
+      `Updated stock for ${material.name} from kitleather.vn webhook`,
+    );
   }
 
   private async handleProductUpdate(payload: WebhookPayload) {
@@ -162,7 +175,7 @@ export class InventorySyncService {
         ...(name ? { name } : {}),
         ...(unitCost ? { unitCost } : {}),
         lastSyncedAt: new Date(),
-        syncStatus: 'SYNCED',
+        syncStatus: "SYNCED",
       },
     });
   }
@@ -171,7 +184,9 @@ export class InventorySyncService {
    * Auto-deduct raw materials when a production order is completed
    */
   async onOrderCompleted(orderId: string) {
-    this.logger.log(`Order ${orderId} completed — auto-deducting raw materials`);
+    this.logger.log(
+      `Order ${orderId} completed — auto-deducting raw materials`,
+    );
 
     const order = await this.prisma.koiProductionOrder.findUnique({
       where: { id: orderId },
@@ -191,14 +206,19 @@ export class InventorySyncService {
         materialId: alloc.material_id,
         externalId: material.externalId,
         quantity: -alloc.qty_consumed,
-        action: 'DEDUCT',
+        action: "DEDUCT",
       };
 
       try {
         // In production: POST to kitleather.vn
-        this.logger.log(`[MOCK] Deducted ${alloc.qty_consumed} ${alloc.unit} of ${material.name} from kitleather.vn`);
+        this.logger.log(
+          `[MOCK] Deducted ${alloc.qty_consumed} ${alloc.unit} of ${material.name} from kitleather.vn`,
+        );
       } catch (error) {
-        this.logger.error(`Failed to sync deduction to kitleather.vn`, error.message);
+        this.logger.error(
+          `Failed to sync deduction to kitleather.vn`,
+          error.message,
+        );
       }
     }
   }
@@ -208,7 +228,7 @@ export class InventorySyncService {
       where: { id: materialId },
       data: {
         syncStatus: status,
-        lastSyncedAt: status === 'SYNCED' ? new Date() : undefined,
+        lastSyncedAt: status === "SYNCED" ? new Date() : undefined,
       },
     });
   }
@@ -221,21 +241,29 @@ export class InventorySyncService {
     const variant = await this.prisma.koiProductVariant.findUnique({
       where: { id: variantId },
     });
-    if (!variant || variant.hardwareOption !== 'brass_tag') return false;
+    if (!variant || variant.hardwareOption !== "brass_tag") return false;
 
     const hardwareMaterial = await this.prisma.koiRawMaterial.findFirst({
       where: {
-        materialType: 'HARDWARE',
-        name: { contains: 'Tag' },
+        materialType: "HARDWARE",
+        name: { contains: "Tag" },
       },
     });
     if (!hardwareMaterial) {
-      this.logger.warn(`No HARDWARE material found for brass_tag deduction (variant ${variantId})`);
+      this.logger.warn(
+        `No HARDWARE material found for brass_tag deduction (variant ${variantId})`,
+      );
       return false;
     }
 
-    const newTotal = Math.max(0, Number(hardwareMaterial.totalQuantity) - quantity);
-    const newAvailable = Math.max(0, Number(hardwareMaterial.availableQuantity) - quantity);
+    const newTotal = Math.max(
+      0,
+      Number(hardwareMaterial.totalQuantity) - quantity,
+    );
+    const newAvailable = Math.max(
+      0,
+      Number(hardwareMaterial.availableQuantity) - quantity,
+    );
 
     await this.prisma.koiRawMaterial.update({
       where: { id: hardwareMaterial.id },
@@ -243,7 +271,7 @@ export class InventorySyncService {
         totalQuantity: newTotal,
         availableQuantity: newAvailable,
         lastSyncedAt: new Date(),
-        syncStatus: 'PENDING',
+        syncStatus: "PENDING",
       },
     });
 
@@ -251,14 +279,16 @@ export class InventorySyncService {
       data: {
         materialId: hardwareMaterial.id,
         orderId: `variant-${variantId}`,
-        transactionType: 'CONSUMPTION',
+        transactionType: "CONSUMPTION",
         quantity: -quantity,
         costAtTransaction: hardwareMaterial.unitCost,
         notes: `Auto-deduct brass_tag for variant ${variant.sku}`,
       },
     });
 
-    this.logger.log(`Deducted ${quantity}x ${hardwareMaterial.name} for variant ${variant.sku}`);
+    this.logger.log(
+      `Deducted ${quantity}x ${hardwareMaterial.name} for variant ${variant.sku}`,
+    );
 
     if (hardwareMaterial.externalId) {
       await this.pushUpdate(hardwareMaterial.id);
@@ -271,15 +301,19 @@ export class InventorySyncService {
    */
   async syncPending() {
     const pending = await this.prisma.koiRawMaterial.findMany({
-      where: { syncStatus: 'PENDING', externalId: { not: null } },
+      where: { syncStatus: "PENDING", externalId: { not: null } },
     });
 
     const results = await Promise.allSettled(
-      pending.map(m => this.pushUpdate(m.id)),
+      pending.map((m) => this.pushUpdate(m.id)),
     );
 
-    const succeeded = results.filter(r => r.status === 'fulfilled' && r.value).length;
-    const failed = results.filter(r => r.status === 'rejected' || !r.value).length;
+    const succeeded = results.filter(
+      (r) => r.status === "fulfilled" && r.value,
+    ).length;
+    const failed = results.filter(
+      (r) => r.status === "rejected" || !r.value,
+    ).length;
 
     return { total: pending.length, succeeded, failed };
   }

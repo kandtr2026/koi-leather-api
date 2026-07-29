@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class KoiKoiProductImageResponseDto {
   @ApiProperty() id: string;
@@ -20,10 +20,16 @@ export class ThumbnailInfoDto {
 
 /** Thumbnail group rendered in the product list table column */
 export class ProductThumbnailsDto {
-  @ApiProperty({ type: [ThumbnailInfoDto], description: 'Tối đa 3 thumbnail đầu tiên' })
+  @ApiProperty({
+    type: [ThumbnailInfoDto],
+    description: "Tối đa 3 thumbnail đầu tiên",
+  })
   items: ThumbnailInfoDto[];
 
-  @ApiProperty({ description: 'Số lượng ảnh còn lại hiển thị badge overlay (+N)', default: 0 })
+  @ApiProperty({
+    description: "Số lượng ảnh còn lại hiển thị badge overlay (+N)",
+    default: 0,
+  })
   remaining: number;
 }
 
@@ -47,7 +53,10 @@ export class KoiProductResponseDto {
   @ApiPropertyOptional({ type: [KoiKoiProductImageResponseDto] })
   images?: KoiKoiProductImageResponseDto[];
 
-  @ApiPropertyOptional({ type: ProductThumbnailsDto, description: 'Ảnh thumbnail cho bảng danh sách (tối đa 3 + badge)' })
+  @ApiPropertyOptional({
+    type: ProductThumbnailsDto,
+    description: "Ảnh thumbnail cho bảng danh sách (tối đa 3 + badge)",
+  })
   thumbnails?: ProductThumbnailsDto;
 }
 

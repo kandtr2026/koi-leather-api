@@ -1,15 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateCraftingSpecDto } from './dto/create-crafting-spec.dto';
-import { UpdateCraftingSpecDto } from './dto/update-crafting-spec.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateCraftingSpecDto } from "./dto/create-crafting-spec.dto";
+import { UpdateCraftingSpecDto } from "./dto/update-crafting-spec.dto";
 
 @Injectable()
 export class CraftingSpecService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateCraftingSpecDto) {
-    const product = await this.prisma.koiProduct.findUnique({ where: { id: dto.productId } });
-    if (!product) throw new NotFoundException('Product not found');
+    const product = await this.prisma.koiProduct.findUnique({
+      where: { id: dto.productId },
+    });
+    if (!product) throw new NotFoundException("Product not found");
 
     return this.prisma.koiCraftingSpec.create({
       data: {
@@ -27,7 +29,7 @@ export class CraftingSpecService {
 
   async findAll() {
     return this.prisma.koiCraftingSpec.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         product: { select: { id: true, name: true, sku: true, slug: true } },
         variants: { select: { id: true, sku: true } },
@@ -47,7 +49,7 @@ export class CraftingSpecService {
       where: { id },
       include: { product: true, variants: true },
     });
-    if (!spec) throw new NotFoundException('Crafting spec not found');
+    if (!spec) throw new NotFoundException("Crafting spec not found");
     return spec;
   }
 
@@ -58,10 +60,14 @@ export class CraftingSpecService {
       data: {
         ...(dto.patternFiles ? { patternFiles: dto.patternFiles as any } : {}),
         ...(dto.outerLeather ? { outerLeather: dto.outerLeather as any } : {}),
-        ...(dto.liningLeather ? { liningLeather: dto.liningLeather as any } : {}),
+        ...(dto.liningLeather
+          ? { liningLeather: dto.liningLeather as any }
+          : {}),
         ...(dto.interlining ? { interlining: dto.interlining as any } : {}),
         ...(dto.dimensions ? { dimensions: dto.dimensions as any } : {}),
-        ...(dto.craftingDetails ? { craftingDetails: dto.craftingDetails as any } : {}),
+        ...(dto.craftingDetails
+          ? { craftingDetails: dto.craftingDetails as any }
+          : {}),
         ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
       },
     });

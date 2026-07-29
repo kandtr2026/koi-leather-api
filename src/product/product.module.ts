@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { ProductController } from './product.controller';
-import { ProductService } from './product.service';
-import { SpecsValidatorService } from '../common/specs-validator.service';
-import { KoiInventorySyncModule } from '../inventory-sync/inventory-sync.module';
+import { Module } from "@nestjs/common";
+import { ProductController } from "./product.controller";
+import { ProductService } from "./product.service";
+import { SpecsValidatorService } from "../common/specs-validator.service";
+import { KoiInventorySyncModule } from "../inventory-sync/inventory-sync.module";
 
 @Module({
   imports: [KoiInventorySyncModule],

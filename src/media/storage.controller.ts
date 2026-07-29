@@ -1,14 +1,14 @@
-import { Controller, Get, Header } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Header } from "@nestjs/common";
+import { ApiTags, ApiOperation } from "@nestjs/swagger";
 
 // Lazy Cloudinary — only loads when env has real keys (mirrors media.controller).
 function getCloudinary() {
   const name = process.env.CLOUDINARY_CLOUD_NAME;
   const key = process.env.CLOUDINARY_API_KEY;
   const secret = process.env.CLOUDINARY_API_SECRET;
-  if (!name || name === 'your_cloud_name' || !key || !secret) return null;
+  if (!name || name === "your_cloud_name" || !key || !secret) return null;
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const cloudinary = require('cloudinary').v2;
+  const cloudinary = require("cloudinary").v2;
   cloudinary.config({ cloud_name: name, api_key: key, api_secret: secret });
   return { cloudinary, cloudName: name };
 }
@@ -18,16 +18,21 @@ function pct(used: number, limit: number): number {
   return Math.min(100, Math.round((used / limit) * 1000) / 10);
 }
 
-@ApiTags('Storage')
-@Controller('storage')
+@ApiTags("Storage")
+@Controller("storage")
 export class StorageController {
-  @Get('usage')
-  @Header('Cache-Control', 'public, max-age=300')
-  @ApiOperation({ summary: 'Cloudinary account usage (storage, credits, bandwidth)' })
+  @Get("usage")
+  @Header("Cache-Control", "public, max-age=300")
+  @ApiOperation({
+    summary: "Cloudinary account usage (storage, credits, bandwidth)",
+  })
   async usage() {
     const cfg = getCloudinary();
     if (!cfg) {
-      return { configured: false, reason: 'Cloudinary chưa cấu hình (thiếu CLOUDINARY_* env)' };
+      return {
+        configured: false,
+        reason: "Cloudinary chưa cấu hình (thiếu CLOUDINARY_* env)",
+      };
     }
 
     try {
@@ -44,23 +49,32 @@ export class StorageController {
       return {
         configured: true,
         cloudName: cfg.cloudName,
-        plan: u?.plan ?? 'Unknown',
+        plan: u?.plan ?? "Unknown",
         lastUpdated: u?.last_updated ?? null,
         storage: {
           usedBytes: storageBytes,
           limitBytes: storageLimitBytes,
-          usedPct: storageLimitBytes ? pct(storageBytes, storageLimitBytes) : null,
+          usedPct: storageLimitBytes
+            ? pct(storageBytes, storageLimitBytes)
+            : null,
         },
         bandwidth: { usedBytes: bandwidthBytes },
         credits:
           creditsLimit != null
-            ? { used: creditsUsed, limit: creditsLimit, usedPct: pct(creditsUsed, creditsLimit) }
+            ? {
+                used: creditsUsed,
+                limit: creditsLimit,
+                usedPct: pct(creditsUsed, creditsLimit),
+              }
             : null,
         objects: u?.objects?.usage ?? null,
         transformations: u?.transformations?.usage ?? null,
       };
     } catch (e: any) {
-      return { configured: true, error: e?.message || 'Không lấy được usage từ Cloudinary' };
+      return {
+        configured: true,
+        error: e?.message || "Không lấy được usage từ Cloudinary",
+      };
     }
   }
 }

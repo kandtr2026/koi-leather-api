@@ -1,9 +1,9 @@
-import { IsString, IsOptional, IsEnum, IsNumber, Min } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MaterialType, MaterialUnit } from '../../common/enums';
+import { IsString, IsOptional, IsEnum, IsNumber, Min } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { MaterialType, MaterialUnit } from "../../common/enums";
 
 export class CreateRawMaterialDto {
-  @ApiProperty({ description: 'Tên nguyên liệu' })
+  @ApiProperty({ description: "Tên nguyên liệu" })
   @IsString()
   name: string;
 
@@ -30,17 +30,17 @@ export class CreateRawMaterialDto {
   @IsNumber()
   thicknessMm?: number;
 
-  @ApiProperty({ description: 'Giá nhập (VNĐ)' })
+  @ApiProperty({ description: "Giá nhập (VNĐ)" })
   @IsNumber()
   @Min(0)
   unitCost: number;
 
-  @ApiPropertyOptional({ description: 'ID từ kitleather.vn' })
+  @ApiPropertyOptional({ description: "ID từ kitleather.vn" })
   @IsOptional()
   @IsString()
   externalId?: string;
 
-  @ApiPropertyOptional({ description: 'ID của danh mục nguyên liệu' })
+  @ApiPropertyOptional({ description: "ID của danh mục nguyên liệu" })
   @IsOptional()
   @IsString()
   materialCategoryId?: string;

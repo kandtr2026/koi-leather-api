@@ -1,32 +1,39 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
-import { InventorySyncService } from './inventory-sync.service';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Logger,
+} from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiBody } from "@nestjs/swagger";
+import { InventorySyncService } from "./inventory-sync.service";
 
-@ApiTags('Inventory Sync (kitleather.vn)')
-@Controller('sync')
+@ApiTags("Inventory Sync (kitleather.vn)")
+@Controller("sync")
 export class InventorySyncController {
   private readonly logger = new Logger(InventorySyncController.name);
 
   constructor(private readonly syncService: InventorySyncService) {}
 
-  @Post('webhook')
+  @Post("webhook")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Receive inventory webhook from kitleather.vn' })
+  @ApiOperation({ summary: "Receive inventory webhook from kitleather.vn" })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        event: { type: 'string', example: 'stock.updated' },
+        event: { type: "string", example: "stock.updated" },
         data: {
-          type: 'object',
+          type: "object",
           properties: {
-            externalId: { type: 'string' },
-            quantity: { type: 'number' },
-            unitCost: { type: 'number' },
+            externalId: { type: "string" },
+            quantity: { type: "number" },
+            unitCost: { type: "number" },
           },
         },
-        timestamp: { type: 'string' },
-        signature: { type: 'string' },
+        timestamp: { type: "string" },
+        signature: { type: "string" },
       },
     },
   })
@@ -40,8 +47,10 @@ export class InventorySyncController {
     return this.syncService.handleWebhook(body);
   }
 
-  @Post('push-all')
-  @ApiOperation({ summary: 'Push all pending inventory changes to kitleather.vn' })
+  @Post("push-all")
+  @ApiOperation({
+    summary: "Push all pending inventory changes to kitleather.vn",
+  })
   syncPending() {
     return this.syncService.syncPending();
   }

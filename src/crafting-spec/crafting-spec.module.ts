@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { CraftingSpecService } from './crafting-spec.service';
-import { CraftingSpecController } from './crafting-spec.controller';
+import { Module } from "@nestjs/common";
+import { CraftingSpecService } from "./crafting-spec.service";
+import { CraftingSpecController } from "./crafting-spec.controller";
 
 @Module({
   controllers: [CraftingSpecController],

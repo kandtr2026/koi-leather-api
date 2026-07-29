@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsObject, IsArray } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsOptional, IsObject, IsArray } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class PatternFileDto {
   @ApiProperty() version: string;
@@ -18,11 +18,14 @@ export class LeatherLayerDto {
 }
 
 export class CreateCraftingSpecDto {
-  @ApiProperty({ description: 'Product ID' })
+  @ApiProperty({ description: "Product ID" })
   @IsString()
   productId: string;
 
-  @ApiPropertyOptional({ type: [PatternFileDto], description: 'Pattern file versions' })
+  @ApiPropertyOptional({
+    type: [PatternFileDto],
+    description: "Pattern file versions",
+  })
   @IsOptional()
   @IsArray()
   patternFiles?: PatternFileDto[];
@@ -43,16 +46,26 @@ export class CreateCraftingSpecDto {
   interlining?: Record<string, any>;
 
   @ApiPropertyOptional({
-    description: 'Dimensions spec — type-specific JSON',
-    example: { lug_width_mm: 20, buckle_width_mm: 18, short_strap_mm: 115, long_strap_mm: 75 },
+    description: "Dimensions spec — type-specific JSON",
+    example: {
+      lug_width_mm: 20,
+      buckle_width_mm: 18,
+      short_strap_mm: 115,
+      long_strap_mm: 75,
+    },
   })
   @IsOptional()
   @IsObject()
   dimensions?: Record<string, any>;
 
   @ApiPropertyOptional({
-    description: 'Crafting details',
-    example: { thread: 'Meisi 0.45mm', pitch_mm: 3.38, edge_finishing: 'Fenice', stitching_type: 'Saddle Stitch' },
+    description: "Crafting details",
+    example: {
+      thread: "Meisi 0.45mm",
+      pitch_mm: 3.38,
+      edge_finishing: "Fenice",
+      stitching_type: "Saddle Stitch",
+    },
   })
   @IsOptional()
   @IsObject()

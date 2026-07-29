@@ -1,9 +1,9 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { AppModule } from './app.module';
-import * as path from 'path';
-import * as express from 'express';
+import { NestFactory } from "@nestjs/core";
+import { ValidationPipe } from "@nestjs/common";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { AppModule } from "./app.module";
+import * as path from "path";
+import * as express from "express";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -18,39 +18,58 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'https://koileather.com', 'https://www.koileather.com', 'https://koileather.vn', 'https://www.koileather.vn', 'https://admin.koileather.vn'],
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "https://koileather.com",
+      "https://www.koileather.com",
+      "https://koileather.vn",
+      "https://www.koileather.vn",
+      "https://admin.koileather.vn",
+    ],
+    methods: ["GET", "POST", "PATCH", "DELETE", "PUT"],
     credentials: true,
   });
 
   // Serve admin dashboard at root
-  app.use('/', express.static(path.join(process.cwd(), 'public')));
+  app.use("/", express.static(path.join(process.cwd(), "public")));
 
   // SPA fallback — serve index.html for all /admin/* paths (path-based routing)
-  app.use('/admin', (req: express.Request, res: express.Response) => {
-    res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
+  app.use("/admin", (req: express.Request, res: express.Response) => {
+    res.sendFile(path.join(process.cwd(), "public", "index.html"));
   });
 
   // Serve uploaded media
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
   const config = new DocumentBuilder()
-    .setTitle('Koi Leather API')
-    .setDescription('Headless Backend API for Koi Leather — Handcrafted Leather Goods Management System')
-    .setVersion('1.0')
-    .addTag('KoiProducts', 'Quản lý sản phẩm & thông số kỹ thuật JSONB')
-    .addTag('Media', 'Quản lý ảnh sản phẩm (Cloudinary CDN)')
-    .addTag('Raw Materials', 'Quản lý nguyên liệu (da, chỉ, khóa) & đồng bộ tồn kho')
-    .addTag('KoiProduction Orders', 'Lệnh sản xuất & snapshot chi phí nguyên liệu')
-    .addTag('SEO', 'Slug, JSON-LD Schema.org, OpenGraph, XML Sitemap')
-    .addTag('Inventory Sync (kitleather.vn)', 'Webhook 2-way sync with kitleather.vn')
-    .addServer('http://localhost:3000', 'Local development')
-    .addServer('https://api.koileather.vn', 'KoiProduction')
+    .setTitle("Koi Leather API")
+    .setDescription(
+      "Headless Backend API for Koi Leather — Handcrafted Leather Goods Management System",
+    )
+    .setVersion("1.0")
+    .addTag("KoiProducts", "Quản lý sản phẩm & thông số kỹ thuật JSONB")
+    .addTag("Media", "Quản lý ảnh sản phẩm (Cloudinary CDN)")
+    .addTag(
+      "Raw Materials",
+      "Quản lý nguyên liệu (da, chỉ, khóa) & đồng bộ tồn kho",
+    )
+    .addTag(
+      "KoiProduction Orders",
+      "Lệnh sản xuất & snapshot chi phí nguyên liệu",
+    )
+    .addTag("SEO", "Slug, JSON-LD Schema.org, OpenGraph, XML Sitemap")
+    .addTag(
+      "Inventory Sync (kitleather.vn)",
+      "Webhook 2-way sync with kitleather.vn",
+    )
+    .addServer("http://localhost:3000", "Local development")
+    .addServer("https://api.koileather.vn", "KoiProduction")
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: { defaultModelsExpandDepth: -1, docExpansion: 'list' },
+  SwaggerModule.setup("api/docs", app, document, {
+    swaggerOptions: { defaultModelsExpandDepth: -1, docExpansion: "list" },
   });
 
   const port = process.env.PORT || 3000;
@@ -62,6 +81,6 @@ async function bootstrap() {
 
 export { bootstrap };
 
-if (process.env.NODE_ENV !== 'vercel') {
+if (process.env.NODE_ENV !== "vercel") {
   bootstrap();
 }

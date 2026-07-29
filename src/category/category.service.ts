@@ -1,9 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
-import { generateCategorySeo } from '../seo/seo-generator.helper';
-import { generateSlug, generateCode, ensureUniqueSlug, ensureUniqueCode } from '../common/slugAndCodeGenerator';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateCategoryDto } from "./dto/create-category.dto";
+import { UpdateCategoryDto } from "./dto/update-category.dto";
+import { generateCategorySeo } from "../seo/seo-generator.helper";
+import {
+  generateSlug,
+  generateCode,
+  ensureUniqueSlug,
+  ensureUniqueCode,
+} from "../common/slugAndCodeGenerator";
 
 @Injectable()
 export class CategoryService {
@@ -11,7 +16,7 @@ export class CategoryService {
 
   async findAll() {
     const rows = await this.prisma.koiCategory.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
       select: {
         id: true,
         code: true,
@@ -26,8 +31,8 @@ export class CategoryService {
 
     // Count only ACTIVE products per category (via junction table)
     const activeCounts: Record<string, number> = {};
-    const raw: { categoryId: string; activeCount: number }[] =
-      await this.prisma.$queryRaw`
+    const raw: { categoryId: string; activeCount: number }[] = await this.prisma
+      .$queryRaw`
         SELECT pc."categoryId", COUNT(*)::int as "activeCount"
         FROM koi_free_style.koi_product_categories pc
         JOIN koi_free_style.koi_products p ON p.id = pc."productId"
@@ -36,7 +41,7 @@ export class CategoryService {
       `;
     for (const r of raw) activeCounts[r.categoryId] = Number(r.activeCount);
 
-    return rows.map(r => ({
+    return rows.map((r) => ({
       ...r,
       createdAt: r.createdAt.toISOString(),
       productCount: activeCounts[r.id] ?? 0,
@@ -49,12 +54,12 @@ export class CategoryService {
       include: {
         categoryLinks: {
           take: 10,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           include: { product: true },
         },
       },
     });
-    if (!category) throw new NotFoundException('Category not found');
+    if (!category) throw new NotFoundException("Category not found");
     return category;
   }
 
@@ -67,14 +72,16 @@ export class CategoryService {
         },
       },
     });
-    if (!category) throw new NotFoundException('Category not found');
+    if (!category) throw new NotFoundException("Category not found");
     return category;
   }
 
   /** Resolve a slug that is free, ignoring the row being updated. */
   private uniqueSlug(base: string, excludeId?: string) {
     return ensureUniqueSlug(base, async (s) => {
-      const existing = await this.prisma.koiCategory.findUnique({ where: { slug: s } });
+      const existing = await this.prisma.koiCategory.findUnique({
+        where: { slug: s },
+      });
       return !!existing && existing.id !== excludeId;
     });
   }
@@ -82,7 +89,9 @@ export class CategoryService {
   /** Resolve a code that is free, ignoring the row being updated. */
   private uniqueCode(base: string, excludeId?: string) {
     return ensureUniqueCode(base, async (c) => {
-      const existing = await this.prisma.koiCategory.findUnique({ where: { code: c as any } });
+      const existing = await this.prisma.koiCategory.findUnique({
+        where: { code: c as any },
+      });
       return !!existing && existing.id !== excludeId;
     });
   }
@@ -115,8 +124,10 @@ export class CategoryService {
   }
 
   async update(id: string, dto: UpdateCategoryDto) {
-    const category = await this.prisma.koiCategory.findUnique({ where: { id } });
-    if (!category) throw new NotFoundException('Category not found');
+    const category = await this.prisma.koiCategory.findUnique({
+      where: { id },
+    });
+    if (!category) throw new NotFoundException("Category not found");
 
     const name = dto.name ?? category.name;
     const data: any = {};
@@ -137,7 +148,8 @@ export class CategoryService {
     }
 
     if (dto.description !== undefined) data.description = dto.description;
-    if (dto.specsSchema !== undefined) data.specsSchema = JSON.stringify(dto.specsSchema);
+    if (dto.specsSchema !== undefined)
+      data.specsSchema = JSON.stringify(dto.specsSchema);
     if (dto.displayOrder !== undefined) data.displayOrder = dto.displayOrder;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
 
@@ -160,15 +172,19 @@ export class CategoryService {
   }
 
   async remove(id: string) {
-    const category = await this.prisma.koiCategory.findUnique({ where: { id } });
-    if (!category) throw new NotFoundException('Category not found');
+    const category = await this.prisma.koiCategory.findUnique({
+      where: { id },
+    });
+    if (!category) throw new NotFoundException("Category not found");
 
     return this.prisma.koiCategory.delete({ where: { id } });
   }
 
   async toggleStatus(id: string) {
-    const category = await this.prisma.koiCategory.findUnique({ where: { id } });
-    if (!category) throw new NotFoundException('Category not found');
+    const category = await this.prisma.koiCategory.findUnique({
+      where: { id },
+    });
+    if (!category) throw new NotFoundException("Category not found");
 
     return this.prisma.koiCategory.update({
       where: { id },

@@ -1,6 +1,12 @@
-import { IsString, IsOptional, IsBoolean, IsObject, IsEnum } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EntityType } from '../../common/enums';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsObject,
+  IsEnum,
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { EntityType } from "../../common/enums";
 
 export class CreateSEORecordDto {
   @ApiProperty({ enum: EntityType })
@@ -11,11 +17,11 @@ export class CreateSEORecordDto {
   @IsString()
   entityId: string;
 
-  @ApiProperty({ description: 'URL slug' })
+  @ApiProperty({ description: "URL slug" })
   @IsString()
   slug: string;
 
-  @ApiPropertyOptional({ description: 'JSON-LD structured data' })
+  @ApiPropertyOptional({ description: "JSON-LD structured data" })
   @IsOptional()
   @IsObject()
   jsonLd?: Record<string, any>;
@@ -62,7 +68,9 @@ export class CreateSEORecordDto {
 }
 
 export class UpdateSEORecordDto {
-  @ApiPropertyOptional({ description: 'New slug (old slug auto-saved to history)' })
+  @ApiPropertyOptional({
+    description: "New slug (old slug auto-saved to history)",
+  })
   slug?: string;
 
   @ApiPropertyOptional()

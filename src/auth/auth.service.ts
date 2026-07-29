@@ -1,30 +1,35 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 
 @Injectable()
 export class AuthService {
   private readonly adminEmails: string[];
 
   constructor(private jwtService: JwtService) {
-    const raw = process.env.ADMIN_EMAILS || '';
+    const raw = process.env.ADMIN_EMAILS || "";
     this.adminEmails = raw
-      .split(',')
-      .map(e => e.trim().toLowerCase())
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
       .filter(Boolean);
 
     // Fail-closed: on production the admin whitelist must be configured,
     // otherwise every Google account would be granted admin access.
-    if (!this.adminEmails.length && process.env.VERCEL_ENV === 'production') {
-      console.error('[Auth] ADMIN_EMAILS is empty in production — all logins will be rejected.');
+    if (!this.adminEmails.length && process.env.VERCEL_ENV === "production") {
+      console.error(
+        "[Auth] ADMIN_EMAILS is empty in production — all logins will be rejected.",
+      );
     }
   }
 
   private getGoogleClientId(): string {
-    return process.env.GOOGLE_CLIENT_ID || '';
+    return process.env.GOOGLE_CLIENT_ID || "";
   }
 
-  async loginWithGoogle(credential: string): Promise<{ accessToken: string; user: { email: string; name: string; picture: string } }> {
-    const { OAuth2Client } = await import('google-auth-library');
+  async loginWithGoogle(credential: string): Promise<{
+    accessToken: string;
+    user: { email: string; name: string; picture: string };
+  }> {
+    const { OAuth2Client } = await import("google-auth-library");
     const client = new OAuth2Client(this.getGoogleClientId());
 
     const ticket = await client.verifyIdToken({
@@ -34,22 +39,24 @@ export class AuthService {
 
     const payload = ticket.getPayload();
     if (!payload || !payload.email) {
-      throw new UnauthorizedException('Invalid Google token');
+      throw new UnauthorizedException("Invalid Google token");
     }
 
     const email = payload.email.toLowerCase();
 
     if (!this.isEmailAllowed(email)) {
-      throw new UnauthorizedException(`Email "${email}" không có quyền truy cập. Liên hệ admin để được cấp quyền.`);
+      throw new UnauthorizedException(
+        `Email "${email}" không có quyền truy cập. Liên hệ admin để được cấp quyền.`,
+      );
     }
 
     const user = {
       email,
-      name: payload.name || email.split('@')[0],
-      picture: payload.picture || '',
+      name: payload.name || email.split("@")[0],
+      picture: payload.picture || "",
     };
 
-    const accessToken = this.jwtService.sign(user, { expiresIn: '24h' });
+    const accessToken = this.jwtService.sign(user, { expiresIn: "24h" });
 
     return { accessToken, user };
   }
@@ -58,11 +65,13 @@ export class AuthService {
     try {
       return this.jwtService.verify(token);
     } catch {
-      throw new UnauthorizedException('Token hết hạn hoặc không hợp lệ');
+      throw new UnauthorizedException("Token hết hạn hoặc không hợp lệ");
     }
   }
 
-  decodeToken(token: string): { email: string; name: string; picture: string } | null {
+  decodeToken(
+    token: string,
+  ): { email: string; name: string; picture: string } | null {
     try {
       return this.jwtService.decode(token) as any;
     } catch {

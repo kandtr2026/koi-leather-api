@@ -1,23 +1,30 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Injectable, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
+import { PrismaClient } from "@prisma/client";
 
 const JSON_FIELDS: Record<string, string[]> = {
-  KoiProduct: ['name', 'description', 'technicalSpecs'],
-  KoiProductVariant: ['options', 'images'],
-  KoiCraftingSpec: ['patternFiles', 'outerLeather', 'liningLeather', 'interlining', 'dimensions', 'craftingDetails'],
-  KoiProductionOrder: ['materialsAllocated'],
-  KoiSEORecord: ['slugHistory', 'jsonLd'],
-  KoiCategory: ['specsSchema'],
+  KoiProduct: ["name", "description", "technicalSpecs"],
+  KoiProductVariant: ["options", "images"],
+  KoiCraftingSpec: [
+    "patternFiles",
+    "outerLeather",
+    "liningLeather",
+    "interlining",
+    "dimensions",
+    "craftingDetails",
+  ],
+  KoiProductionOrder: ["materialsAllocated"],
+  KoiSEORecord: ["slugHistory", "jsonLd"],
+  KoiCategory: ["specsSchema"],
 };
 
 function appendPoolParams(url: string): string {
   try {
     const u = new URL(url);
-    u.searchParams.set('connection_limit', '1');
-    u.searchParams.set('pgbouncer', 'true');
+    u.searchParams.set("connection_limit", "1");
+    u.searchParams.set("pgbouncer", "true");
     // If using Supabase pooler, change port from 5432 to 6543
-    if (u.hostname.endsWith('supabase.co') && u.port === '5432') {
-      u.port = '6543';
+    if (u.hostname.endsWith("supabase.co") && u.port === "5432") {
+      u.port = "6543";
     }
     return u.toString();
   } catch {
@@ -26,22 +33,25 @@ function appendPoolParams(url: string): string {
 }
 
 function isObject(value: any): boolean {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   constructor() {
     const isVercel = !!process.env.VERCEL_ENV;
-    const rawUrl = process.env.DATABASE_URL || '';
+    const rawUrl = process.env.DATABASE_URL || "";
     // On Vercel, append connection_limit to Supabase pooler URL.
     // Create DATABASE_URL_POOL env var on Vercel pointing to Supabase pooler (port 6543).
     const dbUrl = isVercel
-      ? (process.env.DATABASE_URL_POOL || appendPoolParams(rawUrl))
+      ? process.env.DATABASE_URL_POOL || appendPoolParams(rawUrl)
       : rawUrl;
     super({
       datasourceUrl: dbUrl,
-      log: isVercel ? undefined : ['warn', 'error'],
+      log: isVercel ? undefined : ["warn", "error"],
     });
 
     // Middleware: auto-parse JSON strings on read, auto-stringify on write
@@ -49,7 +59,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       const modelFields = JSON_FIELDS[params.model as string];
 
       // Before: stringify JSON fields for create/update operations
-      if (modelFields && ['create', 'update', 'upsert', 'createMany'].includes(params.action)) {
+      if (
+        modelFields &&
+        ["create", "update", "upsert", "createMany"].includes(params.action)
+      ) {
         const data = params.args.data;
         if (data) {
           if (Array.isArray(data)) {
@@ -73,19 +86,37 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       const result = await next(params);
 
       // After: parse JSON strings back to objects for read operations
-      if (modelFields && ['findUnique', 'findMany', 'findFirst', 'create', 'update', 'upsert'].includes(params.action)) {
+      if (
+        modelFields &&
+        [
+          "findUnique",
+          "findMany",
+          "findFirst",
+          "create",
+          "update",
+          "upsert",
+        ].includes(params.action)
+      ) {
         if (Array.isArray(result)) {
           for (const item of result) {
             for (const field of modelFields) {
-              if (item[field] && typeof item[field] === 'string') {
-                try { item[field] = JSON.parse(item[field]); } catch {}
+              if (item[field] && typeof item[field] === "string") {
+                try {
+                  item[field] = JSON.parse(item[field]);
+                } catch {}
               }
             }
           }
-        } else if (result && typeof result === 'object' && !Array.isArray(result)) {
+        } else if (
+          result &&
+          typeof result === "object" &&
+          !Array.isArray(result)
+        ) {
           for (const field of modelFields) {
-            if (result[field] && typeof result[field] === 'string') {
-              try { result[field] = JSON.parse(result[field]); } catch {}
+            if (result[field] && typeof result[field] === "string") {
+              try {
+                result[field] = JSON.parse(result[field]);
+              } catch {}
             }
           }
         }
@@ -100,8 +131,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     // Prisma lazily connects on first query anyway; we just log connectivity here.
     const started = Date.now();
     this.$connect()
-      .then(() => console.log(`[Prisma] connected in ${Date.now() - started}ms`))
-      .catch((e) => console.error('[Prisma] connect failed:', e?.message ?? e));
+      .then(() =>
+        console.log(`[Prisma] connected in ${Date.now() - started}ms`),
+      )
+      .catch((e) => console.error("[Prisma] connect failed:", e?.message ?? e));
   }
 
   async onModuleDestroy() {
