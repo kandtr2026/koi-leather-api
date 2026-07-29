@@ -197,6 +197,14 @@ model tags {
   @@schema("public")
 }
 
+model Visit {
+  id        Int      @id @default(autoincrement())
+  count     BigInt   @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
 // --- Koi Free Style Models (Koi Leather App) ---
 model KoiCategory {
   id          String   @id @default(uuid())

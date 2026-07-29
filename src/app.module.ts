@@ -16,6 +16,7 @@ import { MaterialCategoryModule } from './material-category/material-category.mo
 import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/auth.guard';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import { VisitsModule } from './visits/visits.module';
 
 @Module({
   imports: [
@@ -32,4 +33,12 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
     KoiInventorySyncModule,
     KoiImageCategoryModule,
     MaterialCategoryModule,
+    VisitsModule,
+  ],
+  controllers: [HealthController],
+  providers: [
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_FILTER, useClass: PrismaExceptionFilter },
+  ],
+})
 export class AppModule {}
