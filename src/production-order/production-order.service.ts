@@ -150,7 +150,10 @@ export class ProductionOrderService {
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        // Tiebreaker so paging is stable: orders created in the same batch share
+        // a createdAt, and equal sort keys have no guaranteed order, which lets
+        // a row show up on two pages while another is skipped.
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         select: {
           id: true,
           quantity: true,

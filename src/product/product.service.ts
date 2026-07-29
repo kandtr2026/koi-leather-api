@@ -365,7 +365,13 @@ export class ProductService {
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        // `id` is the tiebreaker, not decoration: the catalog was imported in
+        // batches so hundreds of rows share a createdAt down to the
+        // millisecond, and Postgres does not guarantee an order between equal
+        // sort keys. Without it each OFFSET query could order the ties
+        // differently, so some products appeared on two pages and others on
+        // none.
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         select: {
           id: true,
           name: true,
@@ -591,7 +597,8 @@ export class ProductService {
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { deletedAt: 'desc' },
+        // Same tiebreaker reasoning as findAll(): bulk deletes share deletedAt.
+        orderBy: [{ deletedAt: 'desc' }, { id: 'asc' }],
         select: {
           id: true,
           name: true,
