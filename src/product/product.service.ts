@@ -315,6 +315,30 @@ export class ProductService {
     }
   }
 
+  /**
+   * Whitelist of sortable columns for the admin product table. Keys are the
+   * public `sort` query values; values build the Prisma orderBy fragment.
+   * A whitelist (not a passthrough) keeps arbitrary client input out of the
+   * query, and keeps the API stable if a column is renamed in the schema.
+   */
+  private static readonly PRODUCT_SORT_FIELDS: Record<
+    string,
+    (dir: Prisma.SortOrder) => Prisma.KoiProductOrderByWithRelationInput
+  > = {
+    // `name` and `technicalSpecs` are stringified JSON in text columns (see the
+    // PrismaService JSON middleware). The `{"vi":"` prefix is constant, so a
+    // plain text sort orders by the Vietnamese name in practice.
+    name: (dir) => ({ name: dir }),
+    images: (dir) => ({ images: { _count: dir } }),
+    category: (dir) => ({ category: { name: dir } }),
+    price: (dir) => ({ basePrice: dir }),
+    specs: (dir) => ({ technicalSpecs: dir }),
+    updatedAt: (dir) => ({ updatedAt: dir }),
+    createdAt: (dir) => ({ createdAt: dir }),
+    sku: (dir) => ({ sku: dir }),
+    status: (dir) => ({ status: dir }),
+  };
+
   async findAll(
     page = 1,
     limit = 20,
@@ -323,6 +347,8 @@ export class ProductService {
     categoryId?: string,
     categorySlug?: string,
     search?: string, // <--- Add search parameter
+    sort?: string,
+    order?: string,
   ) {
 
     const where: Prisma.KoiProductWhereInput = { isDeleted: false };
@@ -360,18 +386,29 @@ export class ProductService {
     }
     // --- End Search Logic ---
 
+    // `id` is the tiebreaker, not decoration: the catalog was imported in
+    // batches so hundreds of rows share a createdAt down to the millisecond,
+    // and Postgres does not guarantee an order between equal sort keys.
+    // Without it each OFFSET query could order the ties differently, so some
+    // products appeared on two pages and others on none. Every sort option
+    // keeps it for the same reason (image counts and prices tie constantly).
+    const dir: Prisma.SortOrder = order?.toLowerCase() === 'asc' ? 'asc' : 'desc';
+    const buildOrderBy = sort ? ProductService.PRODUCT_SORT_FIELDS[sort] : undefined;
+    if (sort && !buildOrderBy) {
+      throw new BadRequestException(
+        `Không thể sắp xếp theo "${sort}". Các trường hợp lệ: ${Object.keys(ProductService.PRODUCT_SORT_FIELDS).join(', ')}`,
+      );
+    }
+    const orderBy: Prisma.KoiProductOrderByWithRelationInput[] = buildOrderBy
+      ? [buildOrderBy(dir), { id: 'asc' }]
+      : [{ createdAt: 'desc' }, { id: 'asc' }];
+
     const [data, total] = await Promise.all([
       this.prisma.koiProduct.findMany({
         where,
         skip: (page - 1) * limit,
         take: limit,
-        // `id` is the tiebreaker, not decoration: the catalog was imported in
-        // batches so hundreds of rows share a createdAt down to the
-        // millisecond, and Postgres does not guarantee an order between equal
-        // sort keys. Without it each OFFSET query could order the ties
-        // differently, so some products appeared on two pages and others on
-        // none.
-        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        orderBy,
         select: {
           id: true,
           name: true,

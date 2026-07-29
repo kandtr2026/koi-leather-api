@@ -130,6 +130,7 @@
     <button class="tab-btn" data-tab="prodcats"><i class="fas fa-layer-group mr-2 text-amber-500"></i>Loại sản phẩm</button>
     <button class="tab-btn" data-tab="imgcats"><i class="fas fa-tags mr-2 text-amber-500"></i>Loại ảnh</button>
     <button class="tab-btn" data-tab="matcats"><i class="fas fa-gem mr-2 text-amber-500"></i>Loại da</button>
+    <button class="tab-btn" data-tab="ads"><i class="fas fa-bullhorn mr-2 text-amber-500"></i>Shopee Ads</button>
   </div>
 
   <!-- Main -->
@@ -210,6 +211,57 @@
         </div>
       </div>
     </div>
+
+    <!-- ===== SHOPEE ADS ===== -->
+    <!-- Số liệu quảng cáo là dữ liệu kinh doanh nội bộ: panel này chỉ render sau
+         khi /shopee-ads/audit trả 200, và endpoint đó bắt buộc JWT admin kể cả
+         với GET (xem src/shopee-ads/shopee-ads.guard.ts). -->
+    <div class="panel" id="panel-ads">
+      <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+        <div>
+          <p class="text-sm text-gray-500">Báo cáo hiệu quả quảng cáo Shopee — đọc từ dữ liệu đã đồng bộ</p>
+          <p id="adsSyncInfo" class="text-xs text-gray-400 mt-1"></p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <label class="text-xs text-gray-500">Kỳ
+            <select id="adsDays" onchange="loadAdsAudit()" class="ml-1 border rounded-lg px-2 py-1.5 text-sm">
+              <option value="7">7 ngày</option>
+              <option value="14">14 ngày</option>
+              <option value="30" selected>30 ngày</option>
+              <option value="60">60 ngày</option>
+              <option value="90">90 ngày</option>
+            </select>
+          </label>
+          <label class="text-xs text-gray-500" title="Lợi nhuận gộp sau phí sàn. Dùng để tính điểm hoà vốn ROAS = 1/tỷ lệ này.">
+            Lãi gộp
+            <span class="inline-flex items-center">
+              <input id="adsMargin" type="number" min="1" max="99" step="1" value="25"
+                onchange="saveAdsMargin(); loadAdsAudit()"
+                class="ml-1 w-16 border rounded-lg px-2 py-1.5 text-sm" />
+              <span class="ml-1">%</span>
+            </span>
+          </label>
+          <button onclick="openShopeeConfig()" id="adsCfgBtn"
+            class="requires-auth bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition items-center gap-2"
+            style="display:none">
+            <i class="fas fa-plug"></i> Cấu hình
+          </button>
+          <button onclick="syncAds()" id="adsSyncBtn"
+            class="requires-auth bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition items-center gap-2"
+            style="display:none">
+            <i class="fas fa-rotate"></i> Đồng bộ
+          </button>
+        </div>
+      </div>
+
+      <div id="adsContent">
+        <div class="skeleton-loading p-6 space-y-3 bg-white rounded-xl border">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -264,10 +316,15 @@
       </div>
       <div>
         <div class="flex items-center justify-between mb-1">
-          <label class="block text-xs font-medium text-gray-600">Danh mục <span class="text-gray-400 font-normal">(tick chọn nhiều)</span></label>
+          <label class="block text-xs font-medium text-gray-600">Danh mục <span class="text-gray-400 font-normal">(gõ để tìm)</span></label>
           <span id="pCatCount" class="text-[11px] text-amber-600 font-medium"></span>
         </div>
-        <div id="pCategories" class="w-full border border-gray-300 rounded-lg p-2 max-h-44 overflow-y-auto grid grid-cols-2 gap-x-4 gap-y-0.5"></div>
+        <div class="relative">
+          <input type="text" id="pCategoryAutoCompleteInput" autocomplete="off" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Chọn danh mục...">
+          <div id="pCategoryDropdownList" class="absolute z-20 left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto hidden"></div>
+        </div>
+        <div id="pSelectedCategoriesContainer" class="flex flex-wrap gap-1.5 mt-2 empty:mt-0"></div>
+        <input type="hidden" id="pCategoriesHiddenInput" value="">
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2500000"></div>
@@ -489,6 +546,96 @@
   </div>
 </div>
 
+<!-- SHOPEE CONFIG MODAL -->
+<!-- Partner Key chỉ đi một chiều: gửi lên server thì được, đọc về thì không.
+     GET /shopee-ads/config chỉ trả dạng đã che (**** + 4 ký tự cuối). -->
+<div class="modal-overlay" id="shopeeConfigModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 fade-in max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold">Kết nối Shopee</h2>
+      <button onclick="closeModal('shopeeConfigModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+
+    <div id="shopeeCfgState" class="text-xs mb-4"></div>
+
+    <!-- BƯỚC 1 -->
+    <div class="border rounded-xl p-4 mb-3">
+      <p class="text-sm font-semibold text-gray-700 mb-1">Bước 1 — Khai báo App</p>
+      <p class="text-xs text-gray-500 mb-3">
+        Lấy trong Shopee Open Platform &gt; App của bạn.
+        <a href="https://open.shopee.com" target="_blank" rel="noopener noreferrer" class="text-amber-600 hover:underline">Mở Open Platform</a>
+      </p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Partner ID</label>
+          <input id="scPartnerId" type="text" inputmode="numeric" autocomplete="off"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder="1000000">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Partner Key</label>
+          <input id="scPartnerKey" type="password" autocomplete="off"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder="Dán Partner Key">
+          <p class="text-xs text-gray-400 mt-1">Được mã hoá trước khi lưu. Đã lưu rồi thì để trống nếu không đổi.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Shop ID</label>
+            <input id="scShopId" type="text" inputmode="numeric" autocomplete="off"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder="123456789">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Môi trường</label>
+            <select id="scEnv" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              <option value="live" selected>Live</option>
+              <option value="sandbox">Sandbox</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button onclick="saveShopeeConfig()" id="scSaveBtn"
+        class="mt-3 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        <i class="fas fa-save mr-1"></i> Lưu khai báo
+      </button>
+    </div>
+
+    <!-- BƯỚC 2 -->
+    <div class="border rounded-xl p-4 mb-3">
+      <p class="text-sm font-semibold text-gray-700 mb-1">Bước 2 — Uỷ quyền shop</p>
+      <p class="text-xs text-gray-500 mb-3">
+        Bấm để mở trang Shopee. Đăng nhập bằng tài khoản chủ shop và đồng ý.
+        Shopee sẽ chuyển về trang này kèm mã uỷ quyền.
+      </p>
+      <div id="scRedirectHint" class="text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-2 mb-3 hidden"></div>
+      <button onclick="openShopeeAuth()" id="scAuthBtn"
+        class="bg-white border border-amber-500 text-amber-600 hover:bg-amber-50 px-4 py-2 rounded-lg text-sm font-medium">
+        <i class="fas fa-up-right-from-square mr-1"></i> Uỷ quyền shop
+      </button>
+    </div>
+
+    <!-- BƯỚC 3 -->
+    <div class="border rounded-xl p-4">
+      <p class="text-sm font-semibold text-gray-700 mb-1">Bước 3 — Nhập mã uỷ quyền</p>
+      <p class="text-xs text-gray-500 mb-3">
+        Nếu Shopee chuyển về đúng trang này thì mã tự điền. Nếu redirect về domain khác,
+        copy giá trị <code class="bg-gray-100 px-1 rounded">code</code> trên URL rồi dán vào đây.
+      </p>
+      <div class="flex gap-2">
+        <input id="scCode" type="text" autocomplete="off"
+          class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder="code=...">
+        <button onclick="exchangeShopeeCode()" id="scCodeBtn"
+          class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap">
+          <i class="fas fa-key mr-1"></i> Kích hoạt
+        </button>
+      </div>
+    </div>
+
+    <div class="flex justify-between items-center gap-3 mt-5 pt-4 border-t">
+      <button onclick="clearShopeeConfig()" class="text-xs text-red-500 hover:underline">Xoá kết nối</button>
+      <button onclick="closeModal('shopeeConfigModal')" class="px-4 py-2 text-sm text-gray-600">Đóng</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- ORDER DETAIL MODAL -->
 <div class="modal-overlay" id="detailModal">
@@ -606,6 +753,7 @@ const ROUTE_MAP = {
   '/admin/categories':  { panel: 'prodcats', label: 'Loại sản phẩm' },
   '/admin/media-types': { panel: 'imgcats',  label: 'Loại ảnh' },
   '/admin/material-categories': { panel: 'matcats', label: 'Loại da' },
+  '/admin/shopee-ads':  { panel: 'ads',      label: 'Shopee Ads' },
 };
 const ROUTES = Object.keys(ROUTE_MAP);
 const DEFAULT_ROUTE = '/admin/products';
@@ -626,6 +774,10 @@ function applyRoute(route) {
   document.querySelectorAll('.panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + entry.panel);
   });
+
+  // Tab ads nạp lười: endpoint audit quét cả bảng theo ngày nên không gọi sẵn
+  // lúc init cho người chỉ vào sửa sản phẩm.
+  if (entry.panel === 'ads' && !adsLoadedOnce) loadAdsAudit();
 }
 
 function navigateTo(route) {
@@ -835,6 +987,18 @@ function applyAuth(user) {
   document.getElementById('authUser').classList.remove('hidden');
   document.getElementById('authAvatar').src = user.picture || '';
   document.getElementById('authEmail').textContent = user.email || '';
+
+  // Endpoint ads chặn cả GET khi chưa có token, nên lần gọi trước lúc đăng nhập
+  // chắc chắn đã 401. Nạp lại ngay để tab hiện số liệu mà không cần refresh.
+  if (document.getElementById('panel-ads')?.classList.contains('active')) {
+    loadAdsAudit(true);
+  } else {
+    adsLoadedOnce = false;
+  }
+
+  // Đổi code phải có JWT admin, nên chỉ xử lý sau khi đăng nhập xong. Chưa đăng
+  // nhập thì code cứ nằm lại trên URL — mất nó là phải uỷ quyền lại từ đầu.
+  captureShopeeAuthCode();
 }
 
 function logout() {
@@ -1018,7 +1182,7 @@ async function loadGallery(productId) {
         return `<div class="img-card flex flex-col bg-white rounded-lg border ${isPrimary ? 'primary' : 'border-gray-200'} p-1.5 min-w-[155px] max-w-[155px] shrink-0 relative">
           <div class="relative w-full aspect-[4/5] rounded-md overflow-hidden bg-gray-100 mb-1.5">
             ${isPrimary ? '<span class="absolute top-1 left-1 bg-amber-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10"><i class="fas fa-star"></i> Chính</span>' : ''}
-            <img src="${img.thumbnailUrl || img.url}" alt="${esc(img.altText || '')}" class="w-full h-full object-cover cursor-pointer" onclick="openLightbox('${productId}', ${images.indexOf(img)})" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full text-gray-300\\'><i class=\\'fas fa-image fa-lg\\'></i></div>'">
+            <img src="${img.thumbnailUrl || img.url}" alt="${esc(img.altText || '')}" class="w-full h-full object-cover cursor-pointer" onclick="openLightboxFromProduct('${productId}', ${images.indexOf(img)})" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full text-gray-300\\'><i class=\\'fas fa-image fa-lg\\'></i></div>'">
           </div>
           <div class="space-y-1">
             <select onchange="updateImageType('${img.id}', this.value)" class="img-type-select w-full text-[10px] border border-gray-200 rounded-lg px-1.5 py-1 bg-white text-gray-600 cursor-pointer">
@@ -1079,6 +1243,19 @@ async function setPrimaryImage(imageId) {
 let _lbImages = [];
 let _lbIndex = 0;
 
+// Placeholder inline (SVG data URI) — không cần file ngoài, không thể 404
+const LIGHTBOX_PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600">' +
+  '<rect width="480" height="600" fill="#1f2937"/>' +
+  '<g fill="none" stroke="#6b7280" stroke-width="6" stroke-linecap="round">' +
+  '<rect x="160" y="230" width="160" height="130" rx="10"/>' +
+  '<circle cx="205" cy="272" r="15"/>' +
+  '<path d="M170 345l55-52 40 38 30-26 35 33"/>' +
+  '</g>' +
+  '<text x="240" y="420" fill="#9ca3af" font-family="sans-serif" font-size="20" text-anchor="middle">Không tải được ảnh</text>' +
+  '</svg>'
+);
+
 function openLightbox(images, startIndex) {
   if (!images || !images.length) return;
   _lbImages = images;
@@ -1098,8 +1275,14 @@ function renderLightboxImage() {
   loading.style.display = 'block';
   el.style.opacity = '0';
   el.onload = () => { loading.style.display = 'none'; el.style.opacity = '1'; };
-  el.onerror = () => { loading.style.display = 'none'; el.style.opacity = '1'; };
-  el.src = img.mediumUrl || img.url || '/placeholder.jpg'; // Thêm placeholder nếu ảnh không tải được
+  el.onerror = () => {
+    loading.style.display = 'none';
+    el.style.opacity = '1';
+    // Ảnh không tải được → hiển thị placeholder inline (không phụ thuộc file ngoài)
+    el.onerror = null;
+    el.src = LIGHTBOX_PLACEHOLDER;
+  };
+  el.src = img.mediumUrl || img.url || LIGHTBOX_PLACEHOLDER;
   el.alt = img.altText || 'Koi Leather product image';
   el.title = img.altText || '';
   document.getElementById('lightboxCounter').textContent = `${_lbIndex + 1} / ${_lbImages.length}`;
@@ -1157,10 +1340,68 @@ let productPage = 1;
 // Totals for the whole result set, not just the page on screen.
 let productMeta = { total: 0, totalPages: 1 };
 
+// Sắp xếp chạy ở server (orderBy + OFFSET), không phải sort mảng trên trang
+// hiện tại — 329 sản phẩm chia nhiều trang, sort client-side chỉ đổi thứ tự
+// trong 20 dòng đang xem nên sẽ ra kết quả sai.
+let productSort = null;   // null = mặc định (mới nhất trước)
+let productOrder = 'desc';
+
+const PRODUCT_SORT_COLUMNS = [
+  { key: 'name',      label: 'Sản phẩm',  cls: '' },
+  { key: 'images',    label: 'Hình ảnh',  cls: '' },
+  { key: 'category',  label: 'Danh mục',  cls: 'min-w-[180px]' },
+  { key: 'price',     label: 'Giá',       cls: '' },
+  { key: 'specs',     label: 'Thông số',  cls: 'min-w-[160px]' },
+  { key: 'updatedAt', label: 'Ngày sửa',  cls: 'whitespace-nowrap' },
+];
+
+async function sortProducts(key) {
+  if (productSort === key) {
+    // Nhấn lại cùng cột: asc → desc → bỏ sắp xếp (về mặc định)
+    if (productOrder === 'asc') { productOrder = 'desc'; }
+    else { productSort = null; productOrder = 'desc'; }
+  } else {
+    productSort = key;
+    // Ngày sửa mặc định mới nhất trước; các cột còn lại A→Z / nhỏ→lớn
+    productOrder = key === 'updatedAt' ? 'desc' : 'asc';
+  }
+  productPage = 1;
+  await loadProducts();
+}
+
+function sortHeader({ key, label, cls }) {
+  const active = productSort === key;
+  const icon = !active ? 'fa-sort text-gray-300'
+    : productOrder === 'asc' ? 'fa-sort-up text-amber-500' : 'fa-sort-down text-amber-500';
+  const title = !active ? `Sắp xếp theo ${label}`
+    : productOrder === 'asc' ? `${label} — đang tăng dần, nhấn để giảm dần`
+    : `${label} — đang giảm dần, nhấn để bỏ sắp xếp`;
+  return `<th class="px-4 py-3 ${cls}">
+    <button type="button" onclick="sortProducts('${key}')" title="${esc(title)}"
+      aria-label="${esc(title)}" aria-sort="${active ? (productOrder === 'asc' ? 'ascending' : 'descending') : 'none'}"
+      class="group inline-flex items-center gap-1.5 uppercase font-semibold tracking-wide ${active ? 'text-amber-600' : 'text-gray-500 hover:text-gray-700'}">
+      <span>${esc(label)}</span>
+      <i class="fas ${icon} text-[11px] ${active ? '' : 'group-hover:text-gray-400'}"></i>
+    </button>
+  </th>`;
+}
+
+function fmDate(v) {
+  if (!v) return '<span class="text-gray-400">—</span>';
+  const d = new Date(v);
+  if (isNaN(d)) return '<span class="text-gray-400">—</span>';
+  const date = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  return `<div class="text-xs leading-tight"><div>${date}</div><div class="text-gray-400">${time}</div></div>`;
+}
+
 function productsUrl(page) {
   let url = `/products?page=${page}&limit=${PRODUCTS_PER_PAGE}`;
   if (currentCategoryFilter) {
     url += '&category=' + encodeURIComponent(currentCategoryFilter);
+  }
+  if (productSort) {
+    url += `&sort=${encodeURIComponent(productSort)}&order=${encodeURIComponent(productOrder)}`;
   }
   return url;
 }
@@ -1289,14 +1530,14 @@ function renderProducts() {
       </button>
     </div>`;
   }
-  el.innerHTML = filterBanner + `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Sản phẩm</th><th class="px-4 py-3">Hình ảnh</th><th class="px-4 py-3 min-w-[180px]">Danh mục</th><th class="px-4 py-3">Giá</th><th class="px-4 py-3 min-w-[160px]">Thông số</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${products.map(p => {
+  el.innerHTML = filterBanner + `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase">${PRODUCT_SORT_COLUMNS.map(sortHeader).join('')}<th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${products.map(p => {
     const schemaProps = p.category?.specsSchema ? (() => { try { const s = typeof p.category.specsSchema === 'string' ? JSON.parse(p.category.specsSchema) : p.category.specsSchema; return s.properties; } catch { return null; } })() : null;
     const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
     const cats = (p.categories && p.categories.length) ? p.categories : (p.category ? [p.category] : []);
     const catBadges = cats.length
       ? cats.map(c => c.slug ? `<a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1 cursor-pointer hover:bg-amber-100 hover:text-amber-900 hover:border-amber-300 no-underline transition-colors" title="Lọc sản phẩm theo danh mục «${esc(c.name)}»">${esc(c.name)}</a>` : `<span class="inline-block px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs mr-1 mb-1">${esc(c.name)}</span>`).join('')
       : `<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-xs">Chưa phân loại</span>`;
-    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails, p.id)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="downloadProductImages('${p.id}')" class="text-gray-400 hover:text-blue-500 mr-2 requires-auth" title="Tải ảnh JPEG"><i class="fas fa-download"></i></button><button onclick="editProduct('${p.id}')" class="text-amber-500 hover:text-amber-600 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails, p.id)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 whitespace-nowrap text-gray-600">${fmDate(p.updatedAt)}</td><td class="px-4 py-3 text-right"><button onclick="downloadProductImages('${p.id}')" class="text-gray-400 hover:text-blue-500 mr-2 requires-auth" title="Tải ảnh JPEG"><i class="fas fa-download"></i></button><button onclick="editProduct('${p.id}')" class="text-amber-500 hover:text-amber-600 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
   }).join('')}</tbody></table></div>` + renderPagination();
 }
 
@@ -1435,6 +1676,8 @@ function buildSpecsForm(specsSchema, currentValues) {
   const container = document.getElementById('pSpecsDynamic');
   const textarea = document.getElementById('pSpecs');
   const toggle = document.getElementById('pSpecsToggle');
+  // Khối "Thông số kỹ thuật" đã được bỏ khỏi modal sản phẩm — không có gì để dựng.
+  if (!container || !textarea) return;
   if (!specsSchema || !specsSchema.properties || Object.keys(specsSchema.properties).length === 0) {
     container.innerHTML = '';
     container.classList.add('hidden');
@@ -1473,6 +1716,7 @@ function collectSpecsFormValues() {
   const container = document.getElementById('pSpecsDynamic');
   const textarea = document.getElementById('pSpecs');
   const toggle = document.getElementById('pSpecsToggle');
+  if (!container || !textarea) return {};
   if (!container.classList.contains('hidden')) {
     const fields = container.querySelectorAll('[data-spec-key]');
     const result = {};
@@ -1496,6 +1740,7 @@ function toggleSpecsMode() {
   const container = document.getElementById('pSpecsDynamic');
   const textarea = document.getElementById('pSpecs');
   const toggle = document.getElementById('pSpecsToggle');
+  if (!container || !textarea) return;
   const isDynamic = !container.classList.contains('hidden');
   if (isDynamic) {
     const values = collectSpecsFormValues();
@@ -1517,13 +1762,14 @@ function parseSchema(specsSchema) {
   return s && typeof s === 'object' && Object.keys(s).length ? s : null;
 }
 
+/*
 // ===== Danh mục nhiều–nhiều: tick chọn nhiều =====
 function renderCategoryCheckboxes(selectedIds = []) {
   const box = document.getElementById('pCategories');
   if (!box) return;
   if (!prodCats.length) {
     box.innerHTML = '<p class="text-xs text-gray-400 py-2 text-center col-span-2">Chưa có danh mục nào</p>';
-    updateCatCount();
+    // updateCatCount(); // Removed
     return;
   }
   const sel = new Set(selectedIds);
@@ -1533,29 +1779,162 @@ function renderCategoryCheckboxes(selectedIds = []) {
       <span class="truncate">${esc(c.name)}</span>
       
     </label>`).join('');
-  updateCatCount();
+  // updateCatCount(); // Removed
 }
+*/
+
+// ===== Danh mục nhiều–nhiều: autocomplete và tag input =====
+const pCategoryAutoCompleteInput = document.getElementById('pCategoryAutoCompleteInput');
+const pCategoryDropdownList = document.getElementById('pCategoryDropdownList');
+const pSelectedCategoriesContainer = document.getElementById('pSelectedCategoriesContainer');
+const pCategoriesHiddenInput = document.getElementById('pCategoriesHiddenInput');
+
+let selectedCategoryIds = new Set();
+let catHighlightIndex = -1;
 
 function getSelectedCategoryIds() {
-  return Array.from(document.querySelectorAll('#pCategories .pcat-cb:checked')).map(cb => cb.value);
+  return Array.from(selectedCategoryIds);
 }
+
+function updateCatCount() {
+  const el = document.getElementById('pCatCount');
+  if (el) el.textContent = selectedCategoryIds.size ? `Đã chọn ${selectedCategoryIds.size}` : '';
+}
+
+function updateHiddenCategoryInput() {
+  pCategoriesHiddenInput.value = JSON.stringify(getSelectedCategoryIds());
+  updateCatCount();
+  onCategorySelectionChange(); // Trigger change event
+}
+
+function renderSelectedCategories() {
+  pSelectedCategoriesContainer.innerHTML = '';
+  selectedCategoryIds.forEach(catId => {
+    const category = prodCats.find(c => c.id === catId);
+    if (category) {
+      const tag = document.createElement('span');
+      tag.className = 'flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-medium pl-2.5 pr-1.5 py-0.5 rounded-full';
+      tag.innerHTML = `<span>${esc(category.name)}</span><button type="button" class="remove-cat-tag text-amber-500 hover:text-amber-700" data-id="${esc(category.id)}" aria-label="Bỏ ${esc(category.name)}"><i class="fas fa-times"></i></button>`;
+      pSelectedCategoriesContainer.appendChild(tag);
+    }
+  });
+  updateHiddenCategoryInput();
+}
+
+function addCategoryTag(catId) {
+  if (!selectedCategoryIds.has(catId)) {
+    selectedCategoryIds.add(catId);
+    renderSelectedCategories();
+  }
+  pCategoryAutoCompleteInput.value = '';
+  closeCatDropdown();
+  pCategoryAutoCompleteInput.focus();
+}
+
+function removeCategoryTag(catId) {
+  selectedCategoryIds.delete(catId);
+  renderSelectedCategories();
+}
+
+function closeCatDropdown() {
+  pCategoryDropdownList.classList.add('hidden');
+  catHighlightIndex = -1;
+}
+
+function highlightCatItem(delta) {
+  const items = Array.from(pCategoryDropdownList.children);
+  if (!items.length) return;
+  catHighlightIndex = (catHighlightIndex + delta + items.length) % items.length;
+  items.forEach((el, i) => el.classList.toggle('bg-amber-50', i === catHighlightIndex));
+  items[catHighlightIndex].scrollIntoView({ block: 'nearest' });
+}
+
+// Bỏ dấu để gõ "vi dung" vẫn tìm được "Ví đứng"
+function normalizeVi(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+    .toLowerCase().trim();
+}
+
+// Gõ để lọc; để trống thì hiện toàn bộ danh mục còn lại
+function renderCatDropdown() {
+  const query = normalizeVi(pCategoryAutoCompleteInput.value);
+  pCategoryDropdownList.innerHTML = '';
+  catHighlightIndex = -1;
+
+  const available = prodCats.filter(c =>
+    !selectedCategoryIds.has(c.id) && (!query || normalizeVi(c.name).includes(query))
+  );
+
+  if (!available.length) { closeCatDropdown(); return; }
+
+  available.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm';
+    item.textContent = c.name;
+    item.dataset.id = c.id;
+    item.addEventListener('mousedown', (e) => { e.preventDefault(); addCategoryTag(c.id); });
+    pCategoryDropdownList.appendChild(item);
+  });
+  pCategoryDropdownList.classList.remove('hidden');
+}
+
+pCategoryAutoCompleteInput.addEventListener('input', renderCatDropdown);
+pCategoryAutoCompleteInput.addEventListener('focus', renderCatDropdown);
+
+pCategoryAutoCompleteInput.addEventListener('keydown', (e) => {
+  const open = !pCategoryDropdownList.classList.contains('hidden');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (!open) renderCatDropdown(); else highlightCatItem(1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (open) highlightCatItem(-1);
+  } else if (e.key === 'Enter') {
+    if (!open) return;
+    e.preventDefault();
+    const items = Array.from(pCategoryDropdownList.children);
+    const pick = items[catHighlightIndex >= 0 ? catHighlightIndex : 0];
+    if (pick) addCategoryTag(pick.dataset.id);
+  } else if (e.key === 'Escape') {
+    if (open) { e.stopPropagation(); closeCatDropdown(); }
+  } else if (e.key === 'Backspace' && !pCategoryAutoCompleteInput.value) {
+    const ids = getSelectedCategoryIds();
+    if (ids.length) removeCategoryTag(ids[ids.length - 1]);
+  }
+});
+
+pCategoryAutoCompleteInput.addEventListener('blur', () => {
+  setTimeout(closeCatDropdown, 150);
+});
+
+pSelectedCategoriesContainer.addEventListener('click', (event) => {
+  const button = event.target.closest('.remove-cat-tag');
+  if (button) removeCategoryTag(button.dataset.id);
+});
+
+function initCategorySelector(selected = []) {
+  selectedCategoryIds = new Set(selected);
+  pCategoryAutoCompleteInput.value = '';
+  closeCatDropdown();
+  renderSelectedCategories();
+}
+
 
 function getPrimaryCategory() {
   const ids = getSelectedCategoryIds();
   return ids.length ? prodCats.find(c => c.id === ids[0]) : null;
 }
 
-function updateCatCount() {
-  const el = document.getElementById('pCatCount');
-  if (!el) return;
-  const n = getSelectedCategoryIds().length;
-  el.textContent = n ? `Đã chọn ${n}` : '';
-}
 
-// Khi đổi lựa chọn: cập nhật đếm + dựng lại form thông số theo danh mục chính (đầu tiên)
+// Placeholder for existing onCategorySelectionChange logic, adapt as needed
 function onCategorySelectionChange() {
-  updateCatCount();
-  const cat = getPrimaryCategory();
+  // This function was originally responsible for updateCatCount and other UI updates.
+  // Now, it's called after selectedCategoryIds changes.
+  // If there are other UI elements that need to react to category changes (e.g., specs form),
+  // their logic should be placed or called from here.
+  const cat = getPrimaryCategory(); // Keep existing logic for primary category
   const schema = cat ? parseSchema(cat.specsSchema) : null;
   const currentSpecs = collectSpecsFormValues();
   const hasExisting = currentSpecs && Object.keys(currentSpecs).length > 0;
@@ -1595,7 +1974,7 @@ function updateMaterialCatCount() {
 function openCreateProduct() {
   document.getElementById('productModalTitle').textContent = 'Thêm sản phẩm';
   ['editProductId','pNameVi','pPrice'].forEach(id => document.getElementById(id).value = '');
-  renderCategoryCheckboxes([]);
+  initCategorySelector([]);
   renderMaterialCategoryCheckboxes(null); // Clear selected material category
   currentProductId = null;
   // Reset pending files
@@ -1623,7 +2002,7 @@ async function editProduct(id) {
   const selIds = (p.categories && p.categories.length)
     ? p.categories.map(c => c.id)
     : (p.categoryId ? [p.categoryId] : []);
-  renderCategoryCheckboxes(selIds);
+  initCategorySelector(selIds);
   renderMaterialCategoryCheckboxes(p.materialCategoryId); // Select material category
   document.getElementById('pPrice').value = p.basePrice || '';
 
@@ -2015,7 +2394,7 @@ async function loadProdCats() {
   renderProdCats();
   // Nếu modal sản phẩm đang mở, làm mới danh sách checkbox danh mục (giữ lựa chọn hiện tại)
   if (document.getElementById('productModal')?.classList.contains('open')) {
-    renderCategoryCheckboxes(getSelectedCategoryIds());
+    initCategorySelector(getSelectedCategoryIds());
   }
 }
 
@@ -2545,6 +2924,472 @@ function updateHeaderStatus() {
   const total = productMeta.total || products.length;
   document.getElementById('headerStatus').textContent =
     `${total} sản phẩm · ${prodCats.length} loại SP · ${imgCats.length} loại ảnh · ${matCats.length} loại da`;
+}
+
+// ========== SHOPEE ADS ==========
+// Tab này đọc từ /shopee-ads/audit — dữ liệu đã sync sẵn trong DB, không gọi
+// Shopee API lúc mở tab (Vercel giới hạn 30s/request).
+let adsData = null;
+let adsLoading = false;
+let adsLoadedOnce = false;
+
+function getAdsMargin() {
+  const el = document.getElementById('adsMargin');
+  const saved = localStorage.getItem('ads_margin');
+  if (saved && el && !el.dataset.restored) {
+    el.value = saved;
+    el.dataset.restored = '1';
+  }
+  const v = Number(el?.value ?? 25);
+  return isFinite(v) && v > 0 && v < 100 ? v : 25;
+}
+
+function saveAdsMargin() {
+  try { localStorage.setItem('ads_margin', String(getAdsMargin())); } catch {}
+}
+
+function adsNum(v) {
+  return (v === null || v === undefined) ? '-' : Math.round(v).toLocaleString('vi-VN');
+}
+function adsPct(v) {
+  return (v === null || v === undefined) ? '-' : (v * 100).toFixed(2) + '%';
+}
+function adsRoas(v) {
+  return (v === null || v === undefined) ? '-' : v.toFixed(2);
+}
+
+const ADS_SEV = {
+  critical: { label: 'Nghiêm trọng', cls: 'bg-red-50 border-red-200 text-red-700',       icon: 'fa-circle-exclamation' },
+  high:     { label: 'Cao',         cls: 'bg-orange-50 border-orange-200 text-orange-700', icon: 'fa-triangle-exclamation' },
+  medium:   { label: 'Trung bình',  cls: 'bg-amber-50 border-amber-200 text-amber-700',  icon: 'fa-circle-info' },
+  low:      { label: 'Thấp',        cls: 'bg-slate-50 border-slate-200 text-slate-600',  icon: 'fa-circle-info' },
+  info:     { label: 'Tốt',         cls: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: 'fa-circle-check' },
+};
+
+async function loadAdsAudit(force) {
+  if (adsLoading) return;
+  adsLoading = true;
+  adsLoadedOnce = true;
+
+  const days = Number(document.getElementById('adsDays')?.value || 30);
+  const margin = getAdsMargin();
+  const path = `/shopee-ads/audit?days=${days}&margin=${margin}`;
+
+  // api() cache GET 60s; khi bấm Đồng bộ xong phải đọc lại số mới.
+  if (force) swrCache.remove('GET ' + path);
+
+  try {
+    adsData = await api(path);
+    renderAdsAudit(adsData);
+  } catch (e) {
+    renderAdsError(e);
+  } finally {
+    adsLoading = false;
+  }
+}
+
+function renderAdsError(e) {
+  const box = document.getElementById('adsContent');
+  const info = document.getElementById('adsSyncInfo');
+  if (info) info.textContent = '';
+  if (!box) return;
+
+  if (e && (e.status === 401 || e.status === 403)) {
+    box.innerHTML = `
+      <div class="bg-white rounded-xl border p-8 text-center">
+        <i class="fas fa-lock text-3xl text-gray-300 mb-3"></i>
+        <p class="text-sm text-gray-600 font-medium">Cần đăng nhập bằng email admin để xem số liệu quảng cáo</p>
+        <p class="text-xs text-gray-400 mt-1">Số liệu chi phí và doanh thu không hiển thị cho khách.</p>
+      </div>`;
+    return;
+  }
+  box.innerHTML = `
+    <div class="bg-white rounded-xl border p-8 text-center">
+      <i class="fas fa-circle-exclamation text-3xl text-gray-300 mb-3"></i>
+      <p class="text-sm text-gray-600">Không tải được báo cáo: ${esc(e?.message || 'lỗi không rõ')}</p>
+      <button onclick="loadAdsAudit(true)" class="mt-3 text-xs text-amber-600 hover:underline">Thử lại</button>
+    </div>`;
+}
+
+function renderAdsAudit(d) {
+  const box = document.getElementById('adsContent');
+  const info = document.getElementById('adsSyncInfo');
+  if (!box) return;
+
+  // Dòng trạng thái sync
+  if (info) {
+    const parts = [];
+    if (d.sync?.lastSyncAt) {
+      parts.push('Cập nhật: ' + new Date(d.sync.lastSyncAt).toLocaleString('vi-VN'));
+    } else {
+      parts.push('Chưa đồng bộ lần nào');
+    }
+    if (d.sync?.status && d.sync.status !== 'ok') {
+      parts.push('trạng thái: ' + d.sync.status);
+    }
+    if (d.sync?.balance !== null && d.sync?.balance !== undefined) {
+      parts.push('số dư ví: ' + adsNum(d.sync.balance) + 'đ');
+    }
+    info.textContent = parts.join(' · ');
+  }
+
+  // Chưa khai báo Partner ID / Partner Key / Shop ID
+  if (!d.configured) {
+    box.innerHTML = `
+      <div class="bg-white rounded-xl border p-6 text-center">
+        <i class="fas fa-plug text-3xl text-amber-400 mb-3"></i>
+        <p class="text-sm font-medium text-gray-700">Chưa kết nối Shopee API</p>
+        <p class="text-xs text-gray-500 mt-1 mb-4">Khai báo Partner ID, Partner Key, Shop ID rồi uỷ quyền shop. Thông tin được mã hoá và lưu trong DB.</p>
+        <button onclick="openShopeeConfig()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+          <i class="fas fa-cog mr-1"></i> Cấu hình
+        </button>
+      </div>`;
+    return;
+  }
+
+  // Đã khai báo nhưng chủ shop chưa bấm đồng ý uỷ quyền -> chưa có access_token
+  if (d.authorized === false) {
+    box.innerHTML = `
+      <div class="bg-white rounded-xl border p-6 text-center">
+        <i class="fas fa-user-shield text-3xl text-amber-400 mb-3"></i>
+        <p class="text-sm font-medium text-gray-700">Chưa uỷ quyền shop</p>
+        <p class="text-xs text-gray-500 mt-1 mb-4">Đã có thông số nhưng thiếu access_token. Mở Cấu hình → bước 2 để uỷ quyền.</p>
+        <button onclick="openShopeeConfig()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+          <i class="fas fa-key mr-1"></i> Uỷ quyền shop
+        </button>
+      </div>`;
+    return;
+  }
+
+  // Đã cấu hình nhưng chưa có dữ liệu
+  if (!d.period?.days) {
+    box.innerHTML = `
+      <div class="bg-white rounded-xl border p-8 text-center">
+        <i class="fas fa-database text-3xl text-gray-300 mb-3"></i>
+        <p class="text-sm text-gray-600 font-medium">Chưa có dữ liệu trong kỳ này</p>
+        <p class="text-xs text-gray-400 mt-1">Bấm <span class="font-medium">Đồng bộ</span> để lấy số liệu từ Shopee.</p>
+        ${d.sync?.message ? `<p class="text-xs text-gray-400 mt-2">${esc(d.sync.message)}</p>` : ''}
+      </div>`;
+    return;
+  }
+
+  const s = d.shop;
+  const be = d.breakevenRoas;
+  const profitable = be && s.roas !== null ? s.roas >= be : null;
+
+  const kpi = (label, value, sub, tone) => `
+    <div class="bg-white rounded-xl border p-4">
+      <div class="text-xs text-gray-500">${label}</div>
+      <div class="text-xl font-bold mt-1 ${tone || 'text-gray-800'}">${value}</div>
+      ${sub ? `<div class="text-xs text-gray-400 mt-0.5">${sub}</div>` : ''}
+    </div>`;
+
+  const roasTone = profitable === null ? '' : (profitable ? 'text-emerald-600' : 'text-red-600');
+  const roasSub = be
+    ? `hoà vốn ${adsRoas(be)} · ${profitable ? 'đang có lãi' : 'đang lỗ'}`
+    : 'khai báo lãi gộp để biết hoà vốn';
+
+  const kpis = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      ${kpi('Chi phí quảng cáo', adsNum(s.expense) + 'đ', `${d.period.days} ngày`)}
+      ${kpi('GMV từ quảng cáo', adsNum(s.gmv) + 'đ', `${adsNum(s.order)} đơn`)}
+      ${kpi('ROAS', adsRoas(s.roas), roasSub, roasTone)}
+      ${kpi('ACOS', adsPct(s.acos), `CPC ${adsNum(s.cpc)}đ · ${adsNum(s.cpo)}đ/đơn`)}
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      ${kpi('CTR', adsPct(s.ctr), `${adsNum(s.impression)} hiển thị`)}
+      ${kpi('Tỷ lệ chuyển đổi', adsPct(s.cr), `${adsNum(s.click)} click`)}
+      ${kpi('Giá trị đơn TB', adsNum(s.aov) + 'đ', `GMV trực tiếp ${adsPct(s.directShare)}`)}
+      ${kpi('Tiền đốt vô ích', adsNum(d.summary.wastedSpend) + 'đ', 'campaign có click, 0 đơn',
+            d.summary.wastedSpend > 0 ? 'text-red-600' : 'text-gray-800')}
+    </div>`;
+
+  // Findings
+  const findings = (d.findings || []).map((f, i) => {
+    const sev = ADS_SEV[f.severity] || ADS_SEV.low;
+    return `
+      <div class="border rounded-xl p-3 ${sev.cls} mb-2">
+        <div class="flex items-start gap-2">
+          <i class="fas ${sev.icon} mt-0.5"></i>
+          <div class="min-w-0">
+            <div class="text-sm font-semibold">${i + 1}. ${esc(f.title)}
+              <span class="text-xs font-normal opacity-70">· ${sev.label}</span>
+            </div>
+            <div class="text-xs opacity-80 mt-0.5">${esc(f.scope)}</div>
+            <div class="text-xs mt-1">${esc(f.detail)}</div>
+            <div class="text-xs mt-1"><span class="font-medium">Nên làm:</span> ${esc(f.action)}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('') || '<p class="text-sm text-gray-500">Không phát hiện vấn đề nào trong kỳ này.</p>';
+
+  // Bảng campaign
+  const rows = (d.campaigns || []).map(c => {
+    const bad = be && c.roas !== null && c.click >= 30 && c.roas < be;
+    const zero = c.order === 0 && c.click >= 20;
+    const tone = (zero || bad) ? 'bg-red-50/40' : '';
+    return `
+      <tr class="border-t hover:bg-gray-50 ${tone}">
+        <td class="px-3 py-2">
+          <div class="text-sm font-medium text-gray-800">${esc(c.name || '(không tên)')}</div>
+          <div class="text-xs text-gray-400">#${esc(c.campaignId)}${c.status ? ' · ' + esc(c.status) : ''}</div>
+        </td>
+        <td class="px-3 py-2 text-right text-sm">${adsNum(c.expense)}</td>
+        <td class="px-3 py-2 text-right text-sm">${adsNum(c.gmv)}</td>
+        <td class="px-3 py-2 text-right text-sm">${adsNum(c.order)}</td>
+        <td class="px-3 py-2 text-right text-sm font-semibold ${
+          be && c.roas !== null ? (c.roas >= be ? 'text-emerald-600' : 'text-red-600') : ''
+        }">${adsRoas(c.roas)}</td>
+        <td class="px-3 py-2 text-right text-sm">${adsPct(c.ctr)}</td>
+        <td class="px-3 py-2 text-right text-sm">${adsPct(c.cr)}</td>
+        <td class="px-3 py-2 text-right text-sm">${adsNum(c.cpc)}</td>
+        <td class="px-3 py-2 text-right text-xs text-gray-500">${c.cappedDays}/${c.activeDays}</td>
+      </tr>`;
+  }).join('');
+
+  const table = `
+    <div class="bg-white rounded-xl border overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+            <tr>
+              <th class="px-3 py-2 text-left">Campaign</th>
+              <th class="px-3 py-2 text-right">Chi phí</th>
+              <th class="px-3 py-2 text-right">GMV</th>
+              <th class="px-3 py-2 text-right">Đơn</th>
+              <th class="px-3 py-2 text-right">ROAS</th>
+              <th class="px-3 py-2 text-right">CTR</th>
+              <th class="px-3 py-2 text-right">CR</th>
+              <th class="px-3 py-2 text-right">CPC</th>
+              <th class="px-3 py-2 text-right" title="Số ngày cạn ngân sách / số ngày có chi">Cạn NS</th>
+            </tr>
+          </thead>
+          <tbody>${rows || '<tr><td colspan="9" class="px-3 py-6 text-center text-sm text-gray-500">Không có campaign nào</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  // Biểu đồ cột chi phí/ngày — CSS thuần, không cần thư viện
+  const maxExp = Math.max(...d.daily.map(x => x.expense), 1);
+  const bars = d.daily.map(x => {
+    const h = Math.max(2, Math.round((x.expense / maxExp) * 100));
+    const okBar = be && x.roas !== null ? x.roas >= be : true;
+    return `<div class="flex-1 flex flex-col justify-end" style="min-width:4px"
+      title="${x.date} · chi ${adsNum(x.expense)}đ · ROAS ${adsRoas(x.roas)}">
+      <div class="${okBar ? 'bg-amber-400' : 'bg-red-400'} rounded-t" style="height:${h}%"></div>
+    </div>`;
+  }).join('');
+
+  const chart = `
+    <div class="bg-white rounded-xl border p-4 mb-4">
+      <div class="flex justify-between items-baseline mb-2">
+        <div class="text-xs font-semibold text-gray-500 uppercase">Chi phí theo ngày</div>
+        <div class="text-xs text-gray-400">${d.period.start} → ${d.period.end}${be ? ' · cột đỏ = ROAS dưới hoà vốn' : ''}</div>
+      </div>
+      <div class="flex items-end gap-0.5 h-24">${bars}</div>
+    </div>`;
+
+  const note = d.summary.shopTotalsFromCampaigns
+    ? `<p class="text-xs text-gray-400 mb-3"><i class="fas fa-circle-info mr-1"></i>Không lấy được báo cáo tổng shop nên số liệu tổng được cộng từ các campaign; Shopee quy kết GMV toàn shop hơi khác nên con số có thể lệch nhẹ.</p>`
+    : '';
+
+  box.innerHTML = `
+    ${note}
+    ${kpis}
+    ${chart}
+    <div class="mb-5">
+      <div class="text-xs font-semibold text-gray-500 uppercase mb-2">
+        Phát hiện (${d.findings.length})
+        ${d.summary.countCritical ? `<span class="text-red-600 normal-case font-normal">· ${d.summary.countCritical} nghiêm trọng</span>` : ''}
+      </div>
+      ${findings}
+    </div>
+    <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Campaign (${d.campaigns.length})</div>
+    ${table}`;
+}
+
+// ---------- Kết nối Shopee (khai báo + uỷ quyền) ----------
+let shopeeCfg = null;
+
+async function openShopeeConfig() {
+  openModal('shopeeConfigModal');
+  await refreshShopeeCfg();
+}
+
+/** Vẽ lại dòng trạng thái + điền sẵn các ô đã khai báo (trừ Partner Key). */
+async function refreshShopeeCfg() {
+  const state = document.getElementById('shopeeCfgState');
+  if (state) state.innerHTML = '<span class="text-gray-400">Đang tải trạng thái...</span>';
+  try {
+    swrCache.remove('GET /shopee-ads/config');
+    shopeeCfg = await api('/shopee-ads/config');
+  } catch (e) {
+    if (state) state.innerHTML = `<span class="text-red-600">Không đọc được trạng thái: ${esc(e?.message || '')}</span>`;
+    return;
+  }
+
+  const c = shopeeCfg;
+  if (c.partnerId) document.getElementById('scPartnerId').value = c.partnerId;
+  if (c.shopId) document.getElementById('scShopId').value = c.shopId;
+  if (c.env) document.getElementById('scEnv').value = c.env;
+
+  let html;
+  if (!c.configured) {
+    html = '<span class="inline-flex items-center gap-1 text-gray-500"><i class="fas fa-circle-minus"></i> Chưa khai báo — làm bước 1 rồi bước 2.</span>';
+  } else if (!c.authorized) {
+    html = `<span class="inline-flex items-center gap-1 text-amber-600"><i class="fas fa-triangle-exclamation"></i>
+      Đã khai báo (Partner Key ${esc(c.partnerKeyMasked)}) nhưng chưa uỷ quyền shop.</span>`;
+  } else {
+    const bits = [`Đã kết nối shop ${esc(c.shopId)}`];
+    if (c.authorizedAt) bits.push('uỷ quyền lúc ' + new Date(c.authorizedAt).toLocaleString('vi-VN'));
+    // Hết hạn access_token không phải lỗi: còn refresh_token là hệ thống tự làm mới.
+    if (c.tokenExpired) bits.push('access_token đã hết hạn, sẽ tự làm mới khi đồng bộ');
+    else if (c.tokenExpiresAt) bits.push('token hết hạn ' + new Date(c.tokenExpiresAt).toLocaleString('vi-VN'));
+    if (c.updatedBy) bits.push('bởi ' + esc(c.updatedBy));
+    html = `<span class="inline-flex items-start gap-1 text-emerald-700"><i class="fas fa-circle-check mt-0.5"></i>
+      <span>${bits.join(' · ')}</span></span>`;
+  }
+  // source=env: đang đọc từ biến môi trường, token mới sẽ không lưu được.
+  if (c.source === 'env') {
+    html += `<div class="mt-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+      Đang dùng thông số từ biến môi trường. Bấm "Lưu khai báo" để chuyển vào DB — cần vậy để token tự làm mới được lưu lại.</div>`;
+  }
+  if (state) state.innerHTML = html;
+}
+
+async function saveShopeeConfig() {
+  const btn = document.getElementById('scSaveBtn');
+  const partnerId = Number(document.getElementById('scPartnerId').value.trim());
+  const shopId = Number(document.getElementById('scShopId').value.trim());
+  const partnerKey = document.getElementById('scPartnerKey').value.trim();
+  const env = document.getElementById('scEnv').value;
+
+  if (!Number.isInteger(partnerId) || partnerId < 1) return toast('Partner ID phải là số nguyên dương');
+  if (!Number.isInteger(shopId) || shopId < 1) return toast('Shop ID phải là số nguyên dương');
+  // Server không trả Partner Key về nên không thể "giữ nguyên" hộ: phải dán lại khi đổi.
+  if (!partnerKey) return toast('Dán Partner Key (server không lưu bản đọc được nên phải nhập lại)');
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Đang lưu...'; }
+  try {
+    await api('/shopee-ads/config', {
+      method: 'POST',
+      body: JSON.stringify({ partnerId, shopId, partnerKey, env }),
+    });
+    // Không giữ key trong DOM sau khi đã gửi đi.
+    document.getElementById('scPartnerKey').value = '';
+    toast('Đã lưu khai báo. Tiếp tục bước 2 để uỷ quyền shop.');
+    await refreshShopeeCfg();
+  } catch (e) {
+    toast('Lưu thất bại: ' + (e?.message || 'lỗi không rõ'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save mr-1"></i> Lưu khai báo'; }
+  }
+}
+
+async function openShopeeAuth() {
+  const hint = document.getElementById('scRedirectHint');
+  try {
+    // Link uỷ quyền có chữ ký gắn timestamp, Shopee từ chối sign quá cũ.
+    // api() cache GET 60s nên phải xoá trước, không thì lần bấm sau dùng lại sign cũ.
+    swrCache.remove('GET /shopee-ads/auth-url');
+    const r = await api('/shopee-ads/auth-url');
+    if (hint) {
+      hint.classList.remove('hidden');
+      hint.innerHTML = `Redirect URL: <code class="bg-white px-1 rounded">${esc(r.redirect)}</code><br>
+        URL này phải được khai trong App trên Shopee Open Platform, nếu không Shopee sẽ từ chối.`;
+    }
+    window.open(r.url, '_blank', 'noopener');
+  } catch (e) {
+    toast('Không tạo được link uỷ quyền: ' + (e?.message || ''));
+  }
+}
+
+async function exchangeShopeeCode() {
+  const btn = document.getElementById('scCodeBtn');
+  const el = document.getElementById('scCode');
+  // Cho dán cả URL hoặc "code=abc": tự bóc giá trị ra.
+  let code = (el?.value || '').trim();
+  const m = code.match(/[?&]?code=([^&\s]+)/);
+  if (m) code = m[1];
+  if (!code) return toast('Dán mã uỷ quyền (code) vào ô trước');
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+  try {
+    await api('/shopee-ads/exchange-code', { method: 'POST', body: JSON.stringify({ code }) });
+    if (el) el.value = '';
+    toast('Kích hoạt thành công. Bấm Đồng bộ để lấy số liệu.');
+    await refreshShopeeCfg();
+    await loadAdsAudit(true);
+  } catch (e) {
+    toast('Kích hoạt thất bại: ' + (e?.message || 'lỗi không rõ'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-key mr-1"></i> Kích hoạt'; }
+  }
+}
+
+async function clearShopeeConfig() {
+  const ok = await showConfirm({
+    title: 'Xoá kết nối Shopee?',
+    message: 'Partner Key và token sẽ bị xoá khỏi DB. Số liệu đã đồng bộ vẫn giữ, nhưng muốn đồng bộ tiếp phải khai báo và uỷ quyền lại.',
+    confirmText: 'Xoá kết nối',
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await api('/shopee-ads/config', { method: 'DELETE' });
+    document.getElementById('scPartnerKey').value = '';
+    toast('Đã xoá kết nối Shopee');
+    await refreshShopeeCfg();
+    await loadAdsAudit(true);
+  } catch (e) {
+    toast('Xoá thất bại: ' + (e?.message || ''));
+  }
+}
+
+/**
+ * Shopee redirect về /admin/shopee-ads?code=...&shop_id=... sau khi chủ shop
+ * đồng ý. Bắt lấy code, mở sẵn modal và điền vào ô bước 3.
+ *
+ * Code được xoá khỏi URL ngay: nó là bí mật dùng một lần, để lại trên address
+ * bar sẽ đi vào history và Referer.
+ */
+function captureShopeeAuthCode() {
+  const q = new URLSearchParams(window.location.search);
+  const code = q.get('code');
+  if (!code) return;
+  const shopId = q.get('shop_id');
+
+  q.delete('code');
+  q.delete('shop_id');
+  const rest = q.toString();
+  history.replaceState({}, '', window.location.pathname + (rest ? '?' + rest : ''));
+
+  openModal('shopeeConfigModal');
+  refreshShopeeCfg().then(() => {
+    const el = document.getElementById('scCode');
+    if (el) el.value = code;
+    if (shopId) document.getElementById('scShopId').value = shopId;
+    toast('Đã nhận mã uỷ quyền. Bấm Kích hoạt để hoàn tất.');
+  });
+}
+
+async function syncAds() {
+  const btn = document.getElementById('adsSyncBtn');
+  const days = Number(document.getElementById('adsDays')?.value || 30);
+  // Sync giới hạn 14 ngày mỗi lượt: gọi Shopee nhiều vòng dễ vượt 30s của Vercel.
+  const syncDays = Math.min(days, 14);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang đồng bộ...'; }
+  try {
+    const r = await api(`/shopee-ads/sync?days=${syncDays}`, { method: 'POST' });
+    toast(r.status === 'ok'
+      ? `Đồng bộ xong: ${r.campaignRowsWritten + r.shopRowsWritten} dòng`
+      : `Đồng bộ ${r.status}: ${r.message}`);
+    await loadAdsAudit(true);
+  } catch (e) {
+    toast('Đồng bộ lỗi: ' + (e?.message || 'không rõ'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-rotate"></i> Đồng bộ'; }
+  }
 }
 
 // Load each dataset independently — no Promise.all bottleneck

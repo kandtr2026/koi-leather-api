@@ -28,6 +28,8 @@ export class ProductController {
   @ApiQuery({ name: 'categoryId', required: false, description: 'Filter by category UUID' })
   @ApiQuery({ name: 'category', required: false, description: 'Filter by category slug (overrides categoryId if both provided)' })
   @ApiQuery({ name: 'q', required: false, description: 'Search term for product name, SKU, or technical specs' }) // <--- Add search query parameter
+  @ApiQuery({ name: 'sort', required: false, enum: ['name', 'images', 'category', 'price', 'specs', 'updatedAt', 'createdAt', 'sku', 'status'], description: 'Sort column (default: createdAt)' })
+  @ApiQuery({ name: 'order', required: false, enum: ['asc', 'desc'], description: 'Sort direction (default: desc)' })
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
@@ -36,8 +38,10 @@ export class ProductController {
     @Query('categoryId') categoryId?: string,
     @Query('category') categorySlug?: string,
     @Query('q') search?: string, // <--- Add search parameter to controller method
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
   ) {
-    return this.productService.findAll(page, limit, type, status, categoryId, categorySlug, search); // <--- Pass search parameter to service
+    return this.productService.findAll(page, limit, type, status, categoryId, categorySlug, search, sort, order); // <--- Pass search parameter to service
   }
 
   @Get('deleted')
