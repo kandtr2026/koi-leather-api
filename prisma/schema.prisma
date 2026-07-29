@@ -359,10 +359,13 @@ model KoiRawMaterial {
   syncStatus    String? @default("SYNCED")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  materialCategoryId String?
+  materialCategory KoiMaterialCategory? @relation(fields: [materialCategoryId], references: [id], onDelete: SetNull)
   transactions KoiInventoryTransaction[]
   @@index([materialType])
   @@index([externalId])
   @@index([supplier])
+  @@index([materialCategoryId])
   @@map("koi_raw_materials")
   @@schema("koi_free_style")
 }
@@ -440,5 +443,19 @@ model KoiImageCategory {
   updatedAt DateTime @updatedAt
   @@index([code])
   @@map("koi_image_categories")
+  @@schema("koi_free_style")
+}
+
+model KoiMaterialCategory {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  materials   KoiRawMaterial[]
+  @@index([code])
+  @@map("koi_material_categories")
   @@schema("koi_free_style")
 }

@@ -19,6 +19,7 @@ const catalogSelect = {
   lastSyncedAt: true,
   createdAt: true,
   updatedAt: true,
+  materialCategory: { select: { id: true, name: true, code: true } },
 };
 
 @Injectable()
@@ -37,15 +38,17 @@ export class RawMaterialService {
         unitCost: dto.unitCost,
         externalId: dto.externalId,
         syncStatus: dto.externalId ? 'PENDING' : 'SYNCED',
+        materialCategoryId: dto.materialCategoryId,
       },
       select: catalogSelect,
     });
   }
 
-  async findAll(type?: string, supplier?: string) {
+  async findAll(type?: string, supplier?: string, materialCategoryId?: string) {
     const where: Prisma.KoiRawMaterialWhereInput = {};
     if (type) where.materialType = type as any;
     if (supplier) where.supplier = { contains: supplier };
+    if (materialCategoryId) where.materialCategoryId = materialCategoryId;
 
     return this.prisma.koiRawMaterial.findMany({
       where,
@@ -77,6 +80,7 @@ export class RawMaterialService {
     if (dto.color !== undefined) data.color = dto.color;
     if (dto.thicknessMm !== undefined) data.thicknessMm = dto.thicknessMm;
     if (dto.unitCost !== undefined) data.unitCost = dto.unitCost;
+    if (dto.materialCategoryId !== undefined) data.materialCategoryId = dto.materialCategoryId;
 
     return this.prisma.koiRawMaterial.update({
       where: { id },

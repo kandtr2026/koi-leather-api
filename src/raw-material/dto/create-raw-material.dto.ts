@@ -39,4 +39,9 @@ export class CreateRawMaterialDto {
   @IsOptional()
   @IsString()
   externalId?: string;
+
+  @ApiPropertyOptional({ description: 'ID của danh mục nguyên liệu' })
+  @IsOptional()
+  @IsString()
+  materialCategoryId?: string;
 }

@@ -129,6 +129,7 @@
     <button class="tab-btn active" data-tab="products"><i class="fas fa-box mr-2 text-amber-500"></i>Sản phẩm</button>
     <button class="tab-btn" data-tab="prodcats"><i class="fas fa-layer-group mr-2 text-amber-500"></i>Loại sản phẩm</button>
     <button class="tab-btn" data-tab="imgcats"><i class="fas fa-tags mr-2 text-amber-500"></i>Loại ảnh</button>
+    <button class="tab-btn" data-tab="matcats"><i class="fas fa-gem mr-2 text-amber-500"></i>Loại da</button>
   </div>
 
   <!-- Main -->
@@ -181,6 +182,25 @@
         </button>
       </div>
       <div id="imgCatTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="skeleton-loading p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MATERIAL CATEGORIES PANEL -->
+    <div class="panel" id="panel-matcats">
+      <div class="flex justify-between items-center mb-4">
+        <p class="text-sm text-gray-500">Danh mục loại da — dùng để phân loại nguyên liệu da</p>
+        <button onclick="openCreateMatCat()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
+          <i class="fas fa-plus"></i> Thêm loại da
+        </button>
+      </div>
+      <div id="matCatTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div class="skeleton-loading p-6 space-y-3">
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
@@ -252,6 +272,13 @@
       <div class="grid grid-cols-2 gap-3">
         <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2500000"></div>
 
+      </div>
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-medium text-gray-600">Danh mục da <span class="text-gray-400 font-normal">(tick chọn)</span></label>
+          <span id="pMatCatCount" class="text-[11px] text-amber-600 font-medium"></span>
+        </div>
+        <div id="pMaterialCategories" class="w-full border border-gray-300 rounded-lg p-2 max-h-44 overflow-y-auto grid grid-cols-2 gap-x-4 gap-y-0.5"></div>
       </div>
 
     </div>
@@ -434,6 +461,35 @@
   </div>
 </div>
 
+<!-- MATERIAL CATEGORY MODAL -->
+<div class="modal-overlay" id="matCatModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 p-6 fade-in">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold" id="matCatModalTitle">Thêm loại da</h2>
+      <button onclick="closeModal('matCatModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="space-y-3">
+      <input type="hidden" id="editMatCatId">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Tên</label>
+        <input id="mcName" oninput="onMatCatNameChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Da bò Vegtan" autofocus>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Code <span class="text-gray-400 font-normal">(tự động)</span></label>
+          <div id="mcCodePreview" class="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500 font-mono">—</div>
+        </div>
+      </div>
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Mô tả</label><textarea id="mcDesc" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></textarea></div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+      <button onclick="closeModal('matCatModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+      <button onclick="saveMatCat()" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> Lưu</button>
+    </div>
+  </div>
+</div>
+
+
 <!-- ORDER DETAIL MODAL -->
 <div class="modal-overlay" id="detailModal">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 fade-in">
@@ -505,7 +561,7 @@
 
 <script>
 const API = '';
-let products = [], materials = [], orders = [], specs = [];
+let products = [], materials = [], orders = [], specs = [], matCats = [];
 
 function toast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._hide); t._hide=setTimeout(()=>t.classList.remove('show'),2500); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -549,6 +605,7 @@ const ROUTE_MAP = {
   '/admin/products':    { panel: 'products', label: 'Sản phẩm' },
   '/admin/categories':  { panel: 'prodcats', label: 'Loại sản phẩm' },
   '/admin/media-types': { panel: 'imgcats',  label: 'Loại ảnh' },
+  '/admin/material-categories': { panel: 'matcats', label: 'Loại da' },
 };
 const ROUTES = Object.keys(ROUTE_MAP);
 const DEFAULT_ROUTE = '/admin/products';
@@ -1037,7 +1094,7 @@ function renderLightboxImage() {
   el.style.opacity = '0';
   el.onload = () => { loading.style.display = 'none'; el.style.opacity = '1'; };
   el.onerror = () => { loading.style.display = 'none'; el.style.opacity = '1'; };
-  el.src = img.mediumUrl || img.url;
+  el.src = img.mediumUrl || img.url || '/placeholder.jpg'; // Thêm placeholder nếu ảnh không tải được
   el.alt = img.altText || 'Koi Leather product image';
   el.title = img.altText || '';
   document.getElementById('lightboxCounter').textContent = `${_lbIndex + 1} / ${_lbImages.length}`;
@@ -1425,10 +1482,41 @@ function onCategorySelectionChange() {
   buildSpecsForm(schema, hasExisting ? currentSpecs : {});
 }
 
+// ===== Danh mục da: tick chọn 1 (cho nguyên liệu) =====
+function renderMaterialCategoryCheckboxes(selectedId = null) {
+  const box = document.getElementById('pMaterialCategories');
+  if (!box) return;
+  if (!matCats.length) {
+    box.innerHTML = '<p class="text-xs text-gray-400 py-2 text-center col-span-2">Chưa có danh mục da nào</p>';
+    updateMaterialCatCount();
+    return;
+  }
+  const selId = selectedId;
+  box.innerHTML = matCats.map(c => `
+    <label class="flex items-center gap-2 py-1 px-1 rounded hover:bg-gray-50 cursor-pointer text-sm">
+      <input type="radio" name="materialCategoryId" class="matcat-cb w-4 h-4 accent-amber-500 rounded border-gray-300" value="${c.id}" ${selId === c.id ? 'checked' : ''} onchange="updateMaterialCatCount()">
+      <span class="truncate">${esc(c.name)}</span>
+    </label>`).join('');
+  updateMaterialCatCount();
+}
+
+function getSelectedMaterialCategoryId() {
+  const radio = document.querySelector('#pMaterialCategories input[name="materialCategoryId"]:checked');
+  return radio ? radio.value : null;
+}
+
+function updateMaterialCatCount() {
+  const el = document.getElementById('pMatCatCount');
+  if (!el) return;
+  const n = getSelectedMaterialCategoryId() ? 1 : 0;
+  el.textContent = n ? `Đã chọn 1` : '';
+}
+
 function openCreateProduct() {
   document.getElementById('productModalTitle').textContent = 'Thêm sản phẩm';
   ['editProductId','pNameVi','pPrice'].forEach(id => document.getElementById(id).value = '');
   renderCategoryCheckboxes([]);
+  renderMaterialCategoryCheckboxes(null); // Clear selected material category
   currentProductId = null;
   // Reset pending files
   pendingFiles.forEach(f => URL.revokeObjectURL(f.preview));
@@ -1456,6 +1544,7 @@ async function editProduct(id) {
     ? p.categories.map(c => c.id)
     : (p.categoryId ? [p.categoryId] : []);
   renderCategoryCheckboxes(selIds);
+  renderMaterialCategoryCheckboxes(p.materialCategoryId); // Select material category
   document.getElementById('pPrice').value = p.basePrice || '';
 
   openModal('productModal');
@@ -1517,9 +1606,11 @@ async function saveProduct() {
 
   const id = document.getElementById('editProductId').value;
   const categoryIds = getSelectedCategoryIds();
+  const materialCategoryId = getSelectedMaterialCategoryId();
   const body = {
     name: { vi: name },
     categoryIds,
+    materialCategoryId: materialCategoryId || undefined,
     basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
   };
   const primary = categoryIds.length ? prodCats.find(c => c.id === categoryIds[0]) : null;
@@ -1852,8 +1943,12 @@ function renderProdCats() {
   const el = document.getElementById('prodCatTable');
   if (!prodCats.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-layer-group text-4xl mb-3"></i><p>Chưa có loại sản phẩm</p></div>'; return; }
   const sorted = [...prodCats].sort(sortProdCatsFn);
-  const icon = (key) => prodCatSortBy === key ? (prodCatSortOrder === 'asc' ? ' ▲' : ' ▼') : '';
-  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats('name')">Tên${icon('name')}</th><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats('productCount')">Số SP${icon('productCount')}</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${sorted.map(c => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium"><a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem sản phẩm thuộc danh mục này">${c.name}</a></td><td class="px-4 py-3"><a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="font-medium text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem ${c.productCount??0} sản phẩm">${c.productCount??0}</a>${c._count?.categoryLinks > (c.productCount??0) ? ` <span class="text-xs text-gray-400">/ ${c._count.categoryLinks}</span>` : ''}</td><td class="px-4 py-3 text-right"><button onclick="editProdCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteProdCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`;
+    const icon = (key) => prodCatSortBy === key ? (prodCatSortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats(\'name\')">Tên${icon(\'name\')}</th><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats(\'productCount\')">Số SP${icon(\'productCount\')}</th><th class="px-4 py-3">Thông số</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${sorted.map(c => {
+    const specs = parseSchema(c.specsSchema);
+    const specTitles = specs && specs.properties ? Object.values(specs.properties).map(p => esc(p.title || p.key)).join(', ') : '—';
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium"><a href="javascript:navigateToCategoryProducts(\'${c.id}\',\'${c.slug}')" class="text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem sản phẩm thuộc danh mục này">${c.name}</a></td><td class="px-4 py-3"><a href="javascript:navigateToCategoryProducts(\'${c.id}\',\'${c.slug}')" class="font-medium text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem ${c.productCount??0} sản phẩm">${c.productCount??0}</a>${c._count?.categoryLinks > (c.productCount??0) ? ` <span class="text-xs text-gray-400">/ ${c._count.categoryLinks}</span>` : ''}</td><td class="px-4 py-3 text-xs text-gray-600">${specTitles}</td><td class="px-4 py-3 text-right"><button onclick="editProdCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteProdCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
 }
 
 // ========== SLUG & CODE AUTO-GENERATOR (matches backend slugAndCodeGenerator.ts) ==========
@@ -2085,6 +2180,21 @@ function renderImgCats() {
   el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Tên hiển thị</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${imgCats.map(c => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${c.name}</td><td class="px-4 py-3 text-right"><button onclick="editImgCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteImgCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`;
 }
 
+async function loadMatCats() {
+  try {
+    const raw = await api('/material-categories');
+    matCats = Array.isArray(raw) ? raw : (raw.value || raw.data || []);
+  } catch(e) { matCats = []; }
+  renderMatCats();
+}
+
+function renderMatCats() {
+  const el = document.getElementById('matCatTable');
+  if (!matCats.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-gem text-4xl mb-3"></i><p>Chưa có loại da — thêm loại da đầu tiên</p></div>'; return; }
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3">Tên</th><th class="px-4 py-3">Code</th><th class="px-4 py-3">Số nguyên liệu</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${matCats.map(c => `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${c.name}</td><td class="px-4 py-3 font-mono text-xs text-gray-600">${c.code}</td><td class="px-4 py-3">${c._count?.materials ?? 0}</td><td class="px-4 py-3 text-right"><button onclick="editMatCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteMatCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+
 function openCreateImgCat() {
   document.getElementById('imgCatModalTitle').textContent = 'Thêm loại ảnh';
   document.getElementById('editImgCatId').value = '';
@@ -2145,6 +2255,69 @@ function updateGalleryTypeOptions() {
     sel.innerHTML = imgCats.map(c => `<option value="${c.code}" ${current===c.code?'selected':''}>${c.name}</option>`).join('');
   });
 }
+
+// ========== MATERIAL CATEGORIES ==========
+let _origMatCatName = '';
+
+function onMatCatNameChange() {
+  const name = document.getElementById('mcName').value.trim();
+  document.getElementById('mcCodePreview').textContent = name ? generateCodePreview(name) : '—';
+}
+
+function openCreateMatCat() {
+  document.getElementById('matCatModalTitle').textContent = 'Thêm loại da';
+  document.getElementById('editMatCatId').value = '';
+  _origMatCatName = '';
+  document.getElementById('mcName').value = '';
+  document.getElementById('mcDesc').value = '';
+  document.getElementById('mcCodePreview').textContent = '—';
+  openModal('matCatModal');
+}
+
+async function editMatCat(id) {
+  const c = matCats.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('matCatModalTitle').textContent = 'Sửa loại da';
+  document.getElementById('editMatCatId').value = id;
+  _origMatCatName = c.name;
+  document.getElementById('mcName').value = c.name;
+  document.getElementById('mcDesc').value = c.description || '';
+  document.getElementById('mcCodePreview').textContent = c.code;
+  openModal('matCatModal');
+}
+
+async function saveMatCat() {
+  const id = document.getElementById('editMatCatId').value;
+  const name = document.getElementById('mcName').value.trim();
+  if (!name) { toast('Tên loại da là bắt buộc'); return; }
+  const body = {
+    description: document.getElementById('mcDesc').value || undefined,
+  };
+  if (!id) {
+    body.name = name;
+  } else {
+    if (name !== _origMatCatName) body.name = name;
+  }
+  try {
+    if (id) { await api('/material-categories/' + id, { method: 'PATCH', body: JSON.stringify(body) }); toast('Đã cập nhật'); }
+    else { await api('/material-categories', { method: 'POST', body: JSON.stringify(body) }); toast('Đã thêm loại da'); }
+    closeModal('matCatModal');
+    swrCache.remove('GET /material-categories');
+    await loadMatCats();
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
+async function deleteMatCat(id) {
+  const ok = await showConfirm({ title: 'Xoá loại da', message: 'Bạn có chắc chắn muốn xoá loại da này?', confirmText: 'Xoá', danger: true });
+  if (!ok) return;
+  try {
+    await api('/material-categories/' + id, { method: 'DELETE' });
+    swrCache.remove('GET /material-categories');
+    toast('Đã xoá');
+    await loadMatCats();
+  } catch(e) { toast('Lỗi: ' + e.message); }
+}
+
 
 // ========== SPECS ==========
 async function loadSpecs() {
@@ -2288,7 +2461,7 @@ function showDeployDetail() {
 // ========== PROGRESSIVE LOADING ==========
 function updateHeaderStatus() {
   document.getElementById('headerStatus').textContent =
-    `${products.length} sản phẩm · ${prodCats.length} loại SP · ${imgCats.length} loại ảnh`;
+    `${products.length} sản phẩm · ${prodCats.length} loại SP · ${imgCats.length} loại ảnh · ${matCats.length} loại da`;
 }
 
 // Load each dataset independently — no Promise.all bottleneck
@@ -2326,6 +2499,7 @@ async function init() {
   loadProducts().then(updateHeaderStatus).catch(() => {});
   loadProdCats().then(() => { updateHeaderStatus(); if (products.length) renderProducts(); }).catch(() => {});
   loadImgCats().then(updateHeaderStatus).catch(() => {});
+  loadMatCats().then(updateHeaderStatus).catch(() => {});
 }
 init();
 </script>

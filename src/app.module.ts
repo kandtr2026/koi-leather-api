@@ -12,6 +12,7 @@ import { KoiSeoModule } from './seo/seo.module';
 import { KoiInventoryModule } from './inventory/inventory.module';
 import { KoiInventorySyncModule } from './inventory-sync/inventory-sync.module';
 import { KoiImageCategoryModule } from './image-category/image-category.module';
+import { MaterialCategoryModule } from './material-category/material-category.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/auth.guard';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
@@ -30,11 +31,5 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
     KoiInventoryModule,
     KoiInventorySyncModule,
     KoiImageCategoryModule,
-  ],
-  controllers: [HealthController],
-  providers: [
-    { provide: APP_GUARD, useClass: AuthGuard },
-    { provide: APP_FILTER, useClass: PrismaExceptionFilter },
-  ],
-})
+    MaterialCategoryModule,
 export class AppModule {}

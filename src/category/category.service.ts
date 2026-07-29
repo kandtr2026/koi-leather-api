@@ -21,7 +21,6 @@ export class CategoryService {
         displayOrder: true,
         isActive: true,
         createdAt: true,
-        _count: { select: { categoryLinks: true } },
       },
     });
 
