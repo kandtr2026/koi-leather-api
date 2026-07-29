@@ -159,11 +159,26 @@
 
     <!-- PRODUCTS PANEL -->
     <div class="panel active" id="panel-products">
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
         <p class="text-sm text-gray-500">Danh sách sản phẩm — JSONB specs động theo loại</p>
-        <button onclick="openCreateProduct()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
-          <i class="fas fa-plus"></i> Thêm sản phẩm
-        </button>
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+            <input id="productSearchInput" type="text" autocomplete="off" placeholder="Tìm theo tên, SKU…"
+              aria-label="Tìm sản phẩm theo tên"
+              oninput="onProductSearchInput(this.value)"
+              onkeydown="if (event.key === 'Escape') clearProductSearch(); if (event.key === 'Enter') applyProductSearchNow(this.value);"
+              class="w-64 pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+            <button type="button" id="productSearchClear" onclick="clearProductSearch()" title="Xoá tìm kiếm"
+              aria-label="Xoá tìm kiếm"
+              class="hidden inline-flex absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 items-center justify-center text-gray-400 hover:text-red-500 text-xs">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <button onclick="openCreateProduct()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
+            <i class="fas fa-plus"></i> Thêm sản phẩm
+          </button>
+        </div>
       </div>
       <div id="productTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div class="skeleton-loading p-6 space-y-3">
@@ -1281,10 +1296,45 @@ function fmDate(v) {
   return `<div class="text-xs leading-tight"><div>${date}</div><div class="text-gray-400">${time}</div></div>`;
 }
 
+// Tìm kiếm chạy ở server (?q= khớp name/slug/sku/technicalSpecs, không phân biệt
+// hoa thường) vì danh sách được phân trang — lọc mảng trên trang hiện tại chỉ
+// tìm trong 50 dòng đang xem.
+let productSearch = '';
+let productSearchTimer = null;
+
+function onProductSearchInput(value) {
+  clearTimeout(productSearchTimer);
+  document.getElementById('productSearchClear')?.classList.toggle('hidden', !value);
+  productSearchTimer = setTimeout(() => applyProductSearchNow(value), 350);
+}
+
+async function applyProductSearchNow(value) {
+  clearTimeout(productSearchTimer);
+  const next = (value || '').trim();
+  if (next === productSearch) return;
+  productSearch = next;
+  productPage = 1;
+  await loadProducts();
+}
+
+async function clearProductSearch() {
+  clearTimeout(productSearchTimer);
+  const input = document.getElementById('productSearchInput');
+  if (input) input.value = '';
+  document.getElementById('productSearchClear')?.classList.add('hidden');
+  if (!productSearch) return;
+  productSearch = '';
+  productPage = 1;
+  await loadProducts();
+}
+
 function productsUrl(page) {
   let url = `/products?page=${page}&limit=${PRODUCTS_PER_PAGE}`;
   if (currentCategoryFilter) {
     url += '&category=' + encodeURIComponent(currentCategoryFilter);
+  }
+  if (productSearch) {
+    url += '&q=' + encodeURIComponent(productSearch);
   }
   if (productSort) {
     url += `&sort=${encodeURIComponent(productSort)}&order=${encodeURIComponent(productOrder)}`;
@@ -1399,7 +1449,27 @@ function renderProducts() {
   // Ưu tiên tên loại từ danh mục (/categories); fallback cho dữ liệu cũ
   const typeFallback = { WALLET:'Ví', BELT:'Thắt lưng', WATCH_STRAP:'Dây đồng hồ', BAG:'Túi', ACCESSORY:'Phụ kiện' };
   const typeLabelOf = code => prodCats.find(c => c.code === code)?.name || typeFallback[code] || code;
-  if (!products.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-box-open text-4xl mb-3"></i><p>Chưa có sản phẩm</p></div>'; return; }
+  // Banner tìm kiếm phải dựng trước nhánh "rỗng": khi từ khoá không khớp gì thì
+  // vẫn cần nút "Bỏ tìm", không thì người dùng thấy bảng trống mà không rõ vì sao.
+  let searchBanner = '';
+  if (productSearch) {
+    searchBanner = `<div class="flex items-center justify-between px-4 py-2.5 bg-blue-50 border-b border-blue-200 text-sm">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-search text-blue-500 text-xs"></i>
+        <span>Tìm: <strong class="text-blue-800">${esc(productSearch)}</strong></span>
+        <span class="text-xs text-gray-500 ml-1">(${productMeta.total} kết quả)</span>
+      </div>
+      <button onclick="clearProductSearch()" class="text-xs text-gray-500 hover:text-red-500 font-medium flex items-center gap-1">
+        <i class="fas fa-times"></i> Bỏ tìm
+      </button>
+    </div>`;
+  }
+  if (!products.length) {
+    el.innerHTML = searchBanner + (productSearch
+      ? `<div class="text-center py-12 text-gray-400"><i class="fas fa-search text-4xl mb-3"></i><p>Không tìm thấy sản phẩm nào khớp «${esc(productSearch)}»</p></div>`
+      : '<div class="text-center py-12 text-gray-400"><i class="fas fa-box-open text-4xl mb-3"></i><p>Chưa có sản phẩm</p></div>');
+    return;
+  }
   // Show category filter banner if active
   let filterBanner = '';
   if (currentCategoryFilter && currentCategoryFilter !== 'undefined') {
@@ -1416,7 +1486,7 @@ function renderProducts() {
       </button>
     </div>`;
   }
-  el.innerHTML = filterBanner + `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase">${PRODUCT_SORT_COLUMNS.map(sortHeader).join('')}<th class="px-4 py-3 text-right whitespace-nowrap w-px">Thao tác</th></tr></thead><tbody>${products.map(p => {
+  el.innerHTML = searchBanner + filterBanner + `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase">${PRODUCT_SORT_COLUMNS.map(sortHeader).join('')}<th class="px-4 py-3 text-right whitespace-nowrap w-px">Thao tác</th></tr></thead><tbody>${products.map(p => {
     const schemaProps = p.category?.specsSchema ? (() => { try { const s = typeof p.category.specsSchema === 'string' ? JSON.parse(p.category.specsSchema) : p.category.specsSchema; return s.properties; } catch { return null; } })() : null;
     const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
     const cats = (p.categories && p.categories.length) ? p.categories : (p.category ? [p.category] : []);
