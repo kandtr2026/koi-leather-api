@@ -650,6 +650,7 @@ window.addEventListener('popstate', function() {
       const urlCat = getCategoryFromUrl();
       if (urlCat !== currentCategoryFilter) {
         currentCategoryFilter = urlCat;
+        productPage = 1;
         loadProducts();
       }
     }
@@ -667,6 +668,9 @@ let currentCategoryFilter = null;
 function navigateToCategoryProducts(categoryId, categorySlug) {
   if (!categorySlug || categorySlug === 'undefined') return;
   currentCategoryFilter = categorySlug;
+  // A narrower result set has fewer pages; keeping the old page number would
+  // land past the end and render an empty table.
+  productPage = 1;
   navigateTo('/admin/products');
   const url = new URL(window.location);
   url.searchParams.set('category', categorySlug);
@@ -676,6 +680,7 @@ function navigateToCategoryProducts(categoryId, categorySlug) {
 
 function clearCategoryFilter() {
   currentCategoryFilter = null;
+  productPage = 1;
   navigateTo('/admin/products');
   loadProducts();
 }
@@ -1144,15 +1149,27 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ========== PRODUCTS ==========
-async function loadProducts() {
-  document.getElementById('headerStatus').textContent = 'Đang tải sản phẩm...';
-  let url = '/products?limit=50';
+// The catalog is 329 products. Without paging the table only ever showed the
+// first 50 and the rest looked like they had gone missing, so the list follows
+// the backend's page/limit contract instead of one fixed slice.
+const PRODUCTS_PER_PAGE = 50;
+let productPage = 1;
+// Totals for the whole result set, not just the page on screen.
+let productMeta = { total: 0, totalPages: 1 };
+
+function productsUrl(page) {
+  let url = `/products?page=${page}&limit=${PRODUCTS_PER_PAGE}`;
   if (currentCategoryFilter) {
     url += '&category=' + encodeURIComponent(currentCategoryFilter);
   }
+  return url;
+}
+
+async function loadProducts() {
+  document.getElementById('headerStatus').textContent = 'Đang tải sản phẩm...';
   let data;
   try {
-    data = await api(url);
+    data = await api(productsUrl(productPage));
   } catch (e) {
     // Backend now 404s an unknown category slug instead of silently returning
     // the whole catalog. That happens with a bookmarked/stale filter (e.g. the
@@ -1160,15 +1177,78 @@ async function loadProducts() {
     if (e.status === 404 && currentCategoryFilter) {
       toast('Danh mục lọc không còn tồn tại — đã bỏ lọc');
       currentCategoryFilter = null;
+      productPage = 1;
       navigateTo('/admin/products');
-      data = await api('/products?limit=50');
+      data = await api(productsUrl(1));
     } else {
       throw e;
     }
   }
   products = data.data;
-  document.getElementById('headerStatus').textContent = `${products.length} sản phẩm · ${materials.length} nguyên liệu · ${orders.length} lệnh SX`;
+  productMeta = {
+    total: data.total ?? products.length,
+    totalPages: data.totalPages ?? 1,
+  };
+  // Deleting the last row of the last page, or narrowing a filter, can leave
+  // us past the end. Step back instead of showing an empty table.
+  if (!products.length && productMeta.total > 0 && productPage > 1) {
+    productPage = Math.min(productPage - 1, productMeta.totalPages || 1);
+    return loadProducts();
+  }
+  document.getElementById('headerStatus').textContent = `${productMeta.total} sản phẩm · ${materials.length} nguyên liệu · ${orders.length} lệnh SX`;
   renderProducts();
+}
+
+async function goToProductPage(page) {
+  const target = Math.max(1, Math.min(page, productMeta.totalPages || 1));
+  if (target === productPage) return;
+  productPage = target;
+  await loadProducts();
+  document.getElementById('productTable')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * Page buttons with ellipsis: always first and last, plus a window around the
+ * current page, so 17 pages do not become 17 buttons.
+ */
+function renderPagination() {
+  const { total, totalPages } = productMeta;
+  if (totalPages <= 1) return '';
+
+  const from = (productPage - 1) * PRODUCTS_PER_PAGE + 1;
+  const to = Math.min(productPage * PRODUCTS_PER_PAGE, total);
+
+  const nums = new Set([1, totalPages, productPage]);
+  for (let d = 1; d <= 2; d++) {
+    if (productPage - d >= 1) nums.add(productPage - d);
+    if (productPage + d <= totalPages) nums.add(productPage + d);
+  }
+  const sorted = [...nums].sort((a, b) => a - b);
+
+  let buttons = '';
+  let prev = 0;
+  for (const n of sorted) {
+    if (prev && n - prev > 1) {
+      buttons += '<span class="px-1 text-gray-400">…</span>';
+    }
+    const active = n === productPage
+      ? 'bg-amber-500 border-amber-500 text-white'
+      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50';
+    buttons += `<button onclick="goToProductPage(${n})" aria-label="Trang ${n}"${n === productPage ? ' aria-current="page"' : ''} class="min-w-[34px] h-[34px] px-2 rounded-md border text-sm font-medium ${active}">${n}</button>`;
+    prev = n;
+  }
+
+  const arrow = (page, disabled, label, icon) =>
+    `<button onclick="goToProductPage(${page})" ${disabled ? 'disabled' : ''} aria-label="${label}" class="min-w-[34px] h-[34px] px-2 rounded-md border border-gray-200 text-sm ${disabled ? 'text-gray-300 bg-gray-50 cursor-not-allowed' : 'text-gray-600 bg-white hover:bg-gray-50'}"><i class="fas ${icon}"></i></button>`;
+
+  return `<nav aria-label="Phân trang sản phẩm" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50">
+    <span class="text-xs text-gray-500">Hiển thị <strong>${from}–${to}</strong> trong <strong>${total}</strong> sản phẩm</span>
+    <div class="flex items-center gap-1">
+      ${arrow(productPage - 1, productPage === 1, 'Trang trước', 'fa-chevron-left')}
+      ${buttons}
+      ${arrow(productPage + 1, productPage === totalPages, 'Trang sau', 'fa-chevron-right')}
+    </div>
+  </nav>`;
 }
 
 function renderThumbnails(thumbs, productId) {
@@ -1202,7 +1282,7 @@ function renderProducts() {
       <div class="flex items-center gap-2">
         <i class="fas fa-filter text-amber-500 text-xs"></i>
         <span>Đang lọc: <strong class="text-amber-800">${esc(catName)}</strong></span>
-        <span class="text-xs text-gray-500 ml-1">(${products.length} sản phẩm)</span>
+        <span class="text-xs text-gray-500 ml-1">(${productMeta.total} sản phẩm)</span>
       </div>
       <button onclick="clearCategoryFilter()" class="text-xs text-gray-500 hover:text-red-500 font-medium flex items-center gap-1">
         <i class="fas fa-times"></i> Bỏ lọc
@@ -1217,7 +1297,7 @@ function renderProducts() {
       ? cats.map(c => c.slug ? `<a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="inline-block px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs mr-1 mb-1 cursor-pointer hover:bg-amber-100 hover:text-amber-900 hover:border-amber-300 no-underline transition-colors" title="Lọc sản phẩm theo danh mục «${esc(c.name)}»">${esc(c.name)}</a>` : `<span class="inline-block px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs mr-1 mb-1">${esc(c.name)}</span>`).join('')
       : `<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-xs">Chưa phân loại</span>`;
     return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium">${p.name?.vi || p.name?.en || p.sku}</td><td class="px-4 py-3">${renderThumbnails(p.thumbnails, p.id)}</td><td class="px-4 py-3"><div class="flex flex-wrap">${catBadges}</div></td><td class="px-4 py-3">${p.basePrice ? fm(p.basePrice) : '-'}</td><td class="px-4 py-3"><div class="flex flex-wrap gap-0">${renderSpecsBadges(specs, schemaProps)}</div></td><td class="px-4 py-3 text-right"><button onclick="downloadProductImages('${p.id}')" class="text-gray-400 hover:text-blue-500 mr-2 requires-auth" title="Tải ảnh JPEG"><i class="fas fa-download"></i></button><button onclick="editProduct('${p.id}')" class="text-amber-500 hover:text-amber-600 mr-2 requires-auth" title="Sửa"><i class="fas fa-edit"></i></button><button onclick="deleteProduct('${p.id}')" class="text-gray-400 hover:text-red-500 requires-auth" title="Xoá"><i class="fas fa-trash"></i></button></td></tr>`;
-  }).join('')}</tbody></table></div>`;
+  }).join('')}</tbody></table></div>` + renderPagination();
 }
 
 function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
@@ -1944,10 +2024,10 @@ function renderProdCats() {
   if (!prodCats.length) { el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-layer-group text-4xl mb-3"></i><p>Chưa có loại sản phẩm</p></div>'; return; }
   const sorted = [...prodCats].sort(sortProdCatsFn);
     const icon = (key) => prodCatSortBy === key ? (prodCatSortOrder === 'asc' ? ' ▲' : ' ▼') : '';
-  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats(\'name\')">Tên${icon(\'name\')}</th><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats(\'productCount\')">Số SP${icon(\'productCount\')}</th><th class="px-4 py-3">Thông số</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${sorted.map(c => {
+  el.innerHTML = `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase"><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats('name')">Tên${icon('name')}</th><th class="px-4 py-3 cursor-pointer select-none hover:text-amber-700" onclick="sortProdCats('productCount')">Số SP${icon('productCount')}</th><th class="px-4 py-3">Thông số</th><th class="px-4 py-3 text-right">Thao tác</th></tr></thead><tbody>${sorted.map(c => {
     const specs = parseSchema(c.specsSchema);
     const specTitles = specs && specs.properties ? Object.values(specs.properties).map(p => esc(p.title || p.key)).join(', ') : '—';
-    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium"><a href="javascript:navigateToCategoryProducts(\'${c.id}\',\'${c.slug}')" class="text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem sản phẩm thuộc danh mục này">${c.name}</a></td><td class="px-4 py-3"><a href="javascript:navigateToCategoryProducts(\'${c.id}\',\'${c.slug}')" class="font-medium text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem ${c.productCount??0} sản phẩm">${c.productCount??0}</a>${c._count?.categoryLinks > (c.productCount??0) ? ` <span class="text-xs text-gray-400">/ ${c._count.categoryLinks}</span>` : ''}</td><td class="px-4 py-3 text-xs text-gray-600">${specTitles}</td><td class="px-4 py-3 text-right"><button onclick="editProdCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteProdCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`;
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50"><td class="px-4 py-3 font-medium"><a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem sản phẩm thuộc danh mục này">${c.name}</a></td><td class="px-4 py-3"><a href="javascript:navigateToCategoryProducts('${c.id}','${c.slug}')" class="font-medium text-amber-700 hover:text-amber-900 hover:underline cursor-pointer" title="Xem ${c.productCount??0} sản phẩm">${c.productCount??0}</a>${c._count?.categoryLinks > (c.productCount??0) ? ` <span class="text-xs text-gray-400">/ ${c._count.categoryLinks}</span>` : ''}</td><td class="px-4 py-3 text-xs text-gray-600">${specTitles}</td><td class="px-4 py-3 text-right"><button onclick="editProdCat('${c.id}')" class="text-gray-400 hover:text-amber-500 mr-2 requires-auth"><i class="fas fa-edit"></i></button><button onclick="deleteProdCat('${c.id}')" class="text-gray-400 hover:text-red-500 requires-auth"><i class="fas fa-trash"></i></button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
@@ -2460,8 +2540,11 @@ function showDeployDetail() {
 
 // ========== PROGRESSIVE LOADING ==========
 function updateHeaderStatus() {
+  // productMeta.total is the whole catalog; products.length is only the rows on
+  // the current page and would under-report once paging kicked in.
+  const total = productMeta.total || products.length;
   document.getElementById('headerStatus').textContent =
-    `${products.length} sản phẩm · ${prodCats.length} loại SP · ${imgCats.length} loại ảnh · ${matCats.length} loại da`;
+    `${total} sản phẩm · ${prodCats.length} loại SP · ${imgCats.length} loại ảnh · ${matCats.length} loại da`;
 }
 
 // Load each dataset independently — no Promise.all bottleneck
