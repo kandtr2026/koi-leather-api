@@ -42,6 +42,9 @@
     body.authenticated .requires-auth-block { display: block !important; }
     .g_id_signout { cursor: pointer; }
     .g_id_signout:hover { opacity: 0.7; }
+    /* Cổng đăng nhập — che toàn màn hình cho tới khi admin đăng nhập, để khách
+       và người chưa đăng nhập không xem được bất kỳ nội dung nào. */
+    body.authenticated #loginGate { display: none !important; }
     /* Lightbox */
     .lightbox-container { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
     .lightbox-close { position: fixed; top: 16px; right: 20px; z-index: 70; background: none; border: none; color: #fff; font-size: 32px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; line-height: 1; padding: 4px; }
@@ -98,6 +101,20 @@
   </style>
 </head>
 <body>
+
+<!-- Cổng đăng nhập: hiện mặc định, ẩn khi body.authenticated (xem CSS).
+     Thuộc tính sống-còn (che phủ, chắn tương tác, nền đục) để INLINE, không
+     phụ thuộc Tailwind biên dịch — tránh gate trong suốt làm lộ nội dung. -->
+<div id="loginGate" class="flex items-center justify-center px-4"
+     style="position:fixed;inset:0;z-index:2147483647;background:#f8f5ef;">
+  <div class="bg-white rounded-2xl shadow-xl border border-gray-100 px-8 py-10 w-full max-w-sm text-center">
+    <div class="w-14 h-14 bg-amber-500 rounded-xl flex items-center justify-center font-bold text-white text-lg mx-auto">KL</div>
+    <h1 class="mt-4 text-xl font-bold text-gray-800">Koi Leather Admin</h1>
+    <p class="mt-1 text-sm text-gray-500">Khu vực quản trị — cần đăng nhập để truy cập.</p>
+    <div id="gateSignIn" class="mt-6 flex justify-center"></div>
+    <p class="mt-6 text-[11px] text-gray-400 leading-relaxed">Chỉ tài khoản quản trị được cấp quyền mới xem được nội dung.<br>Khách và người chưa đăng nhập không thể xem trang này.</p>
+  </div>
+</div>
 
 <div class="min-h-screen flex flex-col">
   <!-- Header -->
@@ -862,6 +879,14 @@ async function initGoogleSignIn() {
     document.getElementById('gSignInWrapper'),
     { type: 'standard', shape: 'pill', theme: 'outline', size: 'small', text: 'signin_with', logo_alignment: 'left' }
   );
+  // Nút đăng nhập lớn trên cổng che toàn màn hình (khi chưa đăng nhập).
+  const gate = document.getElementById('gateSignIn');
+  if (gate) {
+    google.accounts.id.renderButton(
+      gate,
+      { type: 'standard', shape: 'pill', theme: 'filled_blue', size: 'large', text: 'signin_with', logo_alignment: 'center' }
+    );
+  }
 }
 
 async function handleGoogleCredential(response) {
@@ -887,6 +912,14 @@ function applyAuth(user) {
   document.getElementById('authUser').classList.remove('hidden');
   document.getElementById('authAvatar').src = user.picture || '';
   document.getElementById('authEmail').textContent = user.email || '';
+
+  // Khi KHOÁ (mặc định), mọi GET lúc chưa đăng nhập đều bị 401 nên các tab còn
+  // trống. Đăng nhập xong nạp lại toàn bộ dữ liệu để hiện ngay, không cần F5.
+  loadStorageUsage();
+  loadProducts().then(updateHeaderStatus).catch(() => {});
+  loadProdCats().then(() => { updateHeaderStatus(); if (products.length) renderProducts(); }).catch(() => {});
+  loadImgCats().then(updateHeaderStatus).catch(() => {});
+  loadMatCats().then(updateHeaderStatus).catch(() => {});
 
   // Endpoint ads chặn cả GET khi chưa có token, nên lần gọi trước lúc đăng nhập
   // chắc chắn đã 401. Nạp lại ngay để tab hiện số liệu mà không cần refresh.
