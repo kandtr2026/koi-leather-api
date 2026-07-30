@@ -30,6 +30,12 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
+    // Storefront công khai (KoiFront): nhóm /shop/* là API cho khách vãng lai,
+    // chỉ đọc hàng đã xuất bản và field an toàn — luôn mở, không dính khoá admin.
+    if (path.startsWith("/shop")) {
+      return true;
+    }
+
     const token = this.extractToken(request);
 
     // Auth endpoints: allow without blocking, but attach user for /auth/me

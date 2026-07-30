@@ -20,7 +20,9 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       "http://localhost:3000",
+      "http://localhost:3001",
       "http://localhost:5173",
+      "https://koifront.vercel.app",
       "https://koileather.com",
       "https://www.koileather.com",
       "https://koileather.vn",

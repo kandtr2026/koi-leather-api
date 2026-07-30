@@ -1,0 +1,152 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  Header,
+  HttpCode,
+  HttpStatus,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
+import { ApiTags, ApiOperation } from "@nestjs/swagger";
+import { ShopService } from "./shop.service";
+import { ShopContentService } from "./shop-content.service";
+
+/**
+ * API CÔNG KHAI cho storefront khách hàng (KoiFront).
+ *
+ * Toàn bộ nhóm /shop/* được allowlist trong AuthGuard → khách không cần đăng
+ * nhập vẫn đọc được (khác với admin đang khoá). Chỉ trả hàng đã xuất bản và
+ * các field an toàn cho khách.
+ */
+@ApiTags("Shop (storefront công khai)")
+@Controller("shop")
+export class ShopController {
+  constructor(
+    private readonly shop: ShopService,
+    private readonly content: ShopContentService,
+  ) {}
+
+  @Get("home")
+  @Header("Cache-Control", "public, max-age=60, s-maxage=300")
+  @ApiOperation({ summary: "Dữ liệu trang chủ: sản phẩm nổi bật + danh mục" })
+  home() {
+    return this.shop.home();
+  }
+
+  @Get("categories")
+  @Header("Cache-Control", "public, max-age=60, s-maxage=300")
+  @ApiOperation({ summary: "Danh sách danh mục (kèm ảnh đại diện, số lượng)" })
+  categories() {
+    return this.shop.categories();
+  }
+
+  @Get("categories/:slug")
+  @Header("Cache-Control", "public, max-age=60, s-maxage=300")
+  @ApiOperation({ summary: "Danh mục theo slug + sản phẩm trong danh mục" })
+  categoryBySlug(
+    @Param("slug") slug: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    return this.shop.categoryBySlug(slug, Number(page) || 1, Number(limit) || 24);
+  }
+
+  @Get("products")
+  @Header("Cache-Control", "public, max-age=60, s-maxage=300")
+  @ApiOperation({ summary: "Danh sách sản phẩm (lọc theo danh mục / tìm kiếm)" })
+  listProducts(
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("category") category?: string,
+    @Query("search") search?: string,
+  ) {
+    return this.shop.listProducts({
+      page: Number(page) || 1,
+      limit: Number(limit) || 24,
+      categorySlug: category,
+      search,
+    });
+  }
+
+  @Get("products/:slug")
+  @Header("Cache-Control", "public, max-age=60, s-maxage=300")
+  @ApiOperation({ summary: "Chi tiết sản phẩm theo slug + liên quan" })
+  productBySlug(@Param("slug") slug: string) {
+    return this.shop.productBySlug(slug);
+  }
+
+  // ----- Nội dung cũ (blog / trang / tag) — schema public -----
+
+  @Get("posts")
+  @Header("Cache-Control", "public, max-age=120, s-maxage=600")
+  @ApiOperation({ summary: "Danh sách bài viết blog + chuyên mục" })
+  posts(@Query("page") page?: string, @Query("limit") limit?: string) {
+    return this.content.posts(Number(page) || 1, Number(limit) || 12);
+  }
+
+  @Get("content/:slug")
+  @Header("Cache-Control", "public, max-age=120, s-maxage=600")
+  @ApiOperation({ summary: "Bài viết hoặc trang tĩnh theo slug" })
+  async contentBySlug(@Param("slug") slug: string) {
+    const found = await this.content.contentBySlug(slug);
+    if (!found) throw new NotFoundException("Không tìm thấy nội dung");
+    return found;
+  }
+
+  @Get("blog-terms/:taxonomy/:slug")
+  @Header("Cache-Control", "public, max-age=120, s-maxage=600")
+  @ApiOperation({ summary: "Chuyên mục / tag blog + các bài thuộc nó" })
+  async blogTerm(
+    @Param("taxonomy") taxonomy: "category" | "tag",
+    @Param("slug") slug: string,
+  ) {
+    const found = await this.content.blogTerm(taxonomy, slug);
+    if (!found) throw new NotFoundException("Không tìm thấy");
+    return found;
+  }
+
+  @Get("product-tags/:slug")
+  @Header("Cache-Control", "public, max-age=120, s-maxage=600")
+  @ApiOperation({ summary: "Từ khoá sản phẩm (schema public) + sản phẩm" })
+  async productTag(@Param("slug") slug: string) {
+    const found = await this.content.productTag(slug);
+    if (!found) throw new NotFoundException("Không tìm thấy từ khoá");
+    return found;
+  }
+
+  @Post("leads")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Khách để lại thông tin liên hệ (công khai)" })
+  createLead(
+    @Body()
+    body: {
+      name?: string;
+      phone?: string;
+      message?: string;
+      productName?: string;
+    },
+  ) {
+    const name = String(body?.name ?? "").trim();
+    const phone = String(body?.phone ?? "").replace(/[\s.-]/g, "");
+    if (name.length < 2) throw new BadRequestException("Tên không hợp lệ");
+    if (!/^(0\d{9}|\+84\d{9})$/.test(phone))
+      throw new BadRequestException("Số điện thoại không hợp lệ");
+    return this.content.createLead({
+      name,
+      phone,
+      message: body?.message ?? null,
+      productName: body?.productName ?? null,
+    });
+  }
+
+  @Get("sitemap-data")
+  @Header("Cache-Control", "public, max-age=600, s-maxage=3600")
+  @ApiOperation({ summary: "Dữ liệu dựng sitemap.xml" })
+  sitemapData() {
+    return this.content.sitemapData();
+  }
+}

@@ -1,0 +1,257 @@
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+
+/**
+ * Nội dung "cũ" cho storefront: blog, trang tĩnh, tag — nằm ở schema `public`
+ * (bản clone WordPress). Đây là phần đang có organic traffic nên PHẢI giữ sống
+ * để link Google không gãy. Backend đọc trực tiếp qua Prisma (đã multiSchema).
+ *
+ * Lưu ý: các bảng public dùng khoá BigInt → JSON không serialize được, phải
+ * ép về Number/chuỗi ISO trong mọi mapper.
+ */
+@Injectable()
+export class ShopContentService {
+  constructor(private prisma: PrismaService) {}
+
+  private mapPost(p: any) {
+    return {
+      id: Number(p.id),
+      title: p.title,
+      slug: p.slug,
+      excerpt: p.excerpt ?? null,
+      content: p.content ?? null,
+      meta_title: p.meta_title ?? null,
+      meta_description: p.meta_description ?? null,
+      published_at: p.published_at ? p.published_at.toISOString() : null,
+    };
+  }
+
+  private mapPage(p: any) {
+    return {
+      id: Number(p.id),
+      title: p.title,
+      slug: p.slug,
+      content: p.content ?? null,
+      meta_title: p.meta_title ?? null,
+      meta_description: p.meta_description ?? null,
+    };
+  }
+
+  private mapTerm(t: any) {
+    return {
+      id: Number(t.id),
+      name: t.name,
+      slug: t.slug,
+      description: t.description ?? null,
+      taxonomy: t.taxonomy,
+      post_count: t.post_count,
+    };
+  }
+
+  private mapPublicProduct(p: any) {
+    return {
+      id: Number(p.id),
+      name: p.name,
+      slug: p.slug,
+      sku: p.sku ?? null,
+      short_description: p.short_description ?? null,
+      description: null,
+      price: p.price != null ? Number(p.price) : null,
+      regular_price: p.regular_price != null ? Number(p.regular_price) : null,
+      price_min: p.price_min != null ? Number(p.price_min) : null,
+      price_max: p.price_max != null ? Number(p.price_max) : null,
+      on_sale: !!p.on_sale,
+      has_variants: !!p.has_variants,
+      is_available: !!p.is_available,
+      is_featured: !!p.is_featured,
+      meta_title: p.meta_title ?? null,
+      meta_description: p.meta_description ?? null,
+      // storage_path bản public là TÊN FILE trần → imageUrl() phía frontend
+      // sẽ ghép prefix bucket Supabase Storage.
+      product_images: (p.product_images ?? []).map((i: any) => ({
+        storage_path: i.storage_path,
+        alt: i.alt ?? null,
+        is_primary: !!i.is_primary,
+        sort_order: i.sort_order ?? 0,
+      })),
+    };
+  }
+
+  // ----- blog -----
+
+  async posts(page = 1, limit = 12) {
+    page = Math.max(1, page);
+    const [rows, total, cats] = await Promise.all([
+      this.prisma.posts.findMany({
+        where: { is_published: true },
+        orderBy: [{ published_at: "desc" }, { id: "desc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.posts.count({ where: { is_published: true } }),
+      this.prisma.post_terms.findMany({
+        where: { taxonomy: "category", post_count: { gt: 0 } },
+        orderBy: { post_count: "desc" },
+      }),
+    ]);
+    return {
+      data: rows.map((p) => this.mapPost(p)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      categories: cats.map((c) => this.mapTerm(c)),
+    };
+  }
+
+  /** Bài viết hoặc trang tĩnh theo slug (thử bài trước, rồi tới trang). */
+  async contentBySlug(slug: string) {
+    const post = await this.prisma.posts.findUnique({ where: { slug } });
+    if (post && post.is_published)
+      return { kind: "post" as const, doc: this.mapPost(post) };
+
+    const page = await this.prisma.pages.findUnique({ where: { slug } });
+    if (page && page.is_published)
+      return { kind: "page" as const, doc: this.mapPage(page) };
+
+    return null;
+  }
+
+  /** Chuyên mục / tag blog + các bài thuộc nó. */
+  async blogTerm(taxonomy: "category" | "tag", slug: string) {
+    const term = await this.prisma.post_terms.findFirst({
+      where: { taxonomy, slug },
+    });
+    if (!term) return null;
+
+    const links = await this.prisma.post_term_links.findMany({
+      where: { term_id: term.id },
+      select: { post_id: true },
+    });
+    const ids = links.map((l) => l.post_id);
+    const posts = ids.length
+      ? await this.prisma.posts.findMany({
+          where: { id: { in: ids }, is_published: true },
+          orderBy: [{ published_at: "desc" }, { id: "desc" }],
+          take: 60,
+        })
+      : [];
+
+    return {
+      term: this.mapTerm(term),
+      posts: posts.map((p) => this.mapPost(p)),
+    };
+  }
+
+  // ----- product tags (từ khoá sản phẩm — schema public) -----
+
+  async productTag(slug: string) {
+    const tag = await this.prisma.tags.findUnique({ where: { slug } });
+    if (!tag) return null;
+
+    const links = await this.prisma.product_tags.findMany({
+      where: { tag_id: tag.id },
+      select: { product_id: true },
+    });
+    const ids = links.map((l) => l.product_id);
+    const products = ids.length
+      ? await this.prisma.products.findMany({
+          where: { id: { in: ids }, is_published: true },
+          orderBy: [{ price: "desc" }, { id: "asc" }],
+          take: 48,
+          include: {
+            product_images: { orderBy: { sort_order: "asc" } },
+          },
+        })
+      : [];
+
+    return {
+      tag: {
+        id: Number(tag.id),
+        name: tag.name,
+        slug: tag.slug,
+        product_count: tag.product_count,
+      },
+      products: products.map((p) => this.mapPublicProduct(p)),
+    };
+  }
+
+  // ----- lead (khách để lại thông tin) -----
+
+  /**
+   * Ghi lead vào bảng public.leads. product_id để null: sản phẩm hiển thị nay
+   * là koi_free_style (UUID) không khớp khoá ngoại BigInt của public.products,
+   * nên tên sản phẩm (nếu có) được gộp vào message thay vì làm FK.
+   */
+  async createLead(input: {
+    name: string;
+    phone: string;
+    message?: string | null;
+    productName?: string | null;
+  }) {
+    const parts = [input.message?.trim()].filter(Boolean) as string[];
+    if (input.productName) parts.push(`(Sản phẩm: ${input.productName})`);
+    await this.prisma.leads.create({
+      data: {
+        name: input.name,
+        phone: input.phone,
+        message: parts.length ? parts.join(" ") : null,
+        source: "koifront",
+        status: "new",
+      },
+    });
+    return { ok: true };
+  }
+
+  // ----- sitemap -----
+
+  async sitemapData() {
+    const [products, categories, posts, pages, tags, postTerms] =
+      await Promise.all([
+        this.prisma.koiProduct.findMany({
+          where: { isDeleted: false, status: "ACTIVE" },
+          select: { slug: true, updatedAt: true },
+        }),
+        this.prisma.koiCategory.findMany({
+          where: { isActive: true },
+          select: { slug: true },
+        }),
+        this.prisma.posts.findMany({
+          where: { is_published: true },
+          select: { slug: true, published_at: true },
+        }),
+        this.prisma.pages.findMany({
+          where: { is_published: true },
+          select: { slug: true },
+        }),
+        this.prisma.tags.findMany({
+          select: { slug: true, product_count: true },
+        }),
+        this.prisma.post_terms.findMany({
+          select: { slug: true, taxonomy: true, post_count: true },
+        }),
+      ]);
+
+    return {
+      products: products.map((p) => ({
+        slug: p.slug,
+        updated_at: p.updatedAt ? p.updatedAt.toISOString() : null,
+      })),
+      categories: categories.map((c) => ({ slug: c.slug })),
+      posts: posts.map((p) => ({
+        slug: p.slug,
+        published_at: p.published_at ? p.published_at.toISOString() : null,
+      })),
+      pages: pages.map((p) => ({ slug: p.slug })),
+      productTags: tags.map((t) => ({
+        slug: t.slug,
+        product_count: t.product_count,
+      })),
+      blogTerms: postTerms.map((t) => ({
+        slug: t.slug,
+        taxonomy: t.taxonomy,
+        post_count: t.post_count,
+      })),
+    };
+  }
+}

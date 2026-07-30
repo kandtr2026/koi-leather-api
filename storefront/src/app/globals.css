@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+/*
+  KOI Leather — sang trọng, tối giản.
+  Nền sáng, nhiều khoảng trống, để ảnh da tự nói. Cam dùng rất tiết chế:
+  mỗi lần xuất hiện là một lần có sức nặng.
+*/
+
+@theme {
+  --color-koi-orange: #f05808;
+  /* Bản đậm hơn: dùng khi cam làm chữ nhỏ.
+     #f05808 trên nền trắng chỉ đạt 3.4:1, dưới chuẩn 4.5:1 cho chữ nhỏ. */
+  --color-koi-orange-dark: #c74705;
+
+  --color-koi-black: #0a0a0a;
+  --color-koi-ink: #1c1c1c;
+  --color-koi-gray: #6b6b6b;
+  --color-koi-gray-light: #919191;
+  --color-koi-line: #e5e2de;
+  --color-koi-cream: #faf8f5;
+  --color-koi-white: #ffffff;
+
+  --font-serif: var(--font-cormorant), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+
+  /* Easing mặc định của trình duyệt quá nhạt, thiếu lực.
+     Dùng đường cong mạnh hơn cho mọi tương tác. */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-koi-white);
+  color: var(--color-koi-ink);
+  font-family: var(--font-sans);
+  font-synthesis-weight: none;
+}
+
+/* Tiêu đề dùng serif — chất cổ điển hợp đồ thủ công */
+h1, h2, h3 {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  letter-spacing: -0.01em;
+}
+
+/* Nội dung bài viết / mô tả sản phẩm lấy nguyên HTML từ WordPress,
+   nên phải định kiểu cho các thẻ thô ở đây. */
+.prose-koi {
+  line-height: 1.75;
+  color: var(--color-koi-gray);
+}
+.prose-koi p { margin-bottom: 1rem; }
+.prose-koi h2, .prose-koi h3 {
+  color: var(--color-koi-ink);
+  margin: 2rem 0 0.75rem;
+  font-size: 1.35rem;
+}
+.prose-koi ul, .prose-koi ol { margin: 0 0 1rem 1.25rem; }
+.prose-koi ul { list-style: disc; }
+.prose-koi ol { list-style: decimal; }
+.prose-koi li { margin-bottom: 0.35rem; }
+.prose-koi a { color: var(--color-koi-orange-dark); text-decoration: underline; }
+.prose-koi img { max-width: 100%; height: auto; margin: 1.5rem 0; }
+.prose-koi strong { color: var(--color-koi-ink); font-weight: 600; }
+.prose-koi table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+.prose-koi td, .prose-koi th {
+  border: 1px solid var(--color-koi-line);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+/* ---------------------------------------------------------------
+   Phản hồi khi bấm
+
+   Mọi thứ bấm được đều phải nhúc nhích. Không có phản hồi thì trên
+   mạng chậm khách tưởng web đơ, bấm lại lần nữa hoặc bỏ đi.
+   Đây là nút chốt đơn — không được để im lìm.
+   --------------------------------------------------------------- */
+.press {
+  /* Khai báo đủ mọi thuộc tính hay đổi khi rê/bấm.
+     Nếu chỉ khai báo transform, class này sẽ ĐÈ MẤT transition màu của
+     Tailwind trên cùng phần tử, làm màu nền đổi giật. */
+  transition:
+    transform 150ms var(--ease-out-strong),
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    opacity 150ms ease;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+/* ---------------------------------------------------------------
+   Ảnh sản phẩm hiện ra khi đổi
+
+   Blur nhẹ khi vào làm hai trạng thái hoà vào nhau, mắt đọc thành MỘT
+   chuyển biến thay vì hai tấm ảnh tráo chỗ.
+
+   Trình duyệt cũ không hỗ trợ @starting-style thì ảnh hiện ngay —
+   mất hiệu ứng nhưng không hỏng gì.
+   --------------------------------------------------------------- */
+.gallery-image {
+  opacity: 1;
+  filter: blur(0);
+  transition: opacity 200ms var(--ease-out-strong), filter 200ms var(--ease-out-strong);
+}
+
+@starting-style {
+  .gallery-image {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+/* Hộp xác nhận sau khi khách gửi thông tin liên hệ */
+.lead-success {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 250ms var(--ease-out-strong), transform 250ms var(--ease-out-strong);
+}
+
+@starting-style {
+  .lead-success {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* Vòng focus cho người dùng bàn phím. Chỉ hiện khi điều hướng bằng
+   bàn phím (focus-visible), không hiện khi bấm chuột. */
+:where(a, button, [role="button"], select):focus-visible {
+  outline: 2px solid var(--color-koi-orange);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+/* ---------------------------------------------------------------
+   Giảm chuyển động
+
+   "Giảm" không phải "tắt sạch". Bỏ phần DI CHUYỂN (gây chóng mặt),
+   nhưng GIỮ đổi màu và mờ dần vì đó là tín hiệu trạng thái —
+   tắt hết thì người dùng mất luôn phản hồi của giao diện.
+   --------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  /* Chỉ chặn biến đổi hình học, để nguyên opacity/color */
+  *, *::before, *::after {
+    transition-property: opacity, color, background-color, border-color, fill, stroke !important;
+  }
+  .press:active {
+    transform: none;
+  }
+}

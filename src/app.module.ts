@@ -17,6 +17,7 @@ import { AuthModule } from "./auth/auth.module";
 import { AuthGuard } from "./auth/auth.guard";
 import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
 import { VisitsModule } from "./visits/visits.module";
+import { ShopModule } from "./shop/shop.module";
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { VisitsModule } from "./visits/visits.module";
     KoiImageCategoryModule,
     MaterialCategoryModule,
     VisitsModule,
+    ShopModule,
   ],
   controllers: [HealthController],
   providers: [
