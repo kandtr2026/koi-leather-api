@@ -71,6 +71,13 @@ const nextConfig: NextConfig = {
         hostname: supabaseHost,
         pathname: '/storage/v1/object/public/**',
       },
+      // Anh thay qua nut admin duoc upload len Cloudinary. Khong khai bao o day
+      // thi Next 16 chan (anh vo, chi hien alt text) du URL tai duoc binh thuong.
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
     ],
     // Next 16 mac dinh chi cho phep quality 75. Anh do da can net hon
     // de thay duoc van da, nen mo them muc 85.
