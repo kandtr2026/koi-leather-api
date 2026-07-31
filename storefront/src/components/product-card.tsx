@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { imageUrl } from '@/lib/supabase';
 import { priceLabel } from '@/lib/format';
+import { ReplaceableImage } from '@/components/admin/replaceable-image';
 import type { ProductWithImages } from '@/lib/types';
 
 export function ProductCard({ p }: { p: ProductWithImages }) {
@@ -10,7 +11,11 @@ export function ProductCard({ p }: { p: ProductWithImages }) {
 
   return (
     <Link href={`/cua-hang/${p.slug}/`} className="group block">
-      <div className="relative aspect-square overflow-hidden bg-koi-cream">
+      <ReplaceableImage
+        productId={p.id}
+        imageId={cover?.id ?? null}
+        className="relative aspect-square overflow-hidden bg-koi-cream"
+      >
         {src ? (
           <Image
             src={src}
@@ -20,7 +25,7 @@ export function ProductCard({ p }: { p: ProductWithImages }) {
             className="object-cover transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.04]"
           />
         ) : null}
-      </div>
+      </ReplaceableImage>
 
       <div className="pt-3">
         <h3 className="text-[15px] leading-snug text-koi-ink transition-colors group-hover:text-koi-orange-dark">

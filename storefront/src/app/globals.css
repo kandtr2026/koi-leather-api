@@ -7,20 +7,40 @@
 */
 
 @theme {
-  --color-koi-orange: #f05808;
-  /* Bản đậm hơn: dùng khi cam làm chữ nhỏ.
-     #f05808 trên nền trắng chỉ đạt 3.4:1, dưới chuẩn 4.5:1 cho chữ nhỏ. */
-  --color-koi-orange-dark: #c74705;
+  /* Cam thương hiệu — chuyển sang terracotta của bản thiết kế KOI Home.
+     #cf6a30 (bậc 500) là cam chính; bản đậm hơn (bậc 700) dùng cho chữ nhỏ
+     để đủ tương phản trên nền sáng. */
+  --color-koi-orange: #cf6a30;
+  --color-koi-orange-dark: #97430f;
+
+  /* Thang terracotta đầy đủ (OKLCH, cùng một trục sáng) — dùng cho nền tag,
+     viền, gradient nhấn. */
+  --color-koi-terracotta-100: #fbe9df;
+  --color-koi-terracotta-200: #f5d1bc;
+  --color-koi-terracotta-300: #eeae86;
+  --color-koi-terracotta-400: #e2864f;
+  --color-koi-terracotta-500: #cf6a30;
+  --color-koi-terracotta-600: #b6551f;
+  --color-koi-terracotta-700: #97430f;
+  --color-koi-terracotta-800: #6f3009;
+  --color-koi-terracotta-900: #47200a;
 
   --color-koi-black: #0a0a0a;
-  --color-koi-ink: #1c1c1c;
-  --color-koi-gray: #6b6b6b;
-  --color-koi-gray-light: #919191;
-  --color-koi-line: #e5e2de;
-  --color-koi-cream: #faf8f5;
-  --color-koi-white: #ffffff;
+  --color-koi-ink: #1b1b19;
+  --color-koi-gray: #565a54;
+  --color-koi-gray-light: #8b8f88;
+  --color-koi-line: #cbccca;
+
+  /* Nền ấm màu etain — thay nền trắng, để da và ảnh nổi lên tự nhiên hơn. */
+  --color-koi-bg: #e6e6e4;
+  --color-koi-surface: #dcdcd9;
+  --color-koi-cream: #eae9e9;
+  --color-koi-white: #f4f2ee;
+  --color-koi-etain: #8b8f88;
+  --color-koi-etain-deep: #565a54;
 
   --font-serif: var(--font-cormorant), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-lora), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
 
   /* Easing mặc định của trình duyệt quá nhạt, thiếu lực.
@@ -34,16 +54,17 @@ html {
 }
 
 body {
-  background: var(--color-koi-white);
+  background: var(--color-koi-bg);
   color: var(--color-koi-ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-synthesis-weight: none;
 }
 
-/* Tiêu đề dùng serif — chất cổ điển hợp đồ thủ công */
+/* Tiêu đề dùng serif — chất cổ điển hợp đồ thủ công.
+   Bản thiết kế KOI Home dùng Cormorant cỡ lớn ở nét 400 (không mảnh như 300). */
 h1, h2, h3 {
   font-family: var(--font-serif);
-  font-weight: 300;
+  font-weight: 400;
   letter-spacing: -0.01em;
 }
 
@@ -159,4 +180,66 @@ h1, h2, h3 {
   .press:active {
     transform: none;
   }
+}
+
+/* ---------------------------------------------------------------
+   Gạch chân chạy ra khi rê chuột (dùng cho link menu / footer).
+   --------------------------------------------------------------- */
+.k-underline {
+  position: relative;
+}
+.k-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  height: 1px;
+  width: 0;
+  background: currentColor;
+  transition: width 0.3s var(--ease-out-strong);
+}
+.k-underline:hover::after {
+  width: 100%;
+}
+
+/* ---------------------------------------------------------------
+   Băng chuyền lời khách (marquee)
+
+   Hai bản danh sách nối tiếp, dịch trái đúng 50% là lặp liền mạch.
+   Rê chuột thì dừng để đọc.
+   --------------------------------------------------------------- */
+@keyframes koi-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.k-marquee-track {
+  display: flex;
+  gap: 22px;
+  width: max-content;
+  animation: koi-marquee 40s linear infinite;
+}
+.k-marquee:hover .k-marquee-track {
+  animation-play-state: paused;
+}
+
+/* ---------------------------------------------------------------
+   Hiện dần khi cuộn tới (scroll-reveal)
+
+   Dùng animation-timeline nên KHÔNG cần JavaScript. Trình duyệt không
+   hỗ trợ thì bỏ qua hiệu ứng và phần tử hiện nguyên (opacity:1) —
+   không bao giờ để nội dung mất hút.
+   --------------------------------------------------------------- */
+@supports (animation-timeline: view()) {
+  @keyframes koi-rise {
+    from { opacity: 0; transform: translateY(26px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .reveal {
+    animation: koi-rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 26%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { animation: none; opacity: 1; transform: none; }
 }

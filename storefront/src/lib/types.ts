@@ -11,6 +11,8 @@ export type Category = {
 };
 
 export type ProductImage = {
+  // id của record ảnh — dùng để admin thay ảnh tại chỗ. null cho ảnh cũ / đường lui.
+  id: string | null;
   storage_path: string;
   alt: string | null;
   is_primary: boolean;

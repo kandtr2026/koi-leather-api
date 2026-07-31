@@ -91,6 +91,80 @@ export class MediaService {
     });
   }
 
+  /**
+   * Thay FILE của một ảnh đã có, GIỮ NGUYÊN vị trí (displayOrder), cờ primary,
+   * variant và imageType. Chỉ đổi url/thumbnail/medium + kích thước/định dạng.
+   * Ảnh cũ trên Cloudinary được xoá sau khi cập nhật thành công (nếu không còn
+   * record nào khác tham chiếu — theo đúng logic deleteImage).
+   */
+  async replaceImageFile(
+    productId: string,
+    imageId: string,
+    data: {
+      cloudinaryUrl: string;
+      thumbnailUrl: string;
+      mediumUrl?: string;
+      width?: number;
+      height?: number;
+      mimeType?: string;
+      fileSize?: number;
+    },
+  ) {
+    const existing = await this.prisma.koiProductImage.findUnique({
+      where: { id: imageId },
+    });
+    if (!existing || existing.productId !== productId) {
+      throw new NotFoundException("Image not found for this product");
+    }
+
+    const oldUrls = {
+      url: existing.url,
+      thumbnailUrl: existing.thumbnailUrl,
+      mediumUrl: existing.mediumUrl,
+    };
+
+    const updated = await this.prisma.koiProductImage.update({
+      where: { id: imageId },
+      data: {
+        url: data.cloudinaryUrl,
+        thumbnailUrl: data.thumbnailUrl,
+        mediumUrl: data.mediumUrl || data.cloudinaryUrl,
+        mimeType: data.mimeType || "image/webp",
+        fileSize: data.fileSize ?? existing.fileSize,
+        width: data.width ?? existing.width,
+        height: data.height ?? existing.height,
+        // displayOrder, isPrimary, variantId, imageType, altText giữ nguyên.
+      },
+    });
+
+    // Dọn file cũ nếu URL đổi và không còn record nào khác dùng chung.
+    if (oldUrls.url && oldUrls.url !== data.cloudinaryUrl) {
+      const otherRefs = await this.prisma.koiProductImage.count({
+        where: {
+          id: { not: imageId },
+          OR: [
+            { url: oldUrls.url },
+            { thumbnailUrl: oldUrls.thumbnailUrl },
+            { mediumUrl: oldUrls.mediumUrl },
+          ],
+        },
+      });
+      if (otherRefs === 0) {
+        await this.deletePhysicalFile({
+          url: oldUrls.url,
+          thumbnailUrl: oldUrls.thumbnailUrl,
+          mediumUrl: oldUrls.mediumUrl,
+        });
+      } else {
+        this.logger.warn(
+          `Old image URL "${oldUrls.url}" referenced by ${otherRefs} other record(s). Skipping physical delete.`,
+        );
+      }
+    }
+
+    return updated;
+  }
+
   async getProductImages(productId: string) {
     return this.prisma.koiProductImage.findMany({
       where: { productId },

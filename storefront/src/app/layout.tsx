@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
-import { Cormorant_Garamond, Inter } from 'next/font/google';
+import { Cormorant_Garamond, Inter, Lora } from 'next/font/google';
 import './globals.css';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { DeployBadge } from '@/components/deploy-badge';
+import { AdminProvider } from '@/components/admin/admin-auth';
 import { SITE_URL } from '@/lib/contact';
 
 const cormorant = Cormorant_Garamond({
@@ -16,6 +17,14 @@ const cormorant = Cormorant_Garamond({
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin', 'vietnamese'],
+  display: 'swap',
+});
+
+// Body serif của bản thiết kế KOI Home — ấm, có chân, hợp đồ thủ công.
+const lora = Lora({
+  variable: '--font-lora',
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500', '600'],
   display: 'swap',
 });
 
@@ -43,13 +52,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi" className={`${cormorant.variable} ${inter.variable} h-full antialiased`}>
+    <html lang="vi" className={`${cormorant.variable} ${inter.variable} ${lora.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <SiteHeader />
-        {/* pb-16 chừa chỗ cho thanh liên hệ dính đáy trên điện thoại */}
-        <main className="flex-1 pb-16 md:pb-0">{children}</main>
-        <SiteFooter />
-        <DeployBadge />
+        <AdminProvider>
+          <SiteHeader />
+          {/* pb-16 chừa chỗ cho thanh liên hệ dính đáy trên điện thoại */}
+          <main className="flex-1 pb-16 md:pb-0">{children}</main>
+          <SiteFooter />
+          <DeployBadge />
+        </AdminProvider>
       </body>
     </html>
   );

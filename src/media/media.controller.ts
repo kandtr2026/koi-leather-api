@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Patch,
   Param,
@@ -107,6 +108,130 @@ export class MediaController {
 
   constructor(private readonly mediaService: MediaService) {}
 
+  /**
+   * Xử lý 1 file ảnh: Sharp→WebP + thumb + medium (nếu có Sharp), rồi upload
+   * Cloudinary (fallback local). Trả về các URL + kích thước. Dùng chung cho
+   * cả upload mới và thay ảnh tại chỗ.
+   */
+  private async processAndStore(
+    file: Express.Multer.File,
+    productId: string,
+  ): Promise<{
+    publicUrl: string;
+    thumbUrl: string;
+    mediumUrl: string;
+    cloudinaryPublicId?: string;
+    width?: number;
+    height?: number;
+    mimeType: string;
+    fileSize: number;
+    onCloudinary: boolean;
+  }> {
+    const timestamp = Date.now();
+    const slug = `${timestamp}`;
+    const sharpInstance = getSharp();
+
+    let webpBuf: Buffer, thumbBuf: Buffer, mediumBuf: Buffer;
+    let width: number | undefined, height: number | undefined;
+
+    if (sharpInstance) {
+      const meta = await sharpInstance(file.buffer).metadata();
+      width = meta.width || undefined;
+      height = meta.height || undefined;
+      webpBuf = await sharpInstance(file.buffer).webp({ quality: 85 }).toBuffer();
+      thumbBuf = await sharpInstance(file.buffer)
+        .resize(300, undefined, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 70 })
+        .toBuffer();
+      mediumBuf = await sharpInstance(file.buffer)
+        .resize(1200, undefined, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toBuffer();
+    } else {
+      webpBuf = file.buffer;
+      thumbBuf = file.buffer;
+      mediumBuf = file.buffer;
+    }
+
+    const folder = `koi/products/${productId}`;
+    const [fullResult, thumbResult, mediumResult] = await Promise.all([
+      uploadToCloudinary(webpBuf, folder, slug),
+      uploadToCloudinary(thumbBuf, folder, `${slug}-thumb`),
+      uploadToCloudinary(mediumBuf, folder, `${slug}-medium`),
+    ]);
+
+    if (fullResult) {
+      return {
+        publicUrl: fullResult.url,
+        thumbUrl: thumbResult?.url || fullResult.url,
+        mediumUrl: mediumResult?.url || fullResult.url,
+        cloudinaryPublicId: fullResult.publicId,
+        width,
+        height,
+        mimeType: sharpInstance ? "image/webp" : file.mimetype,
+        fileSize: webpBuf.length,
+        onCloudinary: true,
+      };
+    }
+
+    // Fallback local
+    const ext = path.extname(file.originalname) || ".jpg";
+    const uploadDir = path.join(process.cwd(), "uploads", "products", productId);
+    fs.mkdirSync(uploadDir, { recursive: true });
+    fs.writeFileSync(path.join(uploadDir, `${slug}${ext}`), webpBuf);
+    fs.writeFileSync(path.join(uploadDir, `${slug}-thumb${ext}`), thumbBuf);
+    fs.writeFileSync(path.join(uploadDir, `${slug}-medium${ext}`), mediumBuf);
+    return {
+      publicUrl: `/uploads/products/${productId}/${slug}${ext}`,
+      thumbUrl: `/uploads/products/${productId}/${slug}-thumb${ext}`,
+      mediumUrl: `/uploads/products/${productId}/${slug}-medium${ext}`,
+      width,
+      height,
+      mimeType: sharpInstance ? "image/webp" : file.mimetype,
+      fileSize: webpBuf.length,
+      onCloudinary: false,
+    };
+  }
+
+  @Put(":imageId/file")
+  @ApiOperation({
+    summary: "Thay file của ảnh, giữ nguyên vị trí + cờ primary (admin)",
+  })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: { file: { type: "string", format: "binary" } },
+    },
+  })
+  @UseInterceptors(FileInterceptor("file"))
+  async replaceFile(
+    @Param("productId", ParseUUIDPipe) productId: string,
+    @Param("imageId", ParseUUIDPipe) imageId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException("File is required");
+    if (!file.mimetype.startsWith("image/")) {
+      throw new BadRequestException("Only image files allowed");
+    }
+
+    const stored = await this.processAndStore(file, productId);
+    const result = await this.mediaService.replaceImageFile(productId, imageId, {
+      cloudinaryUrl: stored.publicUrl,
+      thumbnailUrl: stored.thumbUrl,
+      mediumUrl: stored.mediumUrl,
+      width: stored.width,
+      height: stored.height,
+      mimeType: stored.mimeType,
+      fileSize: stored.fileSize,
+    });
+
+    this.logger.log(
+      `Replaced image ${imageId} for product ${productId}${stored.onCloudinary ? " (Cloudinary)" : " (local)"}`,
+    );
+    return result;
+  }
+
   @Post("upload")
   @ApiOperation({ summary: "Upload image → convert to WebP & register" })
   @ApiConsumes("multipart/form-data")
@@ -140,91 +265,28 @@ export class MediaController {
       throw new BadRequestException("Only image files allowed");
     }
 
-    const timestamp = Date.now();
-    const slug = `${timestamp}`;
-    const sharpInstance = getSharp();
-
-    let webpBuf: Buffer, thumbBuf: Buffer, mediumBuf: Buffer;
-    let width: number | undefined, height: number | undefined;
-
-    if (sharpInstance) {
-      // Sharp available — convert to WebP with thumbnails
-      const meta = await sharpInstance(file.buffer).metadata();
-      width = meta.width || undefined;
-      height = meta.height || undefined;
-      webpBuf = await sharpInstance(file.buffer)
-        .webp({ quality: 85 })
-        .toBuffer();
-      thumbBuf = await sharpInstance(file.buffer)
-        .resize(300, undefined, { fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 70 })
-        .toBuffer();
-      mediumBuf = await sharpInstance(file.buffer)
-        .resize(1200, undefined, { fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toBuffer();
-    } else {
-      // Sharp unavailable — store original file as-is (Vercel Lambda, etc.)
-      webpBuf = file.buffer;
-      thumbBuf = file.buffer;
-      mediumBuf = file.buffer;
-    }
-
-    // Try Cloudinary first, fall back to local
-    const folder = `koi/products/${productId}`;
-    const [fullResult, thumbResult, mediumResult] = await Promise.all([
-      uploadToCloudinary(webpBuf, folder, slug),
-      uploadToCloudinary(thumbBuf, folder, `${slug}-thumb`),
-      uploadToCloudinary(mediumBuf, folder, `${slug}-medium`),
-    ]);
-
-    let publicUrl: string, thumbUrl: string, mediumUrl: string;
-    let cloudinaryPublicId: string | undefined;
-
-    if (fullResult) {
-      // Cloudinary upload succeeded
-      publicUrl = fullResult.url;
-      thumbUrl = thumbResult?.url || fullResult.url;
-      mediumUrl = mediumResult?.url || fullResult.url;
-      cloudinaryPublicId = fullResult.publicId;
-    } else {
-      // Fall back to local storage
-      const ext = path.extname(file.originalname) || ".jpg";
-      const uploadDir = path.join(
-        process.cwd(),
-        "uploads",
-        "products",
-        productId,
-      );
-      fs.mkdirSync(uploadDir, { recursive: true });
-      fs.writeFileSync(path.join(uploadDir, `${slug}${ext}`), webpBuf);
-      fs.writeFileSync(path.join(uploadDir, `${slug}-thumb${ext}`), thumbBuf);
-      fs.writeFileSync(path.join(uploadDir, `${slug}-medium${ext}`), mediumBuf);
-      publicUrl = `/uploads/products/${productId}/${slug}${ext}`;
-      thumbUrl = `/uploads/products/${productId}/${slug}-thumb${ext}`;
-      mediumUrl = `/uploads/products/${productId}/${slug}-medium${ext}`;
-    }
+    const stored = await this.processAndStore(file, productId);
 
     const result = await this.mediaService.registerImage(
       productId,
       {
-        cloudinaryPublicId,
-        cloudinaryUrl: publicUrl,
-        thumbnailUrl: thumbUrl,
-        mediumUrl,
+        cloudinaryPublicId: stored.cloudinaryPublicId,
+        cloudinaryUrl: stored.publicUrl,
+        thumbnailUrl: stored.thumbUrl,
+        mediumUrl: stored.mediumUrl,
         altText: altText || undefined,
         imageType: imageType || "STUDIO",
         isPrimary: isPrimary === "true",
-        width,
-        height,
-        mimeType: sharpInstance ? "image/webp" : file.mimetype,
-        fileSize: webpBuf.length,
+        width: stored.width,
+        height: stored.height,
+        mimeType: stored.mimeType,
+        fileSize: stored.fileSize,
       },
       variantId || undefined,
     );
 
     this.logger.log(
-      `Uploaded & converted ${file.originalname} → WEBP for product ${productId}${fullResult ? " (Cloudinary)" : " (local)"}`,
+      `Uploaded & converted ${file.originalname} → WEBP for product ${productId}${stored.onCloudinary ? " (Cloudinary)" : " (local)"}`,
     );
     return result;
   }

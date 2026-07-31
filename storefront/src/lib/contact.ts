@@ -4,7 +4,7 @@
 
 export const PHONE = process.env.NEXT_PUBLIC_PHONE ?? '0901678999';
 export const ZALO = process.env.NEXT_PUBLIC_ZALO ?? '0901678999';
-export const MESSENGER = process.env.NEXT_PUBLIC_MESSENGER ?? 'koileather';
+export const MESSENGER = process.env.NEXT_PUBLIC_MESSENGER ?? 'koileathercraft';
 export const EMAIL = process.env.NEXT_PUBLIC_EMAIL ?? 'koi.leather19@gmail.com';
 export const ADDRESS = process.env.NEXT_PUBLIC_ADDRESS ?? 'Số 2/16 Nguyễn Bặc, Tân Sơn Hòa, TP. HCM';
 

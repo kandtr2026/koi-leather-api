@@ -33,6 +33,7 @@ async function bootstrapServer() {
       "https://www.koileather.vn",
       "https://admin.koileather.vn",
       "https://koileather.vercel.app",
+      "https://koifront.vercel.app",
     ],
     methods: ["GET", "POST", "PATCH", "DELETE", "PUT"],
     credentials: true,

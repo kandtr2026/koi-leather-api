@@ -92,7 +92,7 @@ export default async function ProductPage(props: PageProps<'/cua-hang/[slug]'>) 
         </nav>
 
         <div className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
-          <ProductGallery images={images} name={p.name} />
+          <ProductGallery images={images} name={p.name} productId={p.id} />
 
           <div className="lg:pt-4">
             <h1 className="font-serif text-3xl leading-tight text-koi-ink sm:text-4xl">{p.name}</h1>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { imageUrl } from '@/lib/supabase';
+import { ReplaceableImage } from '@/components/admin/replaceable-image';
 import type { ProductImage } from '@/lib/types';
 
 /**
@@ -17,13 +18,25 @@ import type { ProductImage } from '@/lib/types';
  * hoà vào nhau nên mắt đọc thành MỘT chuyển biến, thay vì hai tấm ảnh
  * tráo chỗ.
  */
-export function ProductGallery({ images, name }: { images: ProductImage[]; name: string }) {
+export function ProductGallery({
+  images,
+  name,
+  productId,
+}: {
+  images: ProductImage[];
+  name: string;
+  productId: string;
+}) {
   const [active, setActive] = useState(0);
   if (!images.length) return <div className="aspect-square bg-koi-cream" />;
 
   return (
     <div>
-      <div className="relative aspect-square overflow-hidden bg-koi-cream">
+      <ReplaceableImage
+        productId={productId}
+        imageId={images[active].id}
+        className="relative aspect-square overflow-hidden bg-koi-cream"
+      >
         {/* Chỉ dựng ảnh ĐANG xem. Xếp chồng cả 35 ảnh để làm hiệu ứng
             chuyển mờ sẽ khiến trình duyệt tải hết ~5 MB ngay khi mở trang —
             đắt hơn nhiều so với chút mượt mà thu được.
@@ -38,7 +51,7 @@ export function ProductGallery({ images, name }: { images: ProductImage[]; name:
           sizes="(max-width: 1024px) 100vw, 55vw"
           className="gallery-image object-cover"
         />
-      </div>
+      </ReplaceableImage>
 
       {images.length > 1 && (
         <div className="mt-3 grid grid-cols-5 gap-2 sm:grid-cols-6">
