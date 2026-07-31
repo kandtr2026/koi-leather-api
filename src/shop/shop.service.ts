@@ -40,6 +40,8 @@ export class ShopService {
       .slice()
       .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
       .map((img) => ({
+        // id để admin thay ảnh tại chỗ (PUT /products/:productId/images/:id/file).
+        id: img.id ?? null,
         // Giữ tên field 'storage_path' cho frontend; nhưng ở đây là URL đầy đủ
         // (Cloudinary). imageUrl() phía frontend đã cho URL http đi thẳng.
         storage_path: img.url || img.thumbnailUrl,
@@ -100,6 +102,7 @@ export class ShopService {
     images: {
       orderBy: { displayOrder: "asc" as const },
       select: {
+        id: true,
         url: true,
         thumbnailUrl: true,
         altText: true,
@@ -174,6 +177,63 @@ export class ShopService {
     return this.categoriesWithCover();
   }
 
+  /**
+   * Dữ liệu cho sidebar lọc của trang cửa hàng: danh mục sản phẩm, loại da,
+   * loại ảnh — kèm số sản phẩm (đã publish) cho mỗi mục để hiển thị "(n)".
+   * Chỉ đếm trong tập hàng hiện ở mặt tiền (published, không thuộc danh mục ẩn).
+   */
+  async shopFilters() {
+    const baseWhere: Prisma.KoiProductWhereInput = {
+      ...this.published,
+      ...this.notHidden,
+    };
+
+    const [cats, materials, imageCats] = await Promise.all([
+      this.prisma.koiCategory.findMany({
+        where: { isActive: true, slug: { notIn: this.hiddenSlugs } },
+        orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+        include: { _count: { select: { categoryLinks: true } } },
+      }),
+      this.prisma.koiMaterialCategory.findMany({
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        include: { _count: { select: { products: true } } },
+      }),
+      this.prisma.koiImageCategory.findMany({
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      }),
+    ]);
+
+    // Loại ảnh: đếm SỐ SẢN PHẨM (không phải số ảnh) có ít nhất 1 ảnh loại đó,
+    // trong tập mặt tiền. Chạy song song từng loại — chỉ 4 loại nên rẻ.
+    const imageTypes = await Promise.all(
+      imageCats.map(async (ic) => ({
+        code: ic.code,
+        name: ic.name,
+        count: await this.prisma.koiProduct.count({
+          where: { ...baseWhere, images: { some: { imageType: ic.code } } },
+        }),
+      })),
+    );
+
+    return {
+      categories: cats
+        .filter((c) => (c._count?.categoryLinks ?? 0) > 0)
+        .map((c) => ({
+          name: this.text(c.name),
+          slug: c.slug,
+          count: c._count?.categoryLinks ?? 0,
+        })),
+      materials: materials
+        .filter((m) => (m._count?.products ?? 0) > 0)
+        .map((m) => ({
+          name: this.text(m.name),
+          code: m.code,
+          count: m._count?.products ?? 0,
+        })),
+      imageTypes: imageTypes.filter((t) => t.count > 0),
+    };
+  }
+
   async home() {
     const [featuredRaw, categories] = await Promise.all([
       this.prisma.koiProduct.findMany({
@@ -197,6 +257,8 @@ export class ShopService {
     limit?: number;
     categorySlug?: string;
     search?: string;
+    material?: string;
+    imageType?: string;
   }) {
     const page = Math.max(1, opts.page || 1);
     const limit = Math.min(48, Math.max(1, opts.limit || 24));
@@ -212,6 +274,14 @@ export class ShopService {
       // Danh sách chung: loại hàng thuộc danh mục ẩn. Còn khi khách vào thẳng
       // trang một danh mục (kể cả danh mục ẩn) thì vẫn hiện đủ — giữ URL sống.
       Object.assign(where, this.notHidden);
+    }
+    // Lọc theo loại da (KoiMaterialCategory.code) — mỗi SP gắn tối đa 1 loại.
+    if (opts.material) {
+      where.materialCategory = { code: opts.material };
+    }
+    // Lọc theo loại ảnh (imageType trên ảnh SP): SP có ÍT NHẤT 1 ảnh loại đó.
+    if (opts.imageType) {
+      where.images = { some: { imageType: opts.imageType } };
     }
     if (opts.search) {
       where.OR = [

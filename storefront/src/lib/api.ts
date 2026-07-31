@@ -49,15 +49,27 @@ export function getProducts(params: {
   limit?: number;
   category?: string;
   search?: string;
+  material?: string;
+  imageType?: string;
 }): Promise<ProductList> {
   const q = new URLSearchParams();
   if (params.page) q.set('page', String(params.page));
   if (params.limit) q.set('limit', String(params.limit));
   if (params.category) q.set('category', params.category);
   if (params.search) q.set('search', params.search);
+  if (params.material) q.set('material', params.material);
+  if (params.imageType) q.set('imageType', params.imageType);
   const qs = q.toString();
   return apiGet<ProductList>(`/shop/products${qs ? `?${qs}` : ''}`);
 }
+
+export type ShopFilters = {
+  categories: { name: string; slug: string; count: number }[];
+  materials: { name: string; code: string; count: number }[];
+  imageTypes: { name: string; code: string; count: number }[];
+};
+
+export const getShopFilters = () => apiGet<ShopFilters>('/shop/filters');
 
 export type CategoryPage = ProductList & { category: Category };
 

@@ -55,20 +55,35 @@ export class ShopController {
     return this.shop.categoryBySlug(slug, Number(page) || 1, Number(limit) || 24);
   }
 
+  @Get("filters")
+  @Header("Cache-Control", "public, max-age=60, s-maxage=300")
+  @ApiOperation({
+    summary: "Bộ lọc trang cửa hàng: danh mục sản phẩm, loại da, loại ảnh",
+  })
+  filters() {
+    return this.shop.shopFilters();
+  }
+
   @Get("products")
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
-  @ApiOperation({ summary: "Danh sách sản phẩm (lọc theo danh mục / tìm kiếm)" })
+  @ApiOperation({
+    summary: "Danh sách sản phẩm (lọc theo danh mục / loại da / loại ảnh / tìm kiếm)",
+  })
   listProducts(
     @Query("page") page?: string,
     @Query("limit") limit?: string,
     @Query("category") category?: string,
     @Query("search") search?: string,
+    @Query("material") material?: string,
+    @Query("imageType") imageType?: string,
   ) {
     return this.shop.listProducts({
       page: Number(page) || 1,
       limit: Number(limit) || 24,
       categorySlug: category,
       search,
+      material,
+      imageType,
     });
   }
 
