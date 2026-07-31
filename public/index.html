@@ -127,6 +127,25 @@
       </div>
     </div>
     <div class="flex items-center gap-3">
+      <!-- Supabase database widget -->
+      <div id="dbWidget" class="hidden relative group cursor-default select-none" title="">
+        <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+          <i class="fas fa-database text-gray-400 text-xs"></i>
+          <div class="flex flex-col leading-tight min-w-[92px]">
+            <div class="flex items-center justify-between gap-2">
+              <span id="dbPrimary" class="text-xs font-semibold text-gray-700">—</span>
+              <span id="dbPct" class="text-[10px] text-gray-400"></span>
+            </div>
+            <div class="w-full h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
+              <div id="dbBar" class="h-full rounded-full bg-emerald-500 transition-all" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+        <!-- hover detail -->
+        <div class="absolute right-0 top-full mt-1 z-50 hidden group-hover:block w-56 bg-gray-900/95 backdrop-blur text-white text-[11px] p-3 rounded-xl shadow-2xl border border-gray-700 space-y-1">
+          <div id="dbDetail" class="space-y-1"></div>
+        </div>
+      </div>
       <!-- Cloudinary storage widget -->
       <div id="storageWidget" class="hidden relative group cursor-default select-none" title="">
         <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
@@ -916,6 +935,7 @@ function applyAuth(user) {
   // Khi KHOÁ (mặc định), mọi GET lúc chưa đăng nhập đều bị 401 nên các tab còn
   // trống. Đăng nhập xong nạp lại toàn bộ dữ liệu để hiện ngay, không cần F5.
   loadStorageUsage();
+  loadDatabaseUsage();
   loadProducts().then(updateHeaderStatus).catch(() => {});
   loadProdCats().then(() => { updateHeaderStatus(); if (products.length) renderProducts(); }).catch(() => {});
   loadImgCats().then(updateHeaderStatus).catch(() => {});
@@ -2870,6 +2890,55 @@ async function loadStorageUsage() {
   }
 }
 
+// ========== SUPABASE DATABASE WIDGET ==========
+async function loadDatabaseUsage() {
+  const widget = document.getElementById('dbWidget');
+  try {
+    const u = await api('/storage/database');
+    if (!u || u.configured === false) return; // stay hidden if not available
+
+    const primary = document.getElementById('dbPrimary');
+    const pctEl = document.getElementById('dbPct');
+    const bar = document.getElementById('dbBar');
+    const detail = document.getElementById('dbDetail');
+
+    if (u.error) {
+      primary.textContent = 'Lỗi';
+      pctEl.textContent = '';
+      detail.innerHTML = `<div class="text-red-300">${u.error}</div>`;
+      widget.classList.remove('hidden');
+      return;
+    }
+
+    const usedBytes = u.storage?.usedBytes ?? 0;
+    const limitBytes = u.storage?.limitBytes ?? null;
+    const shownPct = u.storage?.usedPct ?? null;
+
+    primary.textContent = fmtBytes(usedBytes);
+    pctEl.textContent = shownPct != null ? shownPct + '%' : '';
+    if (shownPct != null) {
+      bar.style.width = Math.min(100, shownPct) + '%';
+      bar.className = 'h-full rounded-full transition-all ' +
+        (shownPct >= 90 ? 'bg-red-500' : shownPct >= 70 ? 'bg-amber-500' : 'bg-emerald-500');
+    } else {
+      bar.parentElement.classList.add('hidden');
+    }
+
+    const rows = [];
+    rows.push(`<div class="flex justify-between"><span class="text-gray-400">Nguồn</span><span class="font-mono">${u.provider || 'Supabase'}</span></div>`);
+    if (u.dbName) rows.push(`<div class="flex justify-between"><span class="text-gray-400">Database</span><span class="font-mono">${u.dbName}</span></div>`);
+    rows.push(`<div class="flex justify-between"><span class="text-gray-400">Gói</span><span>${u.plan || '-'}</span></div>`);
+    rows.push(`<div class="flex justify-between"><span class="text-gray-400">Dung lượng</span><span>${fmtBytes(usedBytes)}${limitBytes ? ' / ' + fmtBytes(limitBytes) : ''}</span></div>`);
+    if (limitBytes) rows.push(`<div class="flex justify-between"><span class="text-gray-400">Còn trống</span><span>${fmtBytes(Math.max(0, limitBytes - usedBytes))}</span></div>`);
+    detail.innerHTML = rows.join('');
+
+    widget.title = `${u.provider || 'Supabase'} DB — ${fmtBytes(usedBytes)}${shownPct != null ? ' ('+shownPct+'%)' : ''}`;
+    widget.classList.remove('hidden');
+  } catch (e) {
+    // network/500 — keep widget hidden, non-critical
+  }
+}
+
 // ========== DEPLOY BADGE ==========
 async function loadDeployInfo() {
   try {
@@ -3417,6 +3486,7 @@ async function init() {
   // and aborts init(), leaving every tab stuck on its loading skeleton.
   loadDeployInfo();
   loadStorageUsage();
+  loadDatabaseUsage();
   fetchAuthConfig();
   checkAuth();
   loadProducts().then(updateHeaderStatus).catch(() => {});

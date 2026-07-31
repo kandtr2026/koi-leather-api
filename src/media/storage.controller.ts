@@ -1,5 +1,10 @@
 import { Controller, Get, Header } from "@nestjs/common";
 import { ApiTags, ApiOperation } from "@nestjs/swagger";
+import { PrismaService } from "../prisma/prisma.service";
+
+// Supabase Free plan cap: 500 MB Postgres database (storage bucket 1 GB is
+// separate — ta không dùng Storage bucket, ảnh nằm trên Cloudinary).
+const SUPABASE_FREE_DB_LIMIT_BYTES = 500 * 1024 * 1024;
 
 // Lazy Cloudinary — only loads when env has real keys (mirrors media.controller).
 function getCloudinary() {
@@ -21,6 +26,43 @@ function pct(used: number, limit: number): number {
 @ApiTags("Storage")
 @Controller("storage")
 export class StorageController {
+  constructor(private readonly prisma: PrismaService) {}
+
+  @Get("database")
+  @Header("Cache-Control", "public, max-age=300")
+  @ApiOperation({
+    summary: "Supabase Postgres database size vs Free plan 500 MB cap",
+  })
+  async database() {
+    try {
+      // pg_database_size = tổng dung lượng DB hiện tại (mọi schema). Đây là
+      // con số Supabase tính vào hạn mức 500 MB của gói Free.
+      const rows = await this.prisma.$queryRaw<
+        { size: bigint; name: string }[]
+      >`SELECT pg_database_size(current_database()) AS size, current_database() AS name`;
+      const usedBytes = Number(rows?.[0]?.size ?? 0);
+      const dbName = rows?.[0]?.name ?? null;
+
+      return {
+        configured: true,
+        provider: "Supabase",
+        dbName,
+        plan: "Free",
+        storage: {
+          usedBytes,
+          limitBytes: SUPABASE_FREE_DB_LIMIT_BYTES,
+          usedPct: pct(usedBytes, SUPABASE_FREE_DB_LIMIT_BYTES),
+        },
+      };
+    } catch (e: any) {
+      return {
+        configured: true,
+        provider: "Supabase",
+        error: e?.message || "Không lấy được dung lượng database",
+      };
+    }
+  }
+
   @Get("usage")
   @Header("Cache-Control", "public, max-age=300")
   @ApiOperation({
