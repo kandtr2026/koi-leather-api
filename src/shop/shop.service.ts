@@ -247,6 +247,21 @@ export class ShopService {
       })),
     );
 
+    // Danh mục: đếm qua bảng nối với CÙNG baseWhere của sản phẩm.
+    //
+    // Trước đây dùng _count.categoryLinks thô — nó đếm mọi liên kết, kể cả hàng
+    // DRAFT và hàng đã xoá mềm (isDeleted). Kết quả: "Phụ Kiện Bằng Da (34)"
+    // nhưng bấm vào chỉ có 32 sản phẩm, vì 1 DRAFT + 1 đã xoá vẫn được tính.
+    // Số trong ngoặc phải khớp đúng số hàng khách bấm vào sẽ thấy.
+    const catGroups = await this.prisma.koiProductCategory.groupBy({
+      by: ["categoryId"],
+      where: { product: baseWhere },
+      _count: { _all: true },
+    });
+    const catCount = new Map(
+      catGroups.map((g) => [g.categoryId, g._count._all]),
+    );
+
     // Loại da: đếm qua bảng nối nên SP dùng 2 loại da (thân + lót) được tính
     // cho cả hai, đúng như khi bấm lọc.
     const materialGroups = await this.prisma.koiProductMaterialCategory.groupBy({
@@ -277,12 +292,12 @@ export class ShopService {
 
     return {
       categories: cats
-        .filter((c) => (c._count?.categoryLinks ?? 0) > 0)
         .map((c) => ({
           name: this.text(c.name),
           slug: c.slug,
-          count: c._count?.categoryLinks ?? 0,
-        })),
+          count: catCount.get(c.id) ?? 0,
+        }))
+        .filter((c) => c.count > 0),
       materials: materials
         .map((m) => ({
           name: this.text(m.name),

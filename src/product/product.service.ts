@@ -384,7 +384,11 @@ export class ProductService {
             priceMin: computed.priceMin ?? undefined,
             priceMax: computed.priceMax ?? undefined,
             hasVariants: computed.hasVariants,
-            status: dto.status ?? "DRAFT",
+            // Mặc định ACTIVE: sản phẩm vừa tạo trong admin phải xuất hiện ngay
+            // ngoài store. Trước đây mặc định DRAFT nên hàng mới thêm bị ẩn im
+            // lặng — admin đếm 33, store đếm 34, và chủ shop không hiểu vì sao
+            // không thấy hàng. Muốn ẩn thì bấm nút "hiện/ẩn" trên từng dòng.
+            status: dto.status ?? "ACTIVE",
             externalId: dto.externalId,
             materialCategoryId: primaryMaterialCategoryId,
             colorFamily: primaryColor?.colorFamily ?? null,
