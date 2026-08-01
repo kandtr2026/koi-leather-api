@@ -52,7 +52,15 @@ export class AnalyticsService {
     }
     // Khách bấm từ trang này sang trang khác trong cùng site: không phải
     // "nguồn mới", vẫn tính là phiên cũ.
-    if (host && h.endsWith(host.replace(/^www\./, ""))) return "internal";
+    //
+    // KHÔNG tin mỗi header host: request đi qua router proxy nên host lúc tới
+    // đây là của backend (koi-leather-api...), không phải koileather.com —
+    // so sánh theo host thôi thì mọi lượt điều hướng nội bộ đều rơi vào
+    // "other" và bảng nguồn truy cập đọc ra sai hoàn toàn.
+    const nhaMinh = ["koileather.com", "koifront.vercel.app"];
+    const hostSach = (host || "").replace(/^www\./, "").split(":")[0];
+    if (hostSach) nhaMinh.push(hostSach);
+    if (nhaMinh.some((d) => h === d || h.endsWith(`.${d}`))) return "internal";
     if (/(^|\.)google\./.test(h)) return "google";
     if (/(^|\.)(facebook|fb)\./.test(h) || h.includes("fbclid")) return "facebook";
     if (/(^|\.)zalo\./.test(h)) return "zalo";
