@@ -216,6 +216,31 @@
           </button>
         </div>
       </div>
+      <div id="productTodo" class="flex flex-wrap items-center gap-2 mb-4">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide mr-1">
+          <i class="fas fa-list-check text-amber-500 mr-1"></i>Cần bổ sung:
+        </span>
+        <button type="button" data-missing="material" onclick="toggleMissingFilter('material')"
+          class="missing-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-sm text-gray-600 hover:bg-gray-50 transition">
+          <i class="fas fa-layer-group text-xs"></i> Chưa có loại da
+        </button>
+        <button type="button" data-missing="price" onclick="toggleMissingFilter('price')"
+          class="missing-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-sm text-gray-600 hover:bg-gray-50 transition">
+          <i class="fas fa-tag text-xs"></i> Chưa có giá
+        </button>
+        <button type="button" data-missing="specs" onclick="toggleMissingFilter('specs')"
+          class="missing-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-sm text-gray-600 hover:bg-gray-50 transition">
+          <i class="fas fa-ruler-combined text-xs"></i> Chưa có thông số
+        </button>
+        <button type="button" data-missing="category" onclick="toggleMissingFilter('category')"
+          class="missing-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-sm text-gray-600 hover:bg-gray-50 transition">
+          <i class="fas fa-folder-open text-xs"></i> Chưa phân loại
+        </button>
+        <button type="button" data-missing="any" onclick="toggleMissingFilter('any')"
+          class="missing-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-sm text-gray-600 hover:bg-gray-50 transition">
+          <i class="fas fa-triangle-exclamation text-xs"></i> Thiếu bất kỳ
+        </button>
+      </div>
       <div id="productTable" class="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div class="skeleton-loading p-6 space-y-3">
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
@@ -1381,6 +1406,39 @@ async function clearProductSearch() {
   await loadProducts();
 }
 
+// Bộ lọc todolist: chỉ hiện sản phẩm còn thiếu dữ liệu. '' = tắt.
+// Giá trị khớp query ?missing= của API: material|price|specs|category|any.
+let productMissing = '';
+
+const MISSING_LABELS = {
+  material: 'Chưa có loại da',
+  price: 'Chưa có giá',
+  specs: 'Chưa có thông số',
+  category: 'Chưa phân loại',
+  any: 'Thiếu bất kỳ',
+};
+
+async function toggleMissingFilter(key) {
+  productMissing = productMissing === key ? '' : key;
+  productPage = 1;
+  syncMissingChips();
+  await loadProducts();
+}
+
+function syncMissingChips() {
+  document.querySelectorAll('#productTodo .missing-chip').forEach(btn => {
+    const active = btn.dataset.missing === productMissing;
+    btn.classList.toggle('bg-amber-500', active);
+    btn.classList.toggle('border-amber-500', active);
+    btn.classList.toggle('text-white', active);
+    btn.classList.toggle('bg-white', !active);
+    btn.classList.toggle('border-gray-200', !active);
+    btn.classList.toggle('text-gray-600', !active);
+    btn.classList.toggle('hover:bg-gray-50', !active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
 function productsUrl(page) {
   let url = `/products?page=${page}&limit=${PRODUCTS_PER_PAGE}`;
   if (currentCategoryFilter) {
@@ -1388,6 +1446,9 @@ function productsUrl(page) {
   }
   if (productSearch) {
     url += '&q=' + encodeURIComponent(productSearch);
+  }
+  if (productMissing) {
+    url += '&missing=' + encodeURIComponent(productMissing);
   }
   if (productSort) {
     url += `&sort=${encodeURIComponent(productSort)}&order=${encodeURIComponent(productOrder)}`;
@@ -1504,6 +1565,19 @@ function renderProducts() {
   const typeLabelOf = code => prodCats.find(c => c.code === code)?.name || typeFallback[code] || code;
   // Banner tìm kiếm phải dựng trước nhánh "rỗng": khi từ khoá không khớp gì thì
   // vẫn cần nút "Bỏ tìm", không thì người dùng thấy bảng trống mà không rõ vì sao.
+  let missingBanner = '';
+  if (productMissing) {
+    missingBanner = `<div class="flex items-center justify-between px-4 py-2.5 bg-amber-50 border-b border-amber-200 text-sm">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-list-check text-amber-500 text-xs"></i>
+        <span>Todolist: <strong class="text-amber-800">${esc(MISSING_LABELS[productMissing] || productMissing)}</strong></span>
+        <span class="text-xs text-gray-500 ml-1">(${productMeta.total} sản phẩm)</span>
+      </div>
+      <button onclick="toggleMissingFilter('${productMissing}')" class="text-xs text-gray-500 hover:text-red-500 font-medium flex items-center gap-1">
+        <i class="fas fa-times"></i> Bỏ lọc
+      </button>
+    </div>`;
+  }
   let searchBanner = '';
   if (productSearch) {
     searchBanner = `<div class="flex items-center justify-between px-4 py-2.5 bg-blue-50 border-b border-blue-200 text-sm">
@@ -1518,9 +1592,12 @@ function renderProducts() {
     </div>`;
   }
   if (!products.length) {
-    el.innerHTML = searchBanner + (productSearch
+    const emptyMsg = productSearch
       ? `<div class="text-center py-12 text-gray-400"><i class="fas fa-search text-4xl mb-3"></i><p>Không tìm thấy sản phẩm nào khớp «${esc(productSearch)}»</p></div>`
-      : '<div class="text-center py-12 text-gray-400"><i class="fas fa-box-open text-4xl mb-3"></i><p>Chưa có sản phẩm</p></div>');
+      : productMissing
+      ? '<div class="text-center py-12 text-green-500"><i class="fas fa-circle-check text-4xl mb-3"></i><p>Tuyệt vời! Không còn sản phẩm nào thiếu dữ liệu này.</p></div>'
+      : '<div class="text-center py-12 text-gray-400"><i class="fas fa-box-open text-4xl mb-3"></i><p>Chưa có sản phẩm</p></div>';
+    el.innerHTML = missingBanner + searchBanner + emptyMsg;
     return;
   }
   // Show category filter banner if active
@@ -1539,7 +1616,7 @@ function renderProducts() {
       </button>
     </div>`;
   }
-  el.innerHTML = searchBanner + filterBanner + `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase">${PRODUCT_SORT_COLUMNS.map(sortHeader).join('')}<th class="px-4 py-3 text-right whitespace-nowrap w-px">Thao tác</th></tr></thead><tbody>${products.map(p => {
+  el.innerHTML = missingBanner + searchBanner + filterBanner + `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase">${PRODUCT_SORT_COLUMNS.map(sortHeader).join('')}<th class="px-4 py-3 text-right whitespace-nowrap w-px">Thao tác</th></tr></thead><tbody>${products.map(p => {
     const schemaProps = p.category?.specsSchema ? (() => { try { const s = typeof p.category.specsSchema === 'string' ? JSON.parse(p.category.specsSchema) : p.category.specsSchema; return s.properties; } catch { return null; } })() : null;
     const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
     const cats = (p.categories && p.categories.length) ? p.categories : (p.category ? [p.category] : []);
