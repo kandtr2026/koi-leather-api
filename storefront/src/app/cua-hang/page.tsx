@@ -60,7 +60,9 @@ export default async function ShopPage(props: PageProps<'/cua-hang'>) {
 
         <UnpickedToggle />
 
-        <div className="mt-8 lg:grid lg:grid-cols-[220px_1fr] lg:gap-10">
+        {/* items-start: không có nó, ô sidebar bị kéo cao bằng cột sản phẩm
+            (stretch mặc định của grid) và `sticky` mất tác dụng. */}
+        <div className="mt-8 lg:grid lg:grid-cols-[220px_1fr] lg:items-start lg:gap-10">
           <ShopFilters filters={filters} active={{ category, material, colors }} />
 
           <div>

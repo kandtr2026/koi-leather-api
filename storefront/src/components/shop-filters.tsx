@@ -144,8 +144,14 @@ export function ShopFilters({
         Lọc{activeCount > 0 ? ` (${activeCount})` : ''}
       </button>
 
-      {/* Sidebar cố định trên desktop */}
-      <aside className="hidden lg:block">{body}</aside>
+      {/* Sidebar desktop: dính dưới header và CÓ THANH CUỘN RIÊNG.
+          overscroll-contain chặn scroll-chaining — cuộn hết danh sách lọc thì
+          dừng hẳn, không "nhảy" sang cuộn lưới sản phẩm phía sau. */}
+      <aside className="hidden lg:block">
+        <div className="sticky top-[76px] max-h-[calc(100vh-96px)] overflow-y-auto overscroll-contain pb-6 pr-3 [scrollbar-color:var(--color-koi-line)_transparent] [scrollbar-width:thin]">
+          {body}
+        </div>
+      </aside>
 
       {/* Drawer trên mobile */}
       {open ? (
@@ -154,8 +160,8 @@ export function ShopFilters({
             className="absolute inset-0 bg-koi-ink/40"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-[82%] max-w-sm overflow-y-auto bg-koi-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
+          <div className="absolute inset-y-0 left-0 flex w-[82%] max-w-sm flex-col bg-koi-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-koi-line px-6 py-4">
               <span className="font-serif text-lg text-koi-ink">Bộ lọc</span>
               <button
                 onClick={() => setOpen(false)}
@@ -167,7 +173,8 @@ export function ShopFilters({
                 </svg>
               </button>
             </div>
-            {body}
+            {/* Tiêu đề đứng yên, chỉ phần danh sách cuộn — và cuộn nội khu. */}
+            <div className="flex-1 overflow-y-auto overscroll-contain p-6">{body}</div>
           </div>
         </div>
       ) : null}
