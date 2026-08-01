@@ -235,7 +235,11 @@ export class ProductService {
         categoryName = cat?.name;
       }
 
-      const seo = generateProductSeo(nameVi, categoryName, dto.basePrice);
+      const seo = generateProductSeo(
+        nameVi,
+        categoryName,
+        dto.basePrice ?? undefined,
+      );
       const metaTitle = providedTitle || seo.metaTitle;
       const metaDescription = providedDesc || seo.metaDescription;
       const computed = this.computePriceRange(
@@ -286,6 +290,8 @@ export class ProductService {
             status: dto.status ?? "DRAFT",
             externalId: dto.externalId,
             materialCategoryId: dto.materialCategoryId ?? null,
+            colorFamily: dto.colorFamily ?? null,
+            colorHex: dto.colorHex ?? null,
             technicalSpecs: technicalSpecs as any,
             metaTitle,
             metaDescription,
@@ -725,7 +731,8 @@ export class ProductService {
     const data: any = {};
     if (dto.name) data.name = dto.name;
     if (dto.productType) data.productType = dto.productType;
-    if (dto.basePrice !== undefined) data.basePrice = dto.basePrice;
+    // null = xoá giá, undefined = client không gửi field nên giữ nguyên.
+    if (dto.basePrice !== undefined) data.basePrice = dto.basePrice ?? null;
     if (dto.description) data.description = dto.description;
     if (dto.status) data.status = dto.status;
     if (dto.externalId !== undefined) data.externalId = dto.externalId;

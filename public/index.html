@@ -424,7 +424,7 @@
         <div id="pMaterialCategories" class="w-full border border-gray-300 rounded-lg p-2 max-h-44 overflow-y-auto grid grid-cols-2 gap-x-4 gap-y-0.5"></div>
       </div>
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2500000"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="text" inputmode="numeric" autocomplete="off" oninput="onPriceInput(this)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2.500.000"></div>
 
       </div>
 
@@ -2140,7 +2140,7 @@ async function editProduct(id) {
   initCategorySelector(selIds);
 
   renderMaterialCategoryCheckboxes(p.materialCategoryId); // Select material category
-  document.getElementById('pPrice').value = p.basePrice || '';
+  document.getElementById('pPrice').value = formatPriceForInput(p.basePrice);
 
   // Màu đã pick tay (nếu có)
   const famHex = colorFamilies.find(c => c.code === p.colorFamily)?.hex;
@@ -2199,6 +2199,40 @@ function mapUploadToPhase(uploadPct, phaseStart, phaseEnd) {
   return phaseStart + uploadPct * (phaseEnd - phaseStart);
 }
 
+// ===== Giá tiền =====
+// Ô giá là type=text (không phải number) vì với type=number, gõ "123.500.000"
+// kiểu Việt Nam làm browser coi là giá trị không hợp lệ và trả .value = ""
+// → giá âm thầm không được gửi đi, người dùng thấy "bấm Lưu mà giá không đổi".
+// Ở đây tự parse: bỏ mọi ký tự không phải chữ số.
+
+/** Chuỗi người dùng gõ → số. '' nếu trống, NaN nếu không hợp lệ. */
+function parsePriceInput(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return '';
+  const digits = s.replace(/[^\d]/g, '');
+  if (!digits) return NaN;
+  return Number(digits);
+}
+
+/** Hiển thị lại có dấu chấm ngăn cách, giữ nguyên vị trí con trỏ tương đối. */
+function onPriceInput(el) {
+  const digitsBefore = el.value.slice(0, el.selectionStart ?? 0).replace(/[^\d]/g, '').length;
+  const n = parsePriceInput(el.value);
+  el.value = (n === '' || Number.isNaN(n)) ? '' : n.toLocaleString('vi-VN');
+  // Đặt lại con trỏ sau đúng số chữ số đã gõ trước đó.
+  let pos = 0, seen = 0;
+  while (pos < el.value.length && seen < digitsBefore) {
+    if (/\d/.test(el.value[pos])) seen++;
+    pos++;
+  }
+  el.setSelectionRange(pos, pos);
+}
+
+/** Số từ DB → chuỗi hiển thị trong ô giá. */
+function formatPriceForInput(v) {
+  return (v === null || v === undefined || v === '') ? '' : Number(v).toLocaleString('vi-VN');
+}
+
 async function saveProduct() {
   if (isSaving) return;
 
@@ -2210,6 +2244,12 @@ async function saveProduct() {
   const categoryIds = getSelectedCategoryIds();
   const materialCategoryId = getSelectedMaterialCategoryId(); // Lấy giá trị từ UI
 
+  // Giá: ô trống = xoá giá (gửi null), có số = lưu số đó — kể cả 0.
+  // Gửi undefined thì JSON.stringify loại field đi và backend giữ giá cũ, nên
+  // phải phân biệt rõ "trống" (null) với "không đụng tới" (undefined).
+  const priceNum = parsePriceInput(document.getElementById('pPrice').value);
+  if (Number.isNaN(priceNum)) { toast('Giá không hợp lệ'); return; }
+
   const body = {
     name: { vi: name },
     categoryIds,
@@ -2217,7 +2257,7 @@ async function saveProduct() {
     // loai bo, backend se giu nguyen gia tri cu.
     materialCategoryId: materialCategoryId,
 
-    basePrice: parseFloat(document.getElementById('pPrice').value) || undefined,
+    basePrice: priceNum === '' ? null : priceNum,
     // Màu pick tay: null (không phải undefined) để bỏ chọn được. colorHex chỉ
     // gửi khi có nhóm màu — không có nhóm thì không có chấm màu.
     colorFamily: document.getElementById('pColorFamily').value || null,

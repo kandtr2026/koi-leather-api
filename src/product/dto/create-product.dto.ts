@@ -10,6 +10,7 @@ import {
   Min,
   Max,
   IsBoolean,
+  ValidateIf,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
@@ -169,10 +170,14 @@ export class CreateProductDto {
   @IsObject()
   description?: { vi: string; en?: string };
 
-  @ApiPropertyOptional({ description: "Giá cơ bản" })
+  @ApiPropertyOptional({
+    description: "Giá cơ bản. Gửi null để xoá giá; bỏ hẳn field để giữ nguyên.",
+    nullable: true,
+  })
   @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
   @IsNumber()
-  basePrice?: number;
+  basePrice?: number | null;
 
   @ApiPropertyOptional({ enum: KoiProductStatus })
   @IsOptional()
@@ -230,4 +235,21 @@ export class CreateProductDto {
   @IsOptional()
   @IsUUID()
   materialCategoryId?: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Mã nhóm màu để lọc (DEN, NAU_DAM, VANG_BO...). null hoặc bỏ trống = không gán.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  colorFamily?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Mã màu thật (#hex) để hiện chấm màu trên thẻ sản phẩm.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  colorHex?: string | null;
 }
