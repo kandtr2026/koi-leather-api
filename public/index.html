@@ -331,7 +331,11 @@
       <div>
         <div class="flex items-center justify-between mb-2">
           <div class="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><i class="fas fa-image text-amber-500"></i> Hình ảnh sản phẩm</div>
-          
+          <button type="button" id="btnEyedropper" onclick="startEyedropper()"
+            class="text-[11px] px-2 py-1 rounded-lg border border-amber-300 text-amber-600 hover:bg-amber-50 transition flex items-center gap-1"
+            title="Bấm rồi click lên ảnh để hút màu thật của sản phẩm">
+            <i class="fas fa-eye-dropper"></i> <span id="eyedropperLabel">Hút màu từ ảnh</span>
+          </button>
         </div>
         <!-- Carousel wrapper -->
         <div id="imageCarouselContainer" class="relative mb-2">
@@ -364,16 +368,35 @@
 
       <div>
         <div class="flex items-center justify-between mb-1">
-          <label class="block text-xs font-medium text-gray-600">Màu sắc <span class="text-gray-400 font-normal">(chọn 1 nhóm — pick tay)</span></label>
+          <label class="block text-xs font-medium text-gray-600">Màu sắc <span class="text-gray-400 font-normal">(hút từ ảnh hoặc chọn nhóm)</span></label>
           <button type="button" id="pColorClear" onclick="clearColor()" class="text-[11px] text-gray-400 hover:text-red-500 hidden">Xoá màu</button>
         </div>
-        <div id="pColorFamilies" class="flex flex-wrap gap-2 border border-gray-300 rounded-lg p-2"></div>
-        <div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
-          <span>Hex thật:</span>
-          <input type="color" id="pColorHex" value="#1a1a1a" disabled onchange="onColorHexChange()"
-            class="h-7 w-10 border border-gray-300 rounded cursor-pointer p-0 disabled:cursor-not-allowed disabled:opacity-50">
-          <span id="pColorLabel" class="text-gray-600"></span>
+
+        <!-- Hàng màu thật: swatch lớn + hex text + hút màu -->
+        <div class="flex items-center gap-2 mb-2 p-2 border border-gray-300 rounded-lg bg-gray-50/60">
+          <div id="pColorSwatch" class="w-11 h-11 rounded-lg border border-gray-300 shrink-0 shadow-inner" style="background:#e5e7eb"></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <input type="color" id="pColorHex" value="#1a1a1a" disabled oninput="onColorHexChange()"
+                class="h-7 w-9 border border-gray-300 rounded cursor-pointer p-0 shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Mở bảng màu hệ thống">
+              <input type="text" id="pColorHexText" maxlength="7" placeholder="#000000" disabled
+                oninput="onColorHexTextInput()"
+                class="w-24 border border-gray-300 rounded px-2 py-1 text-xs font-mono uppercase disabled:bg-gray-100 disabled:text-gray-400">
+              <button type="button" onclick="startEyedropper()"
+                class="text-[11px] px-2 py-1 rounded border border-amber-300 text-amber-600 hover:bg-amber-50 transition shrink-0"
+                title="Hút màu trực tiếp từ ảnh sản phẩm">
+                <i class="fas fa-eye-dropper"></i> Hút
+              </button>
+            </div>
+            <div class="text-[11px] text-gray-500 mt-1 truncate">
+              Nhóm: <span id="pColorLabel" class="text-gray-700 font-medium">Chưa pick</span>
+              <span id="pColorAutoHint" class="text-amber-600 hidden"> · tự khớp</span>
+            </div>
+          </div>
         </div>
+
+        <div id="pColorFamilies" class="flex flex-wrap gap-2 border border-gray-300 rounded-lg p-2"></div>
         <input type="hidden" id="pColorFamily" value="">
       </div>
 
@@ -690,6 +713,7 @@
 const API = '';
 let products = [], materials = [], orders = [], specs = [], matCats = [];
 let colorFamilies = []; // nhóm màu chuẩn cho picker (nạp từ /shop/color-families)
+let colorAutoMatched = false; // nhóm hiện tại do hút màu tự khớp, không phải admin bấm tay
 
 function toast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._hide); t._hide=setTimeout(()=>t.classList.remove('show'),2500); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -1181,7 +1205,7 @@ async function loadGallery(productId) {
         return `<div class="img-card flex flex-col bg-white rounded-lg border ${isPrimary ? 'primary' : 'border-gray-200'} p-1.5 min-w-[155px] max-w-[155px] shrink-0 relative">
           <div class="relative w-full aspect-[4/5] rounded-md overflow-hidden bg-gray-100 mb-1.5">
             ${isPrimary ? '<span class="absolute top-1 left-1 bg-amber-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10"><i class="fas fa-star"></i> Chính</span>' : ''}
-            <img src="${img.thumbnailUrl || img.url}" alt="${esc(img.altText || '')}" class="w-full h-full object-cover cursor-pointer" onclick="openLightboxFromProduct('${productId}', ${images.indexOf(img)})" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full text-gray-300\\'><i class=\\'fas fa-image fa-lg\\'></i></div>'">
+            <img src="${img.thumbnailUrl || img.url}" crossorigin="anonymous" alt="${esc(img.altText || '')}" class="w-full h-full object-cover cursor-pointer" onclick="openLightboxFromProduct('${productId}', ${images.indexOf(img)})" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full text-gray-300\\'><i class=\\'fas fa-image fa-lg\\'></i></div>'">
           </div>
           <div class="space-y-1">
             <select onchange="updateImageType('${img.id}', this.value)" class="img-type-select w-full text-[10px] border border-gray-200 rounded-lg px-1.5 py-1 bg-white text-gray-600 cursor-pointer">
@@ -2085,6 +2109,7 @@ function openCreateProduct() {
   renderMaterialCategoryCheckboxes(null); // Clear selected material category
   document.getElementById('pColorFamily').value = '';
   document.getElementById('pColorHex').value = '#1a1a1a';
+  colorAutoMatched = false;
   renderColorFamilies('');
   currentProductId = null;
   // Reset pending files
@@ -2121,6 +2146,7 @@ async function editProduct(id) {
   const famHex = colorFamilies.find(c => c.code === p.colorFamily)?.hex;
   document.getElementById('pColorFamily').value = p.colorFamily || '';
   document.getElementById('pColorHex').value = p.colorHex || famHex || '#1a1a1a';
+  colorAutoMatched = false;
   renderColorFamilies(p.colorFamily || '');
 
   openModal('productModal');
@@ -2804,29 +2830,207 @@ function selectColor(code) {
   document.getElementById('pColorFamily').value = code;
   // Đổi nhóm = đổi màu → đặt hex về hex đại diện của nhóm (admin tinh chỉnh sau).
   document.getElementById('pColorHex').value = fam.hex;
+  colorAutoMatched = false;
   renderColorFamilies(code);
 }
 
 function clearColor() {
   document.getElementById('pColorFamily').value = '';
+  colorAutoMatched = false;
   renderColorFamilies('');
 }
 
-function onColorHexChange() { /* giá trị đọc lúc lưu; không đổi nhóm */ }
+function onColorHexChange() {
+  // Người dùng kéo bảng màu hệ thống → hex thật đổi, nhóm tự khớp lại.
+  const hex = document.getElementById('pColorHex').value;
+  applyPickedHex(hex, true);
+}
+
+function onColorHexTextInput() {
+  const el = document.getElementById('pColorHexText');
+  let v = el.value.trim();
+  if (v && v[0] !== '#') v = '#' + v;
+  if (!/^#[0-9a-fA-F]{6}$/.test(v)) return; // gõ dở dang thì chờ
+  applyPickedHex(v, true);
+}
+
+// ===== Hút màu từ ảnh =====
+
+/** Khoảng cách màu trong không gian Lab — bám cảm nhận mắt người sát hơn RGB thuần,
+ *  nên "nâu đất" không bị khớp nhầm sang "đỏ" như khi tính Euclid trên RGB. */
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+function rgbToLab(r, g, b) {
+  let [rr, gg, bb] = [r, g, b].map(v => {
+    v /= 255;
+    return v > 0.04045 ? Math.pow((v + 0.055) / 1.055, 2.4) : v / 12.92;
+  });
+  // sRGB → XYZ (D65)
+  const x = (rr * 0.4124 + gg * 0.3576 + bb * 0.1805) / 0.95047;
+  const y = (rr * 0.2126 + gg * 0.7152 + bb * 0.0722) / 1.0;
+  const z = (rr * 0.0193 + gg * 0.1192 + bb * 0.9505) / 1.08883;
+  const f = t => t > 0.008856 ? Math.cbrt(t) : (7.787 * t) + 16 / 116;
+  const [fx, fy, fz] = [f(x), f(y), f(z)];
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+
+function colorDistance(hexA, hexB) {
+  const a = rgbToLab(...hexToRgb(hexA));
+  const b = rgbToLab(...hexToRgb(hexB));
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+}
+
+function nearestColorFamily(hex) {
+  if (!colorFamilies.length) return null;
+  let best = null, bestD = Infinity;
+  for (const c of colorFamilies) {
+    if (!/^#[0-9a-fA-F]{6}$/.test(c.hex || '')) continue;
+    const d = colorDistance(hex, c.hex);
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  return best;
+}
+
+/** Đặt hex thật + tự khớp nhóm gần nhất. autoMatch=false khi chỉ muốn set hex. */
+function applyPickedHex(hex, autoMatch = true) {
+  const norm = hex.toUpperCase();
+  document.getElementById('pColorHex').value = norm;
+  const txt = document.getElementById('pColorHexText');
+  if (txt) txt.value = norm;
+  const sw = document.getElementById('pColorSwatch');
+  if (sw) sw.style.background = norm;
+
+  if (autoMatch) {
+    const fam = nearestColorFamily(norm);
+    if (fam) {
+      document.getElementById('pColorFamily').value = fam.code;
+      colorAutoMatched = true;
+      renderColorFamilies(fam.code);
+      // renderColorFamilies gọi updateColorUI → nó ghi đè hex về giá trị hiện tại,
+      // nên set lại swatch/text sau cùng để giữ đúng màu vừa hút.
+      document.getElementById('pColorHex').value = norm;
+      if (txt) txt.value = norm;
+      if (sw) sw.style.background = norm;
+      return fam;
+    }
+  }
+  updateColorUI(document.getElementById('pColorFamily').value);
+  document.getElementById('pColorHex').value = norm;
+  if (txt) txt.value = norm;
+  if (sw) sw.style.background = norm;
+  return null;
+}
+
+/** Ưu tiên EyeDropper API (Chrome/Edge): hút được mọi pixel trên màn hình,
+ *  kể cả ảnh cross-origin mà canvas bị chặn. Trình duyệt khác → fallback canvas. */
+async function startEyedropper() {
+  if (window.EyeDropper) {
+    const label = document.getElementById('eyedropperLabel');
+    if (label) label.textContent = 'Đang hút…';
+    try {
+      const result = await new window.EyeDropper().open();
+      const fam = applyPickedHex(result.sRGBHex, true);
+      toast(fam ? `Đã hút ${result.sRGBHex.toUpperCase()} → nhóm "${fam.name}"` : `Đã hút ${result.sRGBHex.toUpperCase()}`);
+    } catch {
+      /* user nhấn Esc — không báo lỗi */
+    } finally {
+      if (label) label.textContent = 'Hút màu từ ảnh';
+    }
+    return;
+  }
+  startCanvasPickMode();
+}
+
+/** Fallback cho Firefox/Safari: bật chế độ click lên ảnh trong carousel. */
+let canvasPickMode = false;
+function startCanvasPickMode() {
+  const gallery = document.getElementById('imageGallery');
+  const imgs = gallery ? gallery.querySelectorAll('img') : [];
+  if (!imgs.length) { toast('Chưa có ảnh để hút màu'); return; }
+
+  canvasPickMode = !canvasPickMode;
+  const label = document.getElementById('eyedropperLabel');
+  if (label) label.textContent = canvasPickMode ? 'Click lên ảnh…' : 'Hút màu từ ảnh';
+
+  imgs.forEach(img => {
+    if (canvasPickMode) {
+      img.dataset.prevCursor = img.style.cursor;
+      img.style.cursor = 'crosshair';
+      img.style.outline = '2px solid #f59e0b';
+      img.addEventListener('click', pickFromImageEvent, true);
+    } else {
+      img.style.cursor = img.dataset.prevCursor || '';
+      img.style.outline = '';
+      img.removeEventListener('click', pickFromImageEvent, true);
+    }
+  });
+  if (canvasPickMode) toast('Click vào điểm màu trên ảnh để hút');
+}
+
+function pickFromImageEvent(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const img = e.currentTarget;
+  const rect = img.getBoundingClientRect();
+  // Ảnh dùng object-fit:cover → phải quy toạ độ click về pixel gốc, nếu không
+  // sẽ hút trúng vùng đã bị crop và ra sai màu.
+  const scale = Math.max(rect.width / img.naturalWidth, rect.height / img.naturalHeight);
+  const dispW = img.naturalWidth * scale;
+  const dispH = img.naturalHeight * scale;
+  const offX = (dispW - rect.width) / 2;
+  const offY = (dispH - rect.height) / 2;
+  const sx = Math.round((e.clientX - rect.left + offX) / scale);
+  const sy = Math.round((e.clientY - rect.top + offY) / scale);
+
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    // Lấy trung bình ô 5×5 quanh điểm click — nhiễu JPEG một pixel lẻ có thể
+    // lệch hẳn tông, trung bình cho màu ổn định hơn.
+    const size = 5;
+    const x0 = Math.max(0, Math.min(canvas.width - size, sx - 2));
+    const y0 = Math.max(0, Math.min(canvas.height - size, sy - 2));
+    const d = ctx.getImageData(x0, y0, size, size).data;
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+    const hex = '#' + [r / n, g / n, b / n].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+    const fam = applyPickedHex(hex, true);
+    toast(fam ? `Đã hút ${hex.toUpperCase()} → nhóm "${fam.name}"` : `Đã hút ${hex.toUpperCase()}`);
+  } catch {
+    toast('Ảnh chặn CORS — dùng Chrome/Edge để hút màu toàn màn hình');
+  }
+  startCanvasPickMode(); // tắt chế độ hút
+}
 
 function updateColorUI(selectedCode) {
   const fam = colorFamilies.find(c => c.code === selectedCode);
   const clearBtn = document.getElementById('pColorClear');
   const hexInput = document.getElementById('pColorHex');
+  const hexText = document.getElementById('pColorHexText');
   const label = document.getElementById('pColorLabel');
+  const swatch = document.getElementById('pColorSwatch');
+  const hint = document.getElementById('pColorAutoHint');
+
   if (fam) {
     clearBtn.classList.remove('hidden');
     hexInput.disabled = false;
+    if (hexText) { hexText.disabled = false; hexText.value = (hexInput.value || '').toUpperCase(); }
     label.textContent = fam.name;
+    if (swatch) swatch.style.background = hexInput.value;
+    if (hint) hint.classList.toggle('hidden', !colorAutoMatched);
   } else {
     clearBtn.classList.add('hidden');
     hexInput.disabled = true;
+    if (hexText) { hexText.disabled = true; hexText.value = ''; }
     label.textContent = 'Chưa pick';
+    if (swatch) swatch.style.background = '#e5e7eb';
+    if (hint) hint.classList.add('hidden');
   }
 }
 
