@@ -264,6 +264,10 @@ model KoiProduct {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   materialCategoryId String?
+  // Màu sắc: colorFamily (mã nhóm màu chuẩn, dùng để LỌC) + colorHex (mã màu
+  // thật, chỉ để hiện chấm màu trên thẻ). Xem KoiColorFamily trong common/enums.
+  colorFamily String?
+  colorHex    String?
   category    KoiCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   materialCategory KoiMaterialCategory? @relation(fields: [materialCategoryId], references: [id], onDelete: SetNull)
   categoryLinks KoiProductCategory[]
@@ -278,6 +282,7 @@ model KoiProduct {
   @@index([createdAt])
   @@index([categoryId, status])
   @@index([materialCategoryId])
+  @@index([colorFamily])
   @@map("koi_products")
   @@schema("koi_free_style")
 }

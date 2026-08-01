@@ -28,8 +28,15 @@ export function ProductCard({ p }: { p: ProductWithImages }) {
       </ReplaceableImage>
 
       <div className="pt-3">
-        <h3 className="text-[15px] leading-snug text-koi-ink transition-colors group-hover:text-koi-orange-dark">
-          {p.name}
+        <h3 className="flex items-start gap-1.5 text-[15px] leading-snug text-koi-ink transition-colors group-hover:text-koi-orange-dark">
+          {p.color_hex ? (
+            <span
+              aria-hidden
+              className="mt-[5px] inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-koi-line"
+              style={{ backgroundColor: p.color_hex }}
+            />
+          ) : null}
+          <span>{p.name}</span>
         </h3>
         <p className="mt-1 text-[13px] tracking-wide text-koi-gray">{priceLabel(p)}</p>
       </div>

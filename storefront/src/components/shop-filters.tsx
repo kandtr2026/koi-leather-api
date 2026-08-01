@@ -16,7 +16,7 @@ export function ShopFilters({
   active,
 }: {
   filters: ShopFilters;
-  active: { category?: string; material?: string };
+  active: { category?: string; material?: string; colors?: string[] };
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,7 +24,8 @@ export function ShopFilters({
 
   const activeCount =
     (active.category ? 1 : 0) +
-    (active.material ? 1 : 0);
+    (active.material ? 1 : 0) +
+    (active.colors?.length ?? 0);
 
   function setParam(key: 'category' | 'material', value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -34,6 +35,24 @@ export function ShopFilters({
       params.set(key, value);
     }
     params.delete('page'); // đổi bộ lọc → về trang 1
+    const qs = params.toString();
+    router.push(qs ? `/cua-hang/?${qs}` : '/cua-hang/');
+  }
+
+  // Màu chọn-NHIỀU: gom vào một param ?color=DEN,NAU_DAM (khác category/material
+  // chọn-một). Bấm lại một màu đang chọn = bỏ nó.
+  function toggleColor(code: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    const cur = (params.get('color') ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const next = cur.includes(code)
+      ? cur.filter((c) => c !== code)
+      : [...cur, code];
+    if (next.length) params.set('color', next.join(','));
+    else params.delete('color');
+    params.delete('page');
     const qs = params.toString();
     router.push(qs ? `/cua-hang/?${qs}` : '/cua-hang/');
   }
@@ -74,6 +93,41 @@ export function ShopFilters({
         activeKey={active.material}
         onSelect={(k) => setParam('material', k)}
       />
+
+      {filters.colors.length ? (
+        <div>
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-koi-gray-light">
+            Màu sắc
+          </h3>
+          <div className="grid grid-cols-6 gap-x-2 gap-y-3">
+            {filters.colors.map((c) => {
+              const on = active.colors?.includes(c.code) ?? false;
+              return (
+                <button
+                  key={c.code}
+                  onClick={() => toggleColor(c.code)}
+                  aria-pressed={on}
+                  aria-label={`${c.name} — ${c.count} sản phẩm`}
+                  title={`${c.name} (${c.count})`}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <span
+                    className={`h-7 w-7 rounded-full border border-koi-line transition-shadow ${
+                      on
+                        ? 'ring-2 ring-koi-ink ring-offset-2 ring-offset-koi-white'
+                        : 'hover:ring-1 hover:ring-koi-gray-light hover:ring-offset-2 hover:ring-offset-koi-white'
+                    }`}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                  <span className="text-[10px] leading-none text-koi-gray-light">
+                    {c.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 

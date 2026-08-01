@@ -51,6 +51,7 @@ export function getProducts(params: {
   search?: string;
   material?: string;
   imageType?: string;
+  color?: string;
 }): Promise<ProductList> {
   const q = new URLSearchParams();
   if (params.page) q.set('page', String(params.page));
@@ -59,6 +60,7 @@ export function getProducts(params: {
   if (params.search) q.set('search', params.search);
   if (params.material) q.set('material', params.material);
   if (params.imageType) q.set('imageType', params.imageType);
+  if (params.color) q.set('color', params.color);
   const qs = q.toString();
   return apiGet<ProductList>(`/shop/products${qs ? `?${qs}` : ''}`);
 }
@@ -67,6 +69,7 @@ export type ShopFilters = {
   categories: { name: string; slug: string; count: number }[];
   materials: { name: string; code: string; count: number }[];
   imageTypes: { name: string; code: string; count: number }[];
+  colors: { name: string; code: string; hex: string; count: number }[];
 };
 
 export const getShopFilters = () => apiGet<ShopFilters>('/shop/filters');

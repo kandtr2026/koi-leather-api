@@ -44,6 +44,9 @@ export type Product = {
   is_featured: boolean;
   meta_title: string | null;
   meta_description: string | null;
+  // Màu: color_family (nhóm để lọc) + color_hex (mã màu thật cho chấm màu trên thẻ).
+  color_family: string | null;
+  color_hex: string | null;
 };
 
 export type ProductWithImages = Product & {

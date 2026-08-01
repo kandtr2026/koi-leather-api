@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { Prisma } from "@prisma/client";
+import { COLOR_FAMILIES } from "../common/enums";
 
 /**
  * Storefront (KoiFront) read layer.
@@ -72,6 +73,8 @@ export class ShopService {
       is_featured: false,
       meta_title: p.metaTitle ?? null,
       meta_description: p.metaDescription ?? null,
+      color_family: p.colorFamily ?? null,
+      color_hex: p.colorHex ?? null,
       product_images: this.mapImages(p.images),
     };
   }
@@ -101,6 +104,8 @@ export class ShopService {
     status: true,
     metaTitle: true,
     metaDescription: true,
+    colorFamily: true,
+    colorHex: true,
     images: {
       orderBy: { displayOrder: "asc" as const },
       select: {
@@ -218,6 +223,23 @@ export class ShopService {
       })),
     );
 
+    // Màu sắc: đếm số SP theo colorFamily trong MỘT truy vấn groupBy, rồi map
+    // sang danh sách nhóm chuẩn (giữ tên + hex đại diện, đúng thứ tự đã định).
+    const colorGroups = await this.prisma.koiProduct.groupBy({
+      by: ["colorFamily"],
+      where: { ...baseWhere, colorFamily: { not: null } },
+      _count: { _all: true },
+    });
+    const colorCount = new Map(
+      colorGroups.map((g) => [g.colorFamily, g._count._all]),
+    );
+    const colors = COLOR_FAMILIES.map((f) => ({
+      code: f.code,
+      name: f.name,
+      hex: f.hex,
+      count: colorCount.get(f.code) ?? 0,
+    })).filter((c) => c.count > 0);
+
     return {
       categories: cats
         .filter((c) => (c._count?.categoryLinks ?? 0) > 0)
@@ -234,6 +256,7 @@ export class ShopService {
           count: m._count?.products ?? 0,
         })),
       imageTypes: imageTypes.filter((t) => t.count > 0),
+      colors,
     };
   }
 
@@ -262,6 +285,7 @@ export class ShopService {
     search?: string;
     material?: string;
     imageType?: string;
+    color?: string;
   }) {
     const page = Math.max(1, opts.page || 1);
     const limit = Math.min(48, Math.max(1, opts.limit || 24));
@@ -285,6 +309,14 @@ export class ShopService {
     // Lọc theo loại ảnh (imageType trên ảnh SP): SP có ÍT NHẤT 1 ảnh loại đó.
     if (opts.imageType) {
       where.images = { some: { imageType: opts.imageType } };
+    }
+    // Lọc theo màu: nhận nhiều mã nhóm màu, phân tách bởi dấu phẩy (union OR).
+    if (opts.color) {
+      const codes = opts.color
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (codes.length) where.colorFamily = { in: codes };
     }
     if (opts.search) {
       where.OR = [

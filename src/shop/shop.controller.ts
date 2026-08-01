@@ -76,6 +76,7 @@ export class ShopController {
     @Query("search") search?: string,
     @Query("material") material?: string,
     @Query("imageType") imageType?: string,
+    @Query("color") color?: string,
   ) {
     return this.shop.listProducts({
       page: Number(page) || 1,
@@ -84,6 +85,7 @@ export class ShopController {
       search,
       material,
       imageType,
+      color,
     });
   }
 

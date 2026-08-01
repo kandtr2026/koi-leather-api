@@ -20,10 +20,12 @@ export default async function ShopPage(props: PageProps<'/cua-hang'>) {
   const page = Math.max(1, Number(one(sp.page)) || 1);
   const category = one(sp.category);
   const material = one(sp.material);
+  const color = one(sp.color);
+  const colors = color ? color.split(',').filter(Boolean) : [];
 
   const [filters, list] = await Promise.all([
     getShopFilters(),
-    getProducts({ page, limit: PAGE_SIZE, category, material }),
+    getProducts({ page, limit: PAGE_SIZE, category, material, color }),
   ]);
 
   const products = list.data;
@@ -35,6 +37,7 @@ export default async function ShopPage(props: PageProps<'/cua-hang'>) {
     const q = new URLSearchParams();
     if (category) q.set('category', category);
     if (material) q.set('material', material);
+    if (color) q.set('color', color);
     if (n > 1) q.set('page', String(n));
     const qs = q.toString();
     return qs ? `/cua-hang/?${qs}` : '/cua-hang/';
@@ -53,7 +56,7 @@ export default async function ShopPage(props: PageProps<'/cua-hang'>) {
         <p className="mt-2 text-[13px] tracking-wide text-koi-gray-light">{total} sản phẩm</p>
 
         <div className="mt-8 lg:grid lg:grid-cols-[220px_1fr] lg:gap-10">
-          <ShopFilters filters={filters} active={{ category, material }} />
+          <ShopFilters filters={filters} active={{ category, material, colors }} />
 
           <div>
             {products.length ? (

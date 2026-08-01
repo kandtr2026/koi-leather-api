@@ -41,4 +41,22 @@ export class UpdateProductDto extends PartialType(
   @IsOptional()
   @IsUUID()
   materialCategoryId?: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Mã nhóm màu để lọc (DEN, NAU_DAM, VANG_BO...). Gửi null để bỏ; ' +
+      'bỏ hẳn field để giữ nguyên.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  colorFamily?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Mã màu thật (#hex) để hiện chấm màu trên thẻ sản phẩm.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  colorHex?: string | null;
 }

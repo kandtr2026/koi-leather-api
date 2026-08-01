@@ -731,6 +731,10 @@ export class ProductService {
     // null = bỏ chọn danh mục da; undefined = client không gửi field, giữ nguyên.
     if (dto.materialCategoryId !== undefined)
       data.materialCategoryId = dto.materialCategoryId ?? null;
+    // Màu sắc: cùng quy ước null = xoá, undefined = giữ nguyên.
+    if (dto.colorFamily !== undefined)
+      data.colorFamily = dto.colorFamily ?? null;
+    if (dto.colorHex !== undefined) data.colorHex = dto.colorHex ?? null;
     if (technicalSpecs)
       data.technicalSpecs = this.safeParseSpecs(technicalSpecs);
 
