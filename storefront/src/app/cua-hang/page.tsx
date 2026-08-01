@@ -5,6 +5,7 @@ import { getProducts, getShopFilters } from '@/lib/api';
 import { ProductCard } from '@/components/product-card';
 import { ShopFilters } from '@/components/shop-filters';
 import { ContactBar } from '@/components/contact-bar';
+import { UnpickedToggle } from '@/components/admin/unpicked-toggle';
 
 export const metadata: Metadata = {
   title: 'Tất cả sản phẩm',
@@ -22,10 +23,11 @@ export default async function ShopPage(props: PageProps<'/cua-hang'>) {
   const material = one(sp.material);
   const color = one(sp.color);
   const colors = color ? color.split(',').filter(Boolean) : [];
+  const unpicked = one(sp.unpicked) === '1';
 
   const [filters, list] = await Promise.all([
     getShopFilters(),
-    getProducts({ page, limit: PAGE_SIZE, category, material, color }),
+    getProducts({ page, limit: PAGE_SIZE, category, material, color, unpicked }),
   ]);
 
   const products = list.data;
@@ -38,6 +40,7 @@ export default async function ShopPage(props: PageProps<'/cua-hang'>) {
     if (category) q.set('category', category);
     if (material) q.set('material', material);
     if (color) q.set('color', color);
+    if (unpicked) q.set('unpicked', '1');
     if (n > 1) q.set('page', String(n));
     const qs = q.toString();
     return qs ? `/cua-hang/?${qs}` : '/cua-hang/';
@@ -54,6 +57,8 @@ export default async function ShopPage(props: PageProps<'/cua-hang'>) {
 
         <h1 className="font-serif text-3xl text-koi-ink sm:text-4xl">Tất cả sản phẩm</h1>
         <p className="mt-2 text-[13px] tracking-wide text-koi-gray-light">{total} sản phẩm</p>
+
+        <UnpickedToggle />
 
         <div className="mt-8 lg:grid lg:grid-cols-[220px_1fr] lg:gap-10">
           <ShopFilters filters={filters} active={{ category, material, colors }} />

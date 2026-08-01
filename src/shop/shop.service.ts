@@ -3,6 +3,10 @@ import { PrismaService } from "../prisma/prisma.service";
 import { Prisma } from "@prisma/client";
 import { COLOR_FAMILIES } from "../common/enums";
 
+// Danh sách nhóm màu ĐẦY ĐỦ cho picker admin (khác facet /shop/filters vốn chỉ
+// trả nhóm đang có sản phẩm).
+export type ColorFamily = { code: string; name: string; hex: string };
+
 /**
  * Storefront (KoiFront) read layer.
  *
@@ -185,6 +189,11 @@ export class ShopService {
     return this.categoriesWithCover();
   }
 
+  /** Toàn bộ nhóm màu chuẩn — cho picker admin (gán màu từng sản phẩm). */
+  colorFamilies(): ColorFamily[] {
+    return COLOR_FAMILIES.map((c) => ({ code: c.code, name: c.name, hex: c.hex }));
+  }
+
   /**
    * Dữ liệu cho sidebar lọc của trang cửa hàng: danh mục sản phẩm, loại da,
    * loại ảnh — kèm số sản phẩm (đã publish) cho mỗi mục để hiển thị "(n)".
@@ -286,6 +295,7 @@ export class ShopService {
     material?: string;
     imageType?: string;
     color?: string;
+    unpicked?: boolean;
   }) {
     const page = Math.max(1, opts.page || 1);
     const limit = Math.min(48, Math.max(1, opts.limit || 24));
@@ -317,6 +327,10 @@ export class ShopService {
         .map((s) => s.trim())
         .filter(Boolean);
       if (codes.length) where.colorFamily = { in: codes };
+    }
+    // Admin: chỉ hàng CHƯA pick màu (colorFamily rỗng) — để quét cái nào cần gán.
+    if (opts.unpicked) {
+      where.colorFamily = null;
     }
     if (opts.search) {
       where.OR = [

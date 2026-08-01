@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { imageUrl } from '@/lib/supabase';
 import { priceLabel } from '@/lib/format';
 import { ReplaceableImage } from '@/components/admin/replaceable-image';
+import { ColorAdmin } from '@/components/admin/color-admin';
 import type { ProductWithImages } from '@/lib/types';
 
 export function ProductCard({ p }: { p: ProductWithImages }) {
@@ -10,6 +11,7 @@ export function ProductCard({ p }: { p: ProductWithImages }) {
   const src = imageUrl(cover?.storage_path);
 
   return (
+   <>
     <Link href={`/cua-hang/${p.slug}/`} className="group block">
       <ReplaceableImage
         productId={p.id}
@@ -41,5 +43,9 @@ export function ProductCard({ p }: { p: ProductWithImages }) {
         <p className="mt-1 text-[13px] tracking-wide text-koi-gray">{priceLabel(p)}</p>
       </div>
     </Link>
+
+    {/* Pick màu (chỉ admin) — nằm NGOÀI <Link> để không lồng nút trong thẻ a */}
+    <ColorAdmin productId={p.id} colorFamily={p.color_family} colorHex={p.color_hex} />
+  </>
   );
 }

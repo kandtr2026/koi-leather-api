@@ -64,6 +64,13 @@ export class ShopController {
     return this.shop.shopFilters();
   }
 
+  @Get("color-families")
+  @Header("Cache-Control", "public, max-age=300, s-maxage=3600")
+  @ApiOperation({ summary: "Toàn bộ nhóm màu chuẩn (cho picker admin)" })
+  colorFamilies() {
+    return this.shop.colorFamilies();
+  }
+
   @Get("products")
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
   @ApiOperation({
@@ -77,6 +84,7 @@ export class ShopController {
     @Query("material") material?: string,
     @Query("imageType") imageType?: string,
     @Query("color") color?: string,
+    @Query("unpicked") unpicked?: string,
   ) {
     return this.shop.listProducts({
       page: Number(page) || 1,
@@ -86,6 +94,7 @@ export class ShopController {
       material,
       imageType,
       color,
+      unpicked: unpicked === "1" || unpicked === "true",
     });
   }
 

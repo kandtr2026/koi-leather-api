@@ -52,6 +52,7 @@ export function getProducts(params: {
   material?: string;
   imageType?: string;
   color?: string;
+  unpicked?: boolean;
 }): Promise<ProductList> {
   const q = new URLSearchParams();
   if (params.page) q.set('page', String(params.page));
@@ -61,6 +62,7 @@ export function getProducts(params: {
   if (params.material) q.set('material', params.material);
   if (params.imageType) q.set('imageType', params.imageType);
   if (params.color) q.set('color', params.color);
+  if (params.unpicked) q.set('unpicked', '1');
   const qs = q.toString();
   return apiGet<ProductList>(`/shop/products${qs ? `?${qs}` : ''}`);
 }
@@ -73,6 +75,11 @@ export type ShopFilters = {
 };
 
 export const getShopFilters = () => apiGet<ShopFilters>('/shop/filters');
+
+export type ColorFamily = { code: string; name: string; hex: string };
+
+export const getColorFamilies = () =>
+  apiGet<ColorFamily[]>('/shop/color-families');
 
 export type LookbookShot = {
   src: string;
