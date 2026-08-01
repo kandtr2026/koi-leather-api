@@ -187,6 +187,7 @@
     <button class="tab-btn" data-tab="prodcats"><i class="fas fa-layer-group mr-2 text-amber-500"></i>Loại sản phẩm</button>
     <button class="tab-btn" data-tab="imgcats"><i class="fas fa-tags mr-2 text-amber-500"></i>Loại ảnh</button>
     <button class="tab-btn" data-tab="matcats"><i class="fas fa-gem mr-2 text-amber-500"></i>Loại da</button>
+    <button class="tab-btn" data-tab="traffic"><i class="fas fa-chart-line mr-2 text-amber-500"></i>Lưu lượng</button>
 
   </div>
 
@@ -308,6 +309,25 @@
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
           <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRAFFIC PANEL -->
+    <div class="panel" id="panel-traffic">
+      <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+        <p class="text-sm text-gray-500">Lưu lượng truy cập koileather.com — số liệu ẩn danh, không lưu IP</p>
+        <div class="inline-flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+          <button onclick="setTrafficRange(7)"  data-range="7"  class="range-btn px-3 py-1.5 hover:bg-gray-50">7 ngày</button>
+          <button onclick="setTrafficRange(30)" data-range="30" class="range-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">30 ngày</button>
+          <button onclick="setTrafficRange(90)" data-range="90" class="range-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">90 ngày</button>
+        </div>
+      </div>
+      <div id="trafficBody">
+        <div class="skeleton-loading p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse w-3/4"></div>
           <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
         </div>
       </div>
@@ -726,11 +746,18 @@ function showConfirm({ title, message, confirmText, cancelText, danger }) {
 }
 
 // ========== PATH-BASED ROUTING ==========
+// Trạng thái tab Lưu lượng. Phải khai báo TRƯỚC applyRoute vì hàm đó đọc
+// trafficLoaded; `let` không hoisted nên để dưới sẽ ném ReferenceError khi mở
+// thẳng /admin/traffic, làm hỏng cả trang admin.
+let trafficLoaded = false;
+let trafficRange = 30;
+
 const ROUTE_MAP = {
   '/admin/products':    { panel: 'products', label: 'Sản phẩm' },
   '/admin/categories':  { panel: 'prodcats', label: 'Loại sản phẩm' },
   '/admin/media-types': { panel: 'imgcats',  label: 'Loại ảnh' },
   '/admin/material-categories': { panel: 'matcats', label: 'Loại da' },
+  '/admin/traffic':     { panel: 'traffic',  label: 'Lưu lượng' },
 
 };
 const ROUTES = Object.keys(ROUTE_MAP);
@@ -755,6 +782,10 @@ function applyRoute(route) {
 
   // Tab ads nạp lười: endpoint audit quét cả bảng theo ngày nên không gọi sẵn
   // lúc init cho người chỉ vào sửa sản phẩm.
+
+  // Lưu lượng cũng nạp lười: truy vấn gom nhóm cả bảng lượt xem, không nên
+  // chạy cho người chỉ vào sửa một cái giá.
+  if (entry.panel === 'traffic' && !trafficLoaded) loadTraffic();
 
 }
 
@@ -1647,6 +1678,198 @@ function renderProducts() {
 }
 
 function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// ========== LƯU LƯỢNG TRUY CẬP ==========
+//
+// Số liệu do chính backend ghi (POST /shop/track từ storefront), không phụ
+// thuộc Google Analytics. Đổi lại: không lưu IP thô, khách riêng đếm bằng hash
+// đổi theo ngày — xem analytics.service.ts.
+//
+// trafficLoaded/trafficRange khai báo ở TRÊN applyRoute (dòng ~766) vì hàm đó
+// đọc trafficLoaded. `let` không được hoisted như `var`: để khai báo bên dưới
+// thì mở thẳng /admin/traffic sẽ ném ReferenceError và hỏng cả trang admin.
+
+function setTrafficRange(days) {
+  trafficRange = days;
+  loadTraffic();
+}
+
+async function loadTraffic() {
+  const el = document.getElementById('trafficBody');
+  document.querySelectorAll('.range-btn').forEach(b => {
+    const on = Number(b.dataset.range) === trafficRange;
+    b.classList.toggle('bg-amber-500', on);
+    b.classList.toggle('text-white', on);
+  });
+
+  try {
+    const d = await api(`/analytics/summary?days=${trafficRange}`);
+    trafficLoaded = true;
+    renderTraffic(d);
+  } catch (e) {
+    el.innerHTML = `<div class="text-center py-12 text-gray-400">
+      <i class="fas fa-triangle-exclamation text-3xl mb-3"></i>
+      <p>Không tải được số liệu: ${esc(e.message || 'lỗi không rõ')}</p></div>`;
+  }
+}
+
+const SOURCE_LABELS = {
+  direct: 'Gõ thẳng địa chỉ',
+  google: 'Google',
+  facebook: 'Facebook',
+  zalo: 'Zalo',
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  search_khac: 'Tìm kiếm khác',
+  internal: 'Trong site',
+  other: 'Khác',
+};
+const DEVICE_LABELS = { mobile: 'Điện thoại', tablet: 'Máy tính bảng', desktop: 'Máy tính' };
+
+function renderTraffic(d) {
+  const el = document.getElementById('trafficBody');
+  const { totals, daily, topPages, sources, devices } = d;
+
+  if (!totals.views) {
+    el.innerHTML = `<div class="text-center py-16 text-gray-400">
+      <i class="fas fa-chart-line text-4xl mb-3"></i>
+      <p class="font-medium text-gray-500">Chưa có lượt truy cập nào trong ${d.days} ngày qua</p>
+      <p class="text-sm mt-1">Số liệu bắt đầu được ghi từ lúc storefront cập nhật bản mới.</p>
+    </div>`;
+    return;
+  }
+
+  // Trung bình mỗi khách xem mấy trang — chỉ số cho biết khách có đi sâu không
+  // hay vào một trang rồi thoát.
+  const trangMoiKhach = totals.visitors ? (totals.views / totals.visitors).toFixed(1) : '0';
+
+  const card = (label, value, icon, sub) => `
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div class="flex items-center gap-2 text-xs text-gray-400 uppercase tracking-wide">
+        <i class="fas ${icon} text-amber-500"></i>${label}
+      </div>
+      <div class="mt-1.5 text-2xl font-bold text-gray-800">${value}</div>
+      ${sub ? `<div class="text-xs text-gray-400 mt-0.5">${sub}</div>` : ''}
+    </div>`;
+
+  const nf = n => new Intl.NumberFormat('vi-VN').format(n);
+
+  // ----- Biểu đồ cột theo ngày -----
+  // Dựng bằng div thay vì thư viện biểu đồ: chỉ có một biểu đồ duy nhất trong
+  // cả trang, kéo thêm Chart.js (~200KB) cho ngần này là không đáng.
+  const maxLuot = Math.max(...daily.map(r => r.luot), 1);
+  const cols = daily.map(r => {
+    const h = Math.round((r.luot / maxLuot) * 100);
+    const [, m, dd] = r.ngay.split('-');
+    return `<div class="flex-1 flex flex-col justify-end items-center group relative min-w-[6px]">
+      <div class="w-full bg-amber-400 hover:bg-amber-500 transition-colors rounded-t"
+           style="height:${Math.max(h, r.luot ? 3 : 0)}%"></div>
+      <div class="absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap bg-gray-900 text-white text-[11px] px-2 py-1 rounded shadow-lg z-10">
+        ${dd}/${m} · ${nf(r.luot)} lượt · ${nf(r.khach)} khách
+      </div>
+    </div>`;
+  }).join('');
+
+  // Nhãn trục ngang: nhiều ngày quá thì chữ chồng lên nhau, nên thưa bớt.
+  const buoc = daily.length > 45 ? 7 : daily.length > 14 ? 3 : 1;
+  const nhan = daily.map((r, i) => {
+    if (i % buoc !== 0 && i !== daily.length - 1) return '<div class="flex-1 min-w-[6px]"></div>';
+    const [, m, dd] = r.ngay.split('-');
+    return `<div class="flex-1 min-w-[6px] text-center text-[10px] text-gray-400">${dd}/${m}</div>`;
+  }).join('');
+
+  const tongNguon = sources.reduce((s, r) => s + r.luot, 0) || 1;
+  const hangNguon = sources.map(r => `
+    <tr class="border-t border-gray-100 text-sm">
+      <td class="px-4 py-2.5">${esc(SOURCE_LABELS[r.source] || r.source)}</td>
+      <td class="px-4 py-2.5 text-right font-medium">${nf(r.luot)}</td>
+      <td class="px-4 py-2.5 text-right text-gray-500">${nf(r.khach)}</td>
+      <td class="px-4 py-2.5 w-32">
+        <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div class="h-full bg-amber-500 rounded-full" style="width:${(r.luot / tongNguon * 100).toFixed(1)}%"></div>
+        </div>
+      </td>
+    </tr>`).join('');
+
+  const tongTB = devices.reduce((s, r) => s + r.luot, 0) || 1;
+  const hangTB = devices.map(r => `
+    <tr class="border-t border-gray-100 text-sm">
+      <td class="px-4 py-2.5">${esc(DEVICE_LABELS[r.device] || r.device)}</td>
+      <td class="px-4 py-2.5 text-right font-medium">${nf(r.luot)}</td>
+      <td class="px-4 py-2.5 text-right text-gray-500">${(r.luot / tongTB * 100).toFixed(0)}%</td>
+    </tr>`).join('');
+
+  const hangTrang = topPages.map(r => `
+    <tr class="border-t border-gray-100 text-sm hover:bg-gray-50">
+      <td class="px-4 py-2.5">
+        <a href="https://koileather.com${esc(r.path)}" target="_blank" rel="noopener"
+           class="text-amber-700 hover:text-amber-900 hover:underline">${esc(r.path)}</a>
+      </td>
+      <td class="px-4 py-2.5 text-right font-medium">${nf(r.luot)}</td>
+      <td class="px-4 py-2.5 text-right text-gray-500">${nf(r.khach)}</td>
+    </tr>`).join('');
+
+  el.innerHTML = `
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      ${card('Lượt xem', nf(totals.views), 'fa-eye', `${d.days} ngày qua`)}
+      ${card('Khách riêng', nf(totals.visitors), 'fa-users', 'không trùng trong ngày')}
+      ${card('Trang / khách', trangMoiKhach, 'fa-layer-group', 'càng cao càng chịu xem')}
+      ${card('Trung bình ngày', nf(Math.round(totals.views / d.days)), 'fa-calendar-day', 'lượt xem')}
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
+      <div class="text-xs text-gray-400 uppercase tracking-wide mb-3">Lượt xem theo ngày</div>
+      <div class="flex items-end gap-[2px] h-40">${cols}</div>
+      <div class="flex gap-[2px] mt-1.5">${nhan}</div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-5">
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          Khách đến từ đâu
+        </div>
+        <table class="w-full">
+          <thead><tr class="text-left text-xs text-gray-400">
+            <th class="px-4 py-2 font-medium">Nguồn</th>
+            <th class="px-4 py-2 font-medium text-right">Lượt</th>
+            <th class="px-4 py-2 font-medium text-right">Khách</th>
+            <th class="px-4 py-2"></th>
+          </tr></thead>
+          <tbody>${hangNguon}</tbody>
+        </table>
+      </div>
+
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          Thiết bị
+        </div>
+        <table class="w-full">
+          <thead><tr class="text-left text-xs text-gray-400">
+            <th class="px-4 py-2 font-medium">Loại</th>
+            <th class="px-4 py-2 font-medium text-right">Lượt</th>
+            <th class="px-4 py-2 font-medium text-right">Tỷ lệ</th>
+          </tr></thead>
+          <tbody>${hangTB}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-5">
+      <div class="px-4 py-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        Trang được xem nhiều nhất
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead><tr class="text-left text-xs text-gray-400">
+            <th class="px-4 py-2 font-medium">Đường dẫn</th>
+            <th class="px-4 py-2 font-medium text-right">Lượt xem</th>
+            <th class="px-4 py-2 font-medium text-right">Khách</th>
+          </tr></thead>
+          <tbody>${hangTrang}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
 
 // ========== HIỆN / ẨN NGOÀI TRANG KHÁCH ==========
 //

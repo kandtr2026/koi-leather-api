@@ -511,4 +511,36 @@ model KoiMaterialCategory {
   @@schema("koi_free_style")
 }
 
+/// Một lượt xem trang trên storefront.
+///
+/// Model Visit cũ (public schema) chỉ là MỘT bộ đếm tổng cho kitleather.vn:
+/// không ngày, không trang, không phân biệt người. Không trả lời được câu nào
+/// đáng giá, nên bảng này thay thế cho koileather.com.
+///
+/// KHÔNG lưu IP thô. visitorHash = băm(IP + trình duyệt + muối + ngày), nên:
+///   - đếm được khách riêng biệt TRONG NGÀY
+///   - sang ngày mới thì cùng một người ra hash khác => không lần được hành vi
+///     dài ngày, không truy ngược ra danh tính
+model KoiPageView {
+  id        String   @id @default(uuid())
+  /// Đường dẫn đã chuẩn hoá, bỏ query để /cua-hang/?page=2 không tách dòng riêng
+  path      String
+  /// Tên miền nơi khách bấm sang (google, facebook…). null = gõ thẳng địa chỉ
+  referrer  String?
+  /// Gom referrer về nhóm để đếm: direct | google | facebook | zalo | other
+  source    String
+  /// mobile | tablet | desktop — đoán từ User-Agent
+  device    String
+  /// Băm ẩn danh, đổi mỗi ngày. Xem ghi chú ở trên.
+  visitorHash String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([path])
+  @@index([source])
+  @@index([visitorHash])
+  @@map("koi_page_views")
+  @@schema("koi_free_style")
+}
+
 
