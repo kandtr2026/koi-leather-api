@@ -329,14 +329,7 @@
 
       <!-- IMAGE UPLOAD & PREVIEW — luôn hiển thị ở đầu modal -->
       <div>
-        <div class="flex items-center justify-between mb-2">
-          <div class="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1"><i class="fas fa-image text-amber-500"></i> Hình ảnh sản phẩm</div>
-          <button type="button" id="btnEyedropper" onclick="startEyedropper()"
-            class="text-[11px] px-2 py-1 rounded-lg border border-amber-300 text-amber-600 hover:bg-amber-50 transition flex items-center gap-1"
-            title="Bấm rồi click lên ảnh để hút màu thật của sản phẩm">
-            <i class="fas fa-eye-dropper"></i> <span id="eyedropperLabel">Hút màu từ ảnh</span>
-          </button>
-        </div>
+        <div class="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1 mb-2"><i class="fas fa-image text-amber-500"></i> Hình ảnh sản phẩm</div>
         <!-- Carousel wrapper -->
         <div id="imageCarouselContainer" class="relative mb-2">
           <div id="imageGalleryEmpty" class="p-4 bg-gray-50 rounded-lg border text-center">
@@ -3122,16 +3115,12 @@ function applyPickedHex(hex, slotIndex = activeColorSlot) {
 async function startEyedropper(slotIndex = activeColorSlot) {
   pickTargetSlot = Math.max(0, Math.min(slotIndex, MAX_COLORS - 1));
   if (window.EyeDropper) {
-    const label = document.getElementById('eyedropperLabel');
-    if (label) label.textContent = 'Đang hút…';
     try {
       const result = await new window.EyeDropper().open();
       const fam = applyPickedHex(result.sRGBHex, pickTargetSlot);
       if (fam) toast(`Đã hút ${result.sRGBHex.toUpperCase()} → màu ${pickTargetSlot + 1} "${fam.name}"`);
     } catch {
       /* user nhấn Esc — không báo lỗi */
-    } finally {
-      if (label) label.textContent = 'Hút màu từ ảnh';
     }
     return;
   }
@@ -3147,8 +3136,6 @@ function startCanvasPickMode() {
   if (!imgs.length) { toast('Chưa có ảnh để hút màu'); return; }
 
   canvasPickMode = !canvasPickMode;
-  const label = document.getElementById('eyedropperLabel');
-  if (label) label.textContent = canvasPickMode ? 'Click lên ảnh…' : 'Hút màu từ ảnh';
 
   imgs.forEach(img => {
     if (canvasPickMode) {
