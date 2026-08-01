@@ -75,6 +75,9 @@ export function MobileMenu({ cats }: { cats: Category[] }) {
           <Link href="/cua-hang/" onClick={() => setOpen(false)}>
             Tất cả sản phẩm
           </Link>
+          <Link href="/lookbook/" onClick={() => setOpen(false)}>
+            Lookbook
+          </Link>
           <Link href="/blog/" onClick={() => setOpen(false)}>
             Bài viết
           </Link>

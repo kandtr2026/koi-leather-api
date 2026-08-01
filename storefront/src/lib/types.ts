@@ -17,6 +17,8 @@ export type ProductImage = {
   alt: string | null;
   is_primary: boolean;
   sort_order: number;
+  // Loại ảnh: STUDIO | LIFESTYLE | CRAFTING | TEXTURE. null cho ảnh chưa gắn loại.
+  image_type: string | null;
 };
 
 export type ProductVariant = {

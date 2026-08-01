@@ -465,10 +465,66 @@ export class ProductService {
     search?: string, // <--- Add search parameter
     sort?: string,
     order?: string,
+    missing?: string,
   ) {
     const where: Prisma.KoiProductWhereInput = { isDeleted: false };
     if (type) where.productType = type as any;
     if (status) where.status = status as any;
+
+    // --- Todolist filter: chỉ sản phẩm còn thiếu dữ liệu ---
+    // Kết hợp bằng where.AND để không đụng where.OR của ô tìm kiếm bên dưới.
+    // technicalSpecs là JSON nén thành chuỗi trong cột text, nên "rỗng" gồm cả
+    // null, chuỗi trống và '{}' (xem PrismaService JSON middleware).
+    const emptySpecs: Prisma.KoiProductWhereInput = {
+      OR: [
+        { technicalSpecs: "" },
+        { technicalSpecs: "{}" },
+      ],
+    };
+    const missingCondition = (
+      key: string,
+    ): Prisma.KoiProductWhereInput | null => {
+      switch (key) {
+        case "material":
+          return { materialCategoryId: null };
+        case "price":
+          return { basePrice: null };
+        case "specs":
+          return emptySpecs;
+        case "category":
+          return { categoryLinks: { none: {} } };
+        case "images":
+          return { images: { none: {} } };
+        default:
+          return null;
+      }
+    };
+    if (missing) {
+      const keys = missing
+        .split(",")
+        .map((k) => k.trim().toLowerCase())
+        .filter(Boolean);
+      const missingAnd: Prisma.KoiProductWhereInput[] = [];
+      if (keys.includes("any")) {
+        // Thiếu bất kỳ trường nào trong danh sách todolist.
+        missingAnd.push({
+          OR: [
+            { materialCategoryId: null },
+            { basePrice: null },
+            emptySpecs,
+            { categoryLinks: { none: {} } },
+          ],
+        });
+      } else {
+        // Nhiều key = thiếu tất cả (AND) các trường được liệt kê.
+        for (const key of keys) {
+          const cond = missingCondition(key);
+          if (cond) missingAnd.push(cond);
+        }
+      }
+      if (missingAnd.length) where.AND = missingAnd;
+    }
+    // --- End todolist filter ---
 
     let resolvedCategoryId = categoryId;
     if (categorySlug) {

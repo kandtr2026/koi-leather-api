@@ -35,7 +35,7 @@ export function DeployBadge() {
       className="pointer-events-none fixed right-3 bottom-20 z-50 select-none md:bottom-3"
       aria-hidden="true"
     >
-      <span className="rounded-full border border-koi-line/70 bg-white/80 px-2.5 py-1 font-mono text-[10px] tracking-tight text-koi-gray-light shadow-sm backdrop-blur-sm">
+      <span className="rounded-full border border-koi-line/70 bg-white/95 px-2.5 py-1 font-mono text-[10px] tracking-tight text-koi-gray-light shadow-sm">
         {sha} · {when}
       </span>
     </div>

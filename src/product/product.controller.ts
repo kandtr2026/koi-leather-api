@@ -94,6 +94,12 @@ export class ProductController {
     enum: ["asc", "desc"],
     description: "Sort direction (default: desc)",
   })
+  @ApiQuery({
+    name: "missing",
+    required: false,
+    description:
+      "Todolist filter: chỉ sản phẩm còn thiếu dữ liệu. Nhận 'material' (chưa gán loại da), 'price' (chưa có giá), 'specs' (chưa có thông số), 'category' (chưa phân loại), 'images' (chưa có ảnh), 'any' (thiếu bất kỳ), hoặc nhiều giá trị phân tách bởi dấu phẩy (thiếu tất cả).",
+  })
   findAll(
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query("limit", new DefaultValuePipe(20), ParseIntPipe) limit: number,
@@ -104,6 +110,7 @@ export class ProductController {
     @Query("q") search?: string, // <--- Add search parameter to controller method
     @Query("sort") sort?: string,
     @Query("order") order?: string,
+    @Query("missing") missing?: string,
   ) {
     return this.productService.findAll(
       page,
@@ -115,6 +122,7 @@ export class ProductController {
       search,
       sort,
       order,
+      missing,
     ); // <--- Pass search parameter to service
   }
 

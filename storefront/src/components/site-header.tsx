@@ -15,7 +15,7 @@ export async function SiteHeader() {
         Giao nội thành 48h · Bảo hành đường chỉ trọn đời · Nhắn Zalo {prettyPhone()}
       </div>
 
-      <header className="sticky top-0 z-[60] border-b border-koi-line bg-koi-bg/80 backdrop-blur-md">
+      <header className="sticky top-0 z-[60] border-b border-koi-line bg-koi-bg">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center px-[clamp(18px,4vw,56px)] py-4">
           {/* NAV TRÁI (desktop) */}
           <nav className="hidden items-center gap-7 text-[12.5px] lg:flex">
@@ -70,6 +70,9 @@ export async function SiteHeader() {
                       <Link href="/cua-hang/" className="k-underline self-start">
                         Tất cả sản phẩm
                       </Link>
+                      <Link href="/lookbook/" className="k-underline self-start">
+                        Lookbook
+                      </Link>
                       <Link href="/blog/" className="k-underline self-start">
                         Bài viết &amp; chế tác
                       </Link>
@@ -81,6 +84,10 @@ export async function SiteHeader() {
                 </div>
               </div>
             </div>
+
+            <Link href="/lookbook/" className="k-underline uppercase tracking-[0.16em]">
+              Lookbook
+            </Link>
 
             <Link href="/blog/" className="k-underline uppercase tracking-[0.16em]">
               Chế tác

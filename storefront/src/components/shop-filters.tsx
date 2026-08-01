@@ -16,7 +16,7 @@ export function ShopFilters({
   active,
 }: {
   filters: ShopFilters;
-  active: { category?: string; material?: string; imageType?: string };
+  active: { category?: string; material?: string };
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,10 +24,9 @@ export function ShopFilters({
 
   const activeCount =
     (active.category ? 1 : 0) +
-    (active.material ? 1 : 0) +
-    (active.imageType ? 1 : 0);
+    (active.material ? 1 : 0);
 
-  function setParam(key: 'category' | 'material' | 'imageType', value: string) {
+  function setParam(key: 'category' | 'material', value: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (params.get(key) === value) {
       params.delete(key); // bấm lại mục đang chọn = bỏ lọc
@@ -75,19 +74,6 @@ export function ShopFilters({
         activeKey={active.material}
         onSelect={(k) => setParam('material', k)}
       />
-
-      {filters.imageTypes.length ? (
-        <FilterGroup
-          title="Loại hình ảnh"
-          items={filters.imageTypes.map((t) => ({
-            key: t.code,
-            label: t.name,
-            count: t.count,
-          }))}
-          activeKey={active.imageType}
-          onSelect={(k) => setParam('imageType', k)}
-        />
-      ) : null}
     </div>
   );
 

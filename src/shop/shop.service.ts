@@ -48,6 +48,8 @@ export class ShopService {
         alt: img.altText ?? null,
         is_primary: !!img.isPrimary,
         sort_order: img.displayOrder ?? 0,
+        // Loại ảnh (STUDIO/LIFESTYLE/CRAFTING/TEXTURE) để frontend dựng Lookbook.
+        image_type: img.imageType ?? null,
       }));
   }
 
@@ -108,6 +110,7 @@ export class ShopService {
         altText: true,
         isPrimary: true,
         displayOrder: true,
+        imageType: true,
       },
     },
   };

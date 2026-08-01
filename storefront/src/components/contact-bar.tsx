@@ -7,7 +7,7 @@ import { zaloLink, messengerLink, phoneLink } from '@/lib/contact';
  */
 export function ContactBar({ productName }: { productName?: string }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-koi-line bg-white/95 backdrop-blur md:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-koi-line bg-white md:hidden">
       <a
         href={phoneLink}
         className="press flex flex-col items-center gap-0.5 py-2.5 text-[11px] tracking-wide text-koi-gray active:bg-koi-cream"

@@ -71,6 +71,55 @@ export type ShopFilters = {
 
 export const getShopFilters = () => apiGet<ShopFilters>('/shop/filters');
 
+export type LookbookShot = {
+  src: string;
+  alt: string;
+  slug: string;
+  name: string;
+  typeName: string;
+};
+
+/**
+ * Ảnh cho trang Lookbook: gom các ảnh MANG TÍNH BỐI CẢNH của sản phẩm
+ * (Lifestyle, Chế tác/Stamping…) — bỏ ảnh Studio (nền sạch) và Texture (vân da)
+ * vì chúng không kể chuyện. Mỗi tấm dẫn thẳng về trang sản phẩm.
+ *
+ * Data-driven theo bảng loại ảnh của backend, không hardcode mã loại.
+ */
+export async function getLookbook(): Promise<LookbookShot[]> {
+  const filters = await getShopFilters();
+  const editorial = filters.imageTypes.filter(
+    (t) => !/studio|texture|vân da/i.test(`${t.name} ${t.code}`),
+  );
+  if (!editorial.length) return [];
+
+  const lists = await Promise.all(
+    editorial.map((t) =>
+      getProducts({ imageType: t.code, limit: 48 }).then((l) => ({ t, l })),
+    ),
+  );
+
+  const shots: LookbookShot[] = [];
+  const seen = new Set<string>();
+  for (const { t, l } of lists) {
+    for (const p of l.data) {
+      for (const img of p.product_images) {
+        if (img.image_type === t.code && img.storage_path && !seen.has(img.storage_path)) {
+          seen.add(img.storage_path);
+          shots.push({
+            src: img.storage_path,
+            alt: img.alt ?? p.name,
+            slug: p.slug,
+            name: p.name,
+            typeName: t.name,
+          });
+        }
+      }
+    }
+  }
+  return shots;
+}
+
 export type CategoryPage = ProductList & { category: Category };
 
 export function getCategoryPage(slug: string, page = 1): Promise<CategoryPage> {
