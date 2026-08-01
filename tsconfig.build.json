@@ -6,7 +6,6 @@
     "test",
     "**/*spec.ts",
     "src/**/components",
-    "kitleather-frontend",
-    "storefront"
+    "kitleather-frontend"
   ]
 }
