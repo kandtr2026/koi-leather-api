@@ -495,6 +495,8 @@ export class ProductService {
           return { categoryLinks: { none: {} } };
         case "images":
           return { images: { none: {} } };
+        case "color":
+          return { colorFamily: null };
         default:
           return null;
       }
