@@ -363,6 +363,21 @@
       </div>
 
       <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-medium text-gray-600">Màu sắc <span class="text-gray-400 font-normal">(chọn 1 nhóm — pick tay)</span></label>
+          <button type="button" id="pColorClear" onclick="clearColor()" class="text-[11px] text-gray-400 hover:text-red-500 hidden">Xoá màu</button>
+        </div>
+        <div id="pColorFamilies" class="flex flex-wrap gap-2 border border-gray-300 rounded-lg p-2"></div>
+        <div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
+          <span>Hex thật:</span>
+          <input type="color" id="pColorHex" value="#1a1a1a" disabled onchange="onColorHexChange()"
+            class="h-7 w-10 border border-gray-300 rounded cursor-pointer p-0 disabled:cursor-not-allowed disabled:opacity-50">
+          <span id="pColorLabel" class="text-gray-600"></span>
+        </div>
+        <input type="hidden" id="pColorFamily" value="">
+      </div>
+
+      <div>
         <label class="block text-xs font-medium text-gray-600 mb-1">Tên sản phẩm</label>
         <input id="pNameVi" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ví đứng Epsom Navy">
       </div>
@@ -384,20 +399,6 @@
           <span id="pMatCatCount" class="text-[11px] text-amber-600 font-medium"></span>
         </div>
         <div id="pMaterialCategories" class="w-full border border-gray-300 rounded-lg p-2 max-h-44 overflow-y-auto grid grid-cols-2 gap-x-4 gap-y-0.5"></div>
-      </div>
-      <div>
-        <div class="flex items-center justify-between mb-1">
-          <label class="block text-xs font-medium text-gray-600">Màu sắc <span class="text-gray-400 font-normal">(chọn 1 nhóm — pick tay)</span></label>
-          <button type="button" id="pColorClear" onclick="clearColor()" class="text-[11px] text-gray-400 hover:text-red-500 hidden">Xoá màu</button>
-        </div>
-        <div id="pColorFamilies" class="flex flex-wrap gap-2 border border-gray-300 rounded-lg p-2"></div>
-        <div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
-          <span>Hex thật:</span>
-          <input type="color" id="pColorHex" value="#1a1a1a" disabled onchange="onColorHexChange()"
-            class="h-7 w-10 border border-gray-300 rounded cursor-pointer p-0 disabled:cursor-not-allowed disabled:opacity-50">
-          <span id="pColorLabel" class="text-gray-600"></span>
-        </div>
-        <input type="hidden" id="pColorFamily" value="">
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2500000"></div>
