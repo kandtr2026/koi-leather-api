@@ -559,6 +559,11 @@ export class ProductService {
     name: (dir) => ({ name: dir }),
     images: (dir) => ({ images: { _count: dir } }),
     category: (dir) => ({ category: { name: dir } }),
+    // `material` và `color` là cột bấm được trên bảng admin nhưng trước đây
+    // thiếu ở whitelist, nên bấm vào là 400. Sắp theo tên loại da / mã nhóm
+    // màu chính (cột đơn luôn được đồng bộ với phần tử đầu của colors[]).
+    material: (dir) => ({ materialCategory: { name: dir } }),
+    color: (dir) => ({ colorFamily: dir }),
     price: (dir) => ({ basePrice: dir }),
     specs: (dir) => ({ technicalSpecs: dir }),
     updatedAt: (dir) => ({ updatedAt: dir }),
