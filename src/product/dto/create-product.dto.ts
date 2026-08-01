@@ -92,6 +92,22 @@ export class VariantDto {
   options?: Record<string, any>;
 }
 
+export class ProductColorDto {
+  @ApiProperty({
+    description: 'Mã nhóm màu chuẩn để lọc (DEN, NAU_DAM, VANG_BO...)',
+  })
+  @IsString()
+  colorFamily: string;
+
+  @ApiPropertyOptional({
+    description: 'Mã màu thật (#hex) hút từ ảnh — chỉ để hiện chấm màu.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  colorHex?: string | null;
+}
+
 export class CreateProductDto {
   @ApiProperty({ description: "Tên sản phẩm (JSONB multi-lang)" })
   @IsObject()
@@ -252,4 +268,28 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   colorHex?: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Danh sách màu của sản phẩm (hàng phối 2 tông). Phần tử đầu là màu ' +
+      'chính — nó cũng được ghi vào colorFamily/colorHex để tương thích ngược. ' +
+      'Gửi mảng rỗng để xoá hết màu; bỏ hẳn field để giữ nguyên.',
+    type: [ProductColorDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductColorDto)
+  colors?: ProductColorDto[];
+
+  @ApiPropertyOptional({
+    description:
+      'Danh sách loại da của sản phẩm (vd thân Epsom + lót Swift). Phần tử ' +
+      'đầu là loại da chính, cũng ghi vào materialCategoryId. Mảng rỗng = xoá hết.',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  materialCategoryIds?: string[];
 }

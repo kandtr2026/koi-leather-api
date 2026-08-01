@@ -79,6 +79,17 @@ export class ShopService {
       meta_description: p.metaDescription ?? null,
       color_family: p.colorFamily ?? null,
       color_hex: p.colorHex ?? null,
+      // Danh sách đầy đủ; phần tử đầu trùng color_family/color_hex ở trên.
+      // Fallback về màu đơn cho sản phẩm chưa backfill sang bảng nối.
+      colors: (p.colorLinks?.length
+        ? p.colorLinks
+        : p.colorFamily
+          ? [{ colorFamily: p.colorFamily, colorHex: p.colorHex ?? null }]
+          : []
+      ).map((c: any) => ({
+        color_family: c.colorFamily,
+        color_hex: c.colorHex ?? null,
+      })),
       product_images: this.mapImages(p.images),
     };
   }
@@ -110,6 +121,11 @@ export class ShopService {
     metaDescription: true,
     colorFamily: true,
     colorHex: true,
+    // Hàng phối nhiều tông: thẻ sản phẩm hiện đủ các chấm màu.
+    colorLinks: {
+      orderBy: { sortOrder: "asc" as const },
+      select: { colorFamily: true, colorHex: true },
+    },
     images: {
       orderBy: { displayOrder: "asc" as const },
       select: {
@@ -213,7 +229,6 @@ export class ShopService {
       }),
       this.prisma.koiMaterialCategory.findMany({
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-        include: { _count: { select: { products: true } } },
       }),
       this.prisma.koiImageCategory.findMany({
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -232,11 +247,22 @@ export class ShopService {
       })),
     );
 
-    // Màu sắc: đếm số SP theo colorFamily trong MỘT truy vấn groupBy, rồi map
-    // sang danh sách nhóm chuẩn (giữ tên + hex đại diện, đúng thứ tự đã định).
-    const colorGroups = await this.prisma.koiProduct.groupBy({
+    // Loại da: đếm qua bảng nối nên SP dùng 2 loại da (thân + lót) được tính
+    // cho cả hai, đúng như khi bấm lọc.
+    const materialGroups = await this.prisma.koiProductMaterialCategory.groupBy({
+      by: ["materialCategoryId"],
+      where: { product: baseWhere },
+      _count: { _all: true },
+    });
+    const materialCount = new Map(
+      materialGroups.map((g) => [g.materialCategoryId, g._count._all]),
+    );
+
+    // Màu sắc: đếm qua bảng nối nên hàng phối 2 tông được tính cho CẢ HAI màu.
+    // groupBy trên koi_product_colors, lọc theo cùng baseWhere của sản phẩm.
+    const colorGroups = await this.prisma.koiProductColor.groupBy({
       by: ["colorFamily"],
-      where: { ...baseWhere, colorFamily: { not: null } },
+      where: { product: baseWhere },
       _count: { _all: true },
     });
     const colorCount = new Map(
@@ -258,12 +284,12 @@ export class ShopService {
           count: c._count?.categoryLinks ?? 0,
         })),
       materials: materials
-        .filter((m) => (m._count?.products ?? 0) > 0)
         .map((m) => ({
           name: this.text(m.name),
           code: m.code,
-          count: m._count?.products ?? 0,
-        })),
+          count: materialCount.get(m.id) ?? 0,
+        }))
+        .filter((m) => m.count > 0),
       imageTypes: imageTypes.filter((t) => t.count > 0),
       colors,
     };
@@ -312,25 +338,30 @@ export class ShopService {
       // trang một danh mục (kể cả danh mục ẩn) thì vẫn hiện đủ — giữ URL sống.
       Object.assign(where, this.notHidden);
     }
-    // Lọc theo loại da (KoiMaterialCategory.code) — mỗi SP gắn tối đa 1 loại.
+    // Lọc theo loại da: SP gắn loại da này ở BẤT KỲ vị trí nào (thân hoặc lót).
     if (opts.material) {
-      where.materialCategory = { code: opts.material };
+      where.materialCategoryLinks = {
+        some: { materialCategory: { code: opts.material } },
+      };
     }
     // Lọc theo loại ảnh (imageType trên ảnh SP): SP có ÍT NHẤT 1 ảnh loại đó.
     if (opts.imageType) {
       where.images = { some: { imageType: opts.imageType } };
     }
     // Lọc theo màu: nhận nhiều mã nhóm màu, phân tách bởi dấu phẩy (union OR).
+    // Đọc bảng nối nên hàng phối 2 tông hiện ở CẢ HAI màu.
     if (opts.color) {
       const codes = opts.color
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      if (codes.length) where.colorFamily = { in: codes };
+      if (codes.length) {
+        where.colorLinks = { some: { colorFamily: { in: codes } } };
+      }
     }
-    // Admin: chỉ hàng CHƯA pick màu (colorFamily rỗng) — để quét cái nào cần gán.
+    // Admin: chỉ hàng CHƯA pick màu — để quét cái nào cần gán.
     if (opts.unpicked) {
-      where.colorFamily = null;
+      where.colorLinks = { none: {} };
     }
     if (opts.search) {
       where.OR = [

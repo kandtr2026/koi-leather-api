@@ -34,6 +34,21 @@ export class ProductService {
     private inventorySync: InventorySyncService,
   ) {}
 
+  private readonly categoryLinksInclude = {
+    include: {
+      category: { select: { id: true, code: true, name: true, slug: true } },
+    },
+  } as const;
+
+  private readonly materialCategoryLinksInclude = {
+    orderBy: { sortOrder: "asc" as const },
+    include: { materialCategory: true },
+  } as const;
+
+  private readonly colorLinksInclude = {
+    orderBy: { sortOrder: "asc" as const },
+  } as const;
+
   private generateSlug(nameVi: string): string {
     const slug = generateSlug(nameVi);
     return slug || `product-${Date.now()}`;
@@ -50,13 +65,88 @@ export class ProductService {
     return [...new Set(ids.filter(Boolean))];
   }
 
-  private withCategories<T extends { categoryLinks?: any[] }>(p: T): any {
+  private withCategories<
+    T extends {
+      categoryLinks?: any[];
+      colorLinks?: any[];
+      materialCategoryLinks?: any[];
+    },
+  >(p: T): any {
     if (!p) return p;
     const { categoryLinks, ...rest } = p as any;
+    const r = rest as any;
+    // Bảng nối màu / loại da → mảng phẳng cho client. Giữ thứ tự sortOrder để
+    // phần tử đầu luôn là màu chính (chấm màu đầu tiên trên thẻ sản phẩm).
+    if (r.colorLinks) {
+      const links = [...r.colorLinks].sort(
+        (a: any, b: any) => a.sortOrder - b.sortOrder,
+      );
+      r.colors = links.map((l: any) => ({
+        colorFamily: l.colorFamily,
+        colorHex: l.colorHex ?? null,
+      }));
+      delete r.colorLinks;
+    }
+    if (r.materialCategoryLinks) {
+      const links = [...r.materialCategoryLinks].sort(
+        (a: any, b: any) => a.sortOrder - b.sortOrder,
+      );
+      r.materialCategoryIds = links.map((l: any) => l.materialCategoryId);
+      r.materialCategories = links
+        .map((l: any) => l.materialCategory)
+        .filter(Boolean);
+      delete r.materialCategoryLinks;
+    }
     return {
-      ...rest,
+      ...r,
       categories: (categoryLinks || []).map((l: any) => l.category),
     };
+  }
+
+  /** Bỏ trùng theo colorFamily, giữ thứ tự người dùng chọn (đầu = màu chính). */
+  private normalizeColors(
+    colors: { colorFamily: string; colorHex?: string | null }[] | undefined,
+  ) {
+    if (!colors) return null;
+    const seen = new Set<string>();
+    const out: { colorFamily: string; colorHex: string | null }[] = [];
+    for (const c of colors) {
+      const fam = (c?.colorFamily || "").trim();
+      if (!fam || seen.has(fam)) continue;
+      seen.add(fam);
+      out.push({ colorFamily: fam, colorHex: c.colorHex ?? null });
+    }
+    return out;
+  }
+
+  /** Hợp nhất `colors[]` (mới) với colorFamily/colorHex đơn lẻ (client cũ). */
+  private resolveColors(dto: {
+    colors?: { colorFamily: string; colorHex?: string | null }[];
+    colorFamily?: string | null;
+    colorHex?: string | null;
+  }) {
+    if (dto.colors !== undefined) return this.normalizeColors(dto.colors);
+    // Client cũ chỉ gửi 1 màu: coi như danh sách 1 phần tử, null = xoá hết.
+    if (dto.colorFamily !== undefined) {
+      return dto.colorFamily
+        ? [{ colorFamily: dto.colorFamily, colorHex: dto.colorHex ?? null }]
+        : [];
+    }
+    return null; // không gửi gì → giữ nguyên
+  }
+
+  /** Hợp nhất `materialCategoryIds[]` (mới) với materialCategoryId đơn (cũ). */
+  private resolveMaterialCategoryIds(dto: {
+    materialCategoryIds?: string[];
+    materialCategoryId?: string | null;
+  }) {
+    if (dto.materialCategoryIds !== undefined) {
+      return [...new Set(dto.materialCategoryIds.filter(Boolean))];
+    }
+    if (dto.materialCategoryId !== undefined) {
+      return dto.materialCategoryId ? [dto.materialCategoryId] : [];
+    }
+    return null;
   }
 
   private generateSku(productType: string, slug: string): string {
@@ -218,6 +308,13 @@ export class ProductService {
       const primaryCategoryId = categoryIds[0];
       const productType = dto.productType || "ACCESSORY";
 
+      // Màu / loại da: phần tử đầu của mảng là "chính", cũng ghi xuống cột cũ
+      // trên koi_products để code chưa đọc bảng nối vẫn chạy đúng.
+      const colors = this.resolveColors(dto) ?? [];
+      const materialCategoryIds = this.resolveMaterialCategoryIds(dto) ?? [];
+      const primaryColor = colors[0] ?? null;
+      const primaryMaterialCategoryId = materialCategoryIds[0] ?? null;
+
       const rawSpecs = dto.technicalSpecs ?? dto.specs ?? {};
       const technicalSpecs = this.safeParseSpecs(rawSpecs);
 
@@ -289,9 +386,9 @@ export class ProductService {
             hasVariants: computed.hasVariants,
             status: dto.status ?? "DRAFT",
             externalId: dto.externalId,
-            materialCategoryId: dto.materialCategoryId ?? null,
-            colorFamily: dto.colorFamily ?? null,
-            colorHex: dto.colorHex ?? null,
+            materialCategoryId: primaryMaterialCategoryId,
+            colorFamily: primaryColor?.colorFamily ?? null,
+            colorHex: primaryColor?.colorHex ?? null,
             technicalSpecs: technicalSpecs as any,
             metaTitle,
             metaDescription,
@@ -299,18 +396,27 @@ export class ProductService {
             categoryLinks: {
               create: categoryIds.map((categoryId) => ({ categoryId })),
             },
+            colorLinks: {
+              create: colors.map((c, i) => ({
+                colorFamily: c.colorFamily,
+                colorHex: c.colorHex,
+                sortOrder: i,
+              })),
+            },
+            materialCategoryLinks: {
+              create: materialCategoryIds.map((materialCategoryId, i) => ({
+                materialCategoryId,
+                sortOrder: i,
+              })),
+            },
           },
           include: {
             images: { orderBy: { displayOrder: "asc" } },
             variants: true,
             category: true,
-            categoryLinks: {
-              include: {
-                category: {
-                  select: { id: true, code: true, name: true, slug: true },
-                },
-              },
-            },
+            categoryLinks: this.categoryLinksInclude,
+            colorLinks: this.colorLinksInclude,
+            materialCategoryLinks: this.materialCategoryLinksInclude,
           },
         });
 
@@ -322,13 +428,9 @@ export class ProductService {
               variants: true,
               images: { orderBy: { displayOrder: "asc" } },
               category: true,
-              categoryLinks: {
-                include: {
-                  category: {
-                    select: { id: true, code: true, name: true, slug: true },
-                  },
-                },
-              },
+              categoryLinks: this.categoryLinksInclude,
+              colorLinks: this.colorLinksInclude,
+              materialCategoryLinks: this.materialCategoryLinksInclude,
             },
           });
           return this.withCategories(full!);
@@ -627,6 +729,17 @@ export class ProductService {
               },
             },
           },
+          colorLinks: {
+            orderBy: { sortOrder: "asc" },
+            select: { colorFamily: true, colorHex: true },
+          },
+          materialCategoryLinks: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              materialCategoryId: true,
+              materialCategory: { select: { id: true, code: true, name: true } },
+            },
+          },
           _count: { select: { variants: true, images: true } },
           images: {
             orderBy: { displayOrder: "asc" },
@@ -644,7 +757,7 @@ export class ProductService {
     ]);
 
     const productsWithThumbnails = data.map(
-      ({ images, categoryLinks, ...product }) => {
+      ({ images, categoryLinks, colorLinks, materialCategoryLinks, ...product }) => {
         const top = (images || []).slice(0, 3).map((img) => ({
           id: img.id,
           url: img.thumbnailUrl || img.url,
@@ -656,6 +769,16 @@ export class ProductService {
         return {
           ...product,
           categories: (categoryLinks || []).map((l: any) => l.category),
+          colors: (colorLinks || []).map((l: any) => ({
+            colorFamily: l.colorFamily,
+            colorHex: l.colorHex ?? null,
+          })),
+          materialCategoryIds: (materialCategoryLinks || []).map(
+            (l: any) => l.materialCategoryId,
+          ),
+          materialCategories: (materialCategoryLinks || [])
+            .map((l: any) => l.materialCategory)
+            .filter(Boolean),
           thumbnails: { items: top, remaining },
         };
       },
@@ -682,6 +805,8 @@ export class ProductService {
             },
           },
         },
+        colorLinks: this.colorLinksInclude,
+        materialCategoryLinks: this.materialCategoryLinksInclude,
         images: { orderBy: { displayOrder: "asc" } },
         variants: {
           include: { images_rel: { orderBy: { displayOrder: "asc" } } },
@@ -699,6 +824,8 @@ export class ProductService {
       where: { slug, isDeleted: false },
       include: {
         category: true,
+        colorLinks: this.colorLinksInclude,
+        materialCategoryLinks: this.materialCategoryLinksInclude,
         images: { orderBy: { displayOrder: "asc" } },
         variants: {
           include: { images_rel: { orderBy: { displayOrder: "asc" } } },
@@ -706,7 +833,7 @@ export class ProductService {
       },
     });
     if (!product) throw new NotFoundException("Product not found");
-    return product;
+    return this.withCategories(product);
   }
 
   async update(id: string, dto: UpdateProductDto) {
@@ -728,6 +855,12 @@ export class ProductService {
       ? this.resolveCategoryIds(dto)
       : null;
 
+    // Màu / loại da: `colors[]` và `materialCategoryIds[]` là nguồn chính;
+    // colorFamily/materialCategoryId đơn lẻ vẫn nhận được (client cũ).
+    // null trả về = client không gửi gì → giữ nguyên liên kết đang có.
+    const newColors = this.resolveColors(dto);
+    const newMaterialCategoryIds = this.resolveMaterialCategoryIds(dto);
+
     const data: any = {};
     if (dto.name) data.name = dto.name;
     if (dto.productType) data.productType = dto.productType;
@@ -737,13 +870,14 @@ export class ProductService {
     if (dto.status) data.status = dto.status;
     if (dto.externalId !== undefined) data.externalId = dto.externalId;
     if (dto.sku !== undefined) data.sku = dto.sku;
-    // null = bỏ chọn danh mục da; undefined = client không gửi field, giữ nguyên.
-    if (dto.materialCategoryId !== undefined)
-      data.materialCategoryId = dto.materialCategoryId ?? null;
-    // Màu sắc: cùng quy ước null = xoá, undefined = giữ nguyên.
-    if (dto.colorFamily !== undefined)
-      data.colorFamily = dto.colorFamily ?? null;
-    if (dto.colorHex !== undefined) data.colorHex = dto.colorHex ?? null;
+    // Cột cũ trên koi_products = phần tử ĐẦU của danh sách ("chính"), để code
+    // chưa đọc bảng nối vẫn thấy đúng một màu / một loại da.
+    if (newMaterialCategoryIds !== null)
+      data.materialCategoryId = newMaterialCategoryIds[0] ?? null;
+    if (newColors !== null) {
+      data.colorFamily = newColors[0]?.colorFamily ?? null;
+      data.colorHex = newColors[0]?.colorHex ?? null;
+    }
     if (technicalSpecs)
       data.technicalSpecs = this.safeParseSpecs(technicalSpecs);
 
@@ -828,6 +962,38 @@ export class ProductService {
         }
         data.categoryId = newCategoryIds[0] ?? null;
       }
+
+      // Màu: thay toàn bộ liên kết (đơn giản và đúng hơn diff từng dòng —
+      // số màu mỗi SP chỉ vài cái).
+      if (newColors !== null) {
+        await tx.koiProductColor.deleteMany({ where: { productId: id } });
+        if (newColors.length > 0) {
+          await tx.koiProductColor.createMany({
+            data: newColors.map((c, i) => ({
+              productId: id,
+              colorFamily: c.colorFamily,
+              colorHex: c.colorHex,
+              sortOrder: i,
+            })),
+          });
+        }
+      }
+
+      if (newMaterialCategoryIds !== null) {
+        await tx.koiProductMaterialCategory.deleteMany({
+          where: { productId: id },
+        });
+        if (newMaterialCategoryIds.length > 0) {
+          await tx.koiProductMaterialCategory.createMany({
+            data: newMaterialCategoryIds.map((materialCategoryId, i) => ({
+              productId: id,
+              materialCategoryId,
+              sortOrder: i,
+            })),
+          });
+        }
+      }
+
       return tx.koiProduct.update({
         where: { id },
         data,
@@ -835,13 +1001,9 @@ export class ProductService {
           images: { orderBy: { displayOrder: "asc" } },
           variants: true,
           category: true,
-          categoryLinks: {
-            include: {
-              category: {
-                select: { id: true, code: true, name: true, slug: true },
-              },
-            },
-          },
+          categoryLinks: this.categoryLinksInclude,
+          colorLinks: this.colorLinksInclude,
+          materialCategoryLinks: this.materialCategoryLinksInclude,
         },
       });
     });

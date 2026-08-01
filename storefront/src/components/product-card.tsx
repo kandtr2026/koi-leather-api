@@ -10,6 +10,15 @@ export function ProductCard({ p }: { p: ProductWithImages }) {
   const cover = p.product_images?.find((i) => i.is_primary) ?? p.product_images?.[0];
   const src = imageUrl(cover?.storage_path);
 
+  // Hàng phối nhiều tông hiện đủ chấm màu. Sản phẩm cũ (chưa có mảng colors)
+  // vẫn rơi về màu đơn, nên thẻ không bao giờ mất chấm màu.
+  const dots = (p.colors?.length
+    ? p.colors
+    : p.color_hex
+      ? [{ color_family: p.color_family ?? '', color_hex: p.color_hex }]
+      : []
+  ).filter((c) => c.color_hex);
+
   return (
    <>
     <Link href={`/cua-hang/${p.slug}/`} className="group block">
@@ -31,12 +40,16 @@ export function ProductCard({ p }: { p: ProductWithImages }) {
 
       <div className="pt-3">
         <h3 className="flex items-start gap-1.5 text-[15px] leading-snug text-koi-ink transition-colors group-hover:text-koi-orange-dark">
-          {p.color_hex ? (
-            <span
-              aria-hidden
-              className="mt-[5px] inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-koi-line"
-              style={{ backgroundColor: p.color_hex }}
-            />
+          {dots.length ? (
+            <span aria-hidden className="mt-[5px] flex shrink-0 items-center gap-1">
+              {dots.map((c, i) => (
+                <span
+                  key={`${c.color_family}-${i}`}
+                  className="inline-block h-2.5 w-2.5 rounded-full border border-koi-line"
+                  style={{ backgroundColor: c.color_hex as string }}
+                />
+              ))}
+            </span>
           ) : null}
           <span>{p.name}</span>
         </h3>

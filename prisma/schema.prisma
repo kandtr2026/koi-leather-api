@@ -241,6 +241,37 @@ model KoiProductCategory {
   @@schema("koi_free_style")
 }
 
+// Bảng nối: 1 sản phẩm có thể mang nhiều màu (vd ví phối đen + vàng bò).
+// colorFamily/colorHex cũ trên KoiProduct vẫn giữ làm "màu chính" (chấm đầu
+// tiên, tương thích ngược cho chỗ nào chưa đọc bảng nối).
+model KoiProductColor {
+  productId   String
+  colorFamily String
+  colorHex    String?
+  sortOrder   Int     @default(0)
+  product     KoiProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  @@id([productId, colorFamily])
+  @@index([colorFamily])
+  @@map("koi_product_colors")
+  @@schema("koi_free_style")
+}
+
+// Bảng nối: 1 sản phẩm có thể dùng nhiều loại da (vd thân Epsom, lót Swift).
+// materialCategoryId cũ trên KoiProduct giữ làm "loại da chính".
+model KoiProductMaterialCategory {
+  productId          String
+  materialCategoryId String
+  sortOrder          Int    @default(0)
+  product            KoiProduct          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  materialCategory   KoiMaterialCategory @relation(fields: [materialCategoryId], references: [id], onDelete: Cascade)
+  createdAt          DateTime            @default(now())
+  @@id([productId, materialCategoryId])
+  @@index([materialCategoryId])
+  @@map("koi_product_material_categories")
+  @@schema("koi_free_style")
+}
+
 model KoiProduct {
   id           String @id @default(uuid())
   name         String
@@ -271,6 +302,8 @@ model KoiProduct {
   category    KoiCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   materialCategory KoiMaterialCategory? @relation(fields: [materialCategoryId], references: [id], onDelete: SetNull)
   categoryLinks KoiProductCategory[]
+  colorLinks    KoiProductColor[]
+  materialCategoryLinks KoiProductMaterialCategory[]
   images      KoiProductImage[]
   variants    KoiProductVariant[]
   craftSpecs  KoiCraftingSpec[]
@@ -472,6 +505,7 @@ model KoiMaterialCategory {
   updatedAt DateTime @updatedAt
   materials   KoiRawMaterial[]
   products    KoiProduct[]
+  productLinks KoiProductMaterialCategory[]
   @@index([code])
   @@map("koi_material_categories")
   @@schema("koi_free_style")
