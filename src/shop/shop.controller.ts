@@ -16,6 +16,12 @@ import { ShopService } from "./shop.service";
 import { ShopContentService } from "./shop-content.service";
 
 /**
+ * Các kiểu sắp xếp khách được chọn. Bỏ trống = "popular" (mặc định): hàng đinh
+ * trước, rồi displayRank. Xem thuTuSapXep() trong shop.service.ts.
+ */
+const SORT_HOP_LE = ["popular", "price-asc", "price-desc", "newest"];
+
+/**
  * API CÔNG KHAI cho storefront khách hàng (KoiFront).
  *
  * Toàn bộ nhóm /shop/* được allowlist trong AuthGuard → khách không cần đăng
@@ -85,6 +91,7 @@ export class ShopController {
     @Query("imageType") imageType?: string,
     @Query("color") color?: string,
     @Query("unpicked") unpicked?: string,
+    @Query("sort") sort?: string,
   ) {
     return this.shop.listProducts({
       page: Number(page) || 1,
@@ -95,6 +102,9 @@ export class ShopController {
       imageType,
       color,
       unpicked: unpicked === "1" || unpicked === "true",
+      // Lọc trắng danh sách: giá trị lạ rơi về "popular" thay vì ném lỗi —
+      // đường dẫn có sort cũ/gõ sai vẫn ra trang bình thường.
+      sort: SORT_HOP_LE.includes(sort as string) ? sort : undefined,
     });
   }
 

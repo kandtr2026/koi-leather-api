@@ -751,6 +751,8 @@ export class ProductService {
           priceMax: true,
           hasVariants: true,
           status: true,
+          // Nút tick ngôi sao trong bảng admin cần biết trạng thái hiện tại.
+          isFeatured: true,
           technicalSpecs: true,
           createdAt: true,
           updatedAt: true,
@@ -1151,6 +1153,27 @@ export class ProductService {
       where: { id },
       data: { status: newStatus },
     });
+  }
+
+  /**
+   * Bật/tắt hàng "đinh" — món được tick sẽ nằm đầu danh sách cửa hàng, trước
+   * phần xếp tự động theo displayRank.
+   *
+   * Trả kèm soLuongDinh để admin cảnh báo mềm khi tick quá nhiều: tick 60 món
+   * thì lớp xếp tự động mất tác dụng và trang 1 lại thành một mớ không thứ tự.
+   * Cố ý KHÔNG chặn cứng — đây là quyết định kinh doanh của người bán.
+   */
+  async toggleFeatured(id: string) {
+    const product = await this.findById(id);
+    const updated = await this.prisma.koiProduct.update({
+      where: { id },
+      data: { isFeatured: !product.isFeatured },
+      select: { id: true, isFeatured: true },
+    });
+    const soLuongDinh = await this.prisma.koiProduct.count({
+      where: { isFeatured: true, isDeleted: false },
+    });
+    return { ...updated, soLuongDinh };
   }
 
   async createVariant(productId: string, dto: VariantDto) {

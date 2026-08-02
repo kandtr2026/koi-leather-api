@@ -74,7 +74,7 @@ export class ShopService {
       on_sale: false,
       has_variants: !!p.hasVariants,
       is_available: p.status === "ACTIVE",
-      is_featured: false,
+      is_featured: !!p.isFeatured,
       meta_title: p.metaTitle ?? null,
       meta_description: p.metaDescription ?? null,
       color_family: p.colorFamily ?? null,
@@ -121,6 +121,7 @@ export class ShopService {
     metaDescription: true,
     colorFamily: true,
     colorHex: true,
+    isFeatured: true,
     // Hàng phối nhiều tông: thẻ sản phẩm hiện đủ các chấm màu.
     colorLinks: {
       orderBy: { sortOrder: "asc" as const },
@@ -173,13 +174,15 @@ export class ShopService {
     if (!cats.length) return [];
 
     // Ảnh đại diện: MỘT truy vấn duy nhất cho mọi danh mục (theo danh mục chính
-    // categoryId), rồi lấy sản phẩm đầu tiên (giá cao nhất) làm bìa. Trước đây
-    // bắn N truy vấn song song → vượt pool_size của session pooler (local) →
-    // lỗi "max clients reached". Gộp về 1 query để không còn bão kết nối.
+    // categoryId), rồi lấy sản phẩm đầu tiên làm bìa. Trước đây bắn N truy vấn
+    // song song → vượt pool_size của session pooler (local) → lỗi "max clients
+    // reached". Gộp về 1 query để không còn bão kết nối.
+    // Bìa lấy theo displayRank (món được đầu tư nhiều ảnh nhất) chứ không theo
+    // giá cao nhất — ảnh đẹp mới là thứ cần cho bìa, giá cao thì không.
     const catIds = cats.map((c) => c.id);
     const products = await this.prisma.koiProduct.findMany({
       where: { ...this.published, categoryId: { in: catIds } },
-      orderBy: { basePrice: "desc" },
+      orderBy: [{ isFeatured: "desc" }, { displayRank: "asc" }, { id: "asc" }],
       select: {
         categoryId: true,
         images: {
@@ -314,7 +317,14 @@ export class ShopService {
     const [featuredRaw, categories] = await Promise.all([
       this.prisma.koiProduct.findMany({
         where: { ...this.published, ...this.notHidden },
-        orderBy: { basePrice: "desc" },
+        // Cùng thứ tự với danh sách cửa hàng: hàng đinh trước, rồi displayRank.
+        // Trước đây lấy 8 món đắt nhất nên khối "nổi bật" ngay trang chủ toàn
+        // hàng 19–79 triệu — đúng thứ khiến khách nghĩ shop chỉ bán đồ đắt.
+        orderBy: [
+          { isFeatured: "desc" },
+          { displayRank: "asc" },
+          { id: "asc" },
+        ],
         take: 8,
         select: this.cardSelect,
       }),
@@ -328,6 +338,34 @@ export class ShopService {
 
   // ----- product list -----
 
+  /**
+   * Thứ tự hiện sản phẩm cho khách.
+   *
+   * "popular" là mặc định: hàng đinh (isFeatured, người bán tự tick) lên đầu,
+   * phần còn lại theo displayRank — điểm tính sẵn bởi
+   * scripts/compute-display-rank.js, ưu tiên món được đầu tư nhiều rồi cài răng
+   * lược 3 dải giá. Trước đây mặc định là basePrice giảm dần nên trang 1 toàn
+   * hàng 19–79 triệu (trung bình 30,7tr) trong khi trung vị cả shop chỉ 4tr —
+   * khách tưởng shop chỉ bán đồ đắt.
+   *
+   * Mọi nhánh đều chốt bằng id để phân trang không nhảy khi có sản phẩm trùng
+   * giá / trùng ngày.
+   */
+  private thuTuSapXep(
+    sort?: string,
+  ): Prisma.KoiProductOrderByWithRelationInput[] {
+    switch (sort) {
+      case "price-asc":
+        return [{ basePrice: "asc" }, { id: "asc" }];
+      case "price-desc":
+        return [{ basePrice: "desc" }, { id: "asc" }];
+      case "newest":
+        return [{ createdAt: "desc" }, { id: "asc" }];
+      default:
+        return [{ isFeatured: "desc" }, { displayRank: "asc" }, { id: "asc" }];
+    }
+  }
+
   async listProducts(opts: {
     page?: number;
     limit?: number;
@@ -337,6 +375,7 @@ export class ShopService {
     imageType?: string;
     color?: string;
     unpicked?: boolean;
+    sort?: string;
   }) {
     const page = Math.max(1, opts.page || 1);
     const limit = Math.min(48, Math.max(1, opts.limit || 24));
@@ -391,7 +430,7 @@ export class ShopService {
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: [{ basePrice: "desc" }, { id: "asc" }],
+        orderBy: this.thuTuSapXep(opts.sort),
         select: this.cardSelect,
       }),
       this.prisma.koiProduct.count({ where }),
@@ -457,7 +496,13 @@ export class ShopService {
           categoryLinks: { some: { categoryId: p.categoryId } },
         },
         take: 4,
-        orderBy: { basePrice: "desc" },
+        // Cùng thứ tự với danh sách: gợi ý món shop đầu tư nhất, không phải
+        // món đắt nhất. Khách đang xem ví 2tr mà gợi ý toàn hàng 40tr thì hỏng.
+        orderBy: [
+          { isFeatured: "desc" },
+          { displayRank: "asc" },
+          { id: "asc" },
+        ],
         select: this.cardSelect,
       });
       related = rel.map((r) => this.card(r));

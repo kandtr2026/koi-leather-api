@@ -313,6 +313,18 @@ model KoiProduct {
   // thật, chỉ để hiện chấm màu trên thẻ). Xem KoiColorFamily trong common/enums.
   colorFamily           String?
   colorHex              String?
+  // Thứ tự hiện ở cửa hàng. Trước đây danh sách xếp theo basePrice desc nên
+  // trang 1 toàn hàng 19–79tr (trung bình 30,7tr) trong khi trung vị cả shop
+  // chỉ 4tr — khách tưởng shop chỉ bán đồ đắt.
+  //   isFeatured : hàng "đinh" do người bán tự tick, luôn nằm đầu.
+  //   displayRank: điểm xếp sẵn cho phần còn lại, tính bằng
+  //                scripts/compute-display-rank.js. Tính sẵn thành số nguyên
+  //                vì công thức có bước cài răng lược dải giá — không diễn đạt
+  //                được bằng ORDER BY, mà xếp trong RAM thì phân trang sẽ nhảy.
+  //                Sau này khi koi_page_views đủ dày thì chỉ cần chạy lại
+  //                script từ lượt xem thật, không phải sửa truy vấn.
+  isFeatured            Boolean                      @default(false)
+  displayRank           Int                          @default(999999)
   category              KoiCategory?                 @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   materialCategory      KoiMaterialCategory?         @relation(fields: [materialCategoryId], references: [id], onDelete: SetNull)
   categoryLinks         KoiProductCategory[]
@@ -331,6 +343,8 @@ model KoiProduct {
   @@index([categoryId, status])
   @@index([materialCategoryId])
   @@index([colorFamily])
+  // Chỉ mục phủ đúng thứ tự ORDER BY của danh sách cửa hàng.
+  @@index([isFeatured, displayRank])
   @@map("koi_products")
   @@schema("koi_free_style")
 }

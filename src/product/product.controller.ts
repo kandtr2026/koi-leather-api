@@ -217,6 +217,15 @@ export class ProductController {
     return this.productService.toggleStatus(id);
   }
 
+  @Post(":id/toggle-featured")
+  @ApiOperation({
+    summary:
+      'Toggle hàng "đinh" — món được tick nằm đầu danh sách cửa hàng. Trả kèm soLuongDinh để admin cảnh báo mềm.',
+  })
+  toggleFeatured(@Param("id", ParseUUIDPipe) id: string) {
+    return this.productService.toggleFeatured(id);
+  }
+
   @Post(":productId/variants")
   @ApiOperation({ summary: "Add a new variant to product" })
   createVariant(
