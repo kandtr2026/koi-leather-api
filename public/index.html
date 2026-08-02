@@ -1406,13 +1406,90 @@ function sortHeader({ key, label, cls }) {
     : productOrder === 'asc' ? `${label} — đang tăng dần, nhấn để giảm dần`
     : `${label} — đang giảm dần, nhấn để bỏ sắp xếp`;
   return `<th class="px-4 py-3 ${cls}">
+    <div class="inline-flex items-center gap-1">
     <button type="button" onclick="sortProducts('${key}')" title="${esc(title)}"
       aria-label="${esc(title)}" aria-sort="${active ? (productOrder === 'asc' ? 'ascending' : 'descending') : 'none'}"
       class="group inline-flex items-center gap-1.5 uppercase font-semibold tracking-wide ${active ? 'text-amber-600' : 'text-gray-500 hover:text-gray-700'}">
       <span>${esc(label)}</span>
       <i class="fas ${icon} text-[11px] ${active ? '' : 'group-hover:text-gray-400'}"></i>
-    </button>
+    </button>${renderColFilter(key, label)}
+    </div>
   </th>`;
+}
+
+/**
+ * Phễu lọc cạnh tiêu đề cột. Chỉ 4 cột soạn data hay phải rà (tên, danh mục,
+ * loại da, giá) mới có — gắn cho mọi cột thì hàng tiêu đề rối mà những cột
+ * như Hình ảnh/Ngày sửa lọc theo giá trị cũng chẳng để làm gì.
+ */
+const COL_FILTERABLE = ['name', 'category', 'material', 'price'];
+
+function renderColFilter(key, label) {
+  if (!COL_FILTERABLE.includes(key)) return '';
+  const on = colFilterActive(key);
+  const open = openColFilter === key;
+  const tip = on ? `Đang lọc theo ${label} — bấm để sửa` : `Lọc theo ${label}`;
+  return `<span class="col-filter-wrap relative inline-flex">
+    <button type="button" onclick="toggleColFilter('${key}', event)" title="${esc(tip)}"
+      aria-label="${esc(tip)}" aria-expanded="${open ? 'true' : 'false'}"
+      class="inline-flex items-center justify-center w-5 h-5 rounded ${on ? 'text-amber-600 bg-amber-100' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'}">
+      <i class="fas fa-filter text-[10px]"></i>
+    </button>
+    ${open ? colFilterPanel(key, label) : ''}
+  </span>`;
+}
+
+function colFilterPanel(key, label) {
+  const wrap = (inner, w = 'w-60') => `<div id="colFilterPanel-${key}"
+    class="absolute left-0 top-full mt-1 z-50 ${w} bg-white border border-gray-200 rounded-lg shadow-lg p-3 normal-case tracking-normal font-normal text-left"
+    onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-[11px] font-semibold text-gray-500 uppercase">Lọc ${esc(label)}</span>
+      ${colFilterActive(key) ? `<button type="button" onclick="clearColFilter('${key}')" class="text-[11px] text-gray-400 hover:text-red-500">Bỏ lọc</button>` : ''}
+    </div>
+    ${inner}
+  </div>`;
+
+  if (key === 'name') {
+    return wrap(`<input type="text" value="${esc(productSearch)}" placeholder="Gõ tên, SKU…"
+      onkeydown="if(event.key==='Enter'){applyProductSearchNow(this.value);openColFilter=null;}"
+      class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+      <p class="text-[11px] text-gray-400 mt-1.5">Enter để tìm. Dùng chung với ô tìm kiếm trên cùng.</p>`);
+  }
+
+  if (key === 'category') {
+    const opts = [...prodCats].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'vi'));
+    return wrap(`<select onchange="applyColFilterCategory(this.value)"
+      class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400">
+      <option value="">— Tất cả danh mục —</option>
+      ${opts.map(c => `<option value="${esc(c.slug || '')}" ${c.slug === currentCategoryFilter ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+    </select>`);
+  }
+
+  if (key === 'material') {
+    const opts = [...matCats].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'vi'));
+    return wrap(`<select onchange="applyColFilterMaterial(this.value)"
+      class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400">
+      <option value="">— Tất cả loại da —</option>
+      ${opts.map(m => `<option value="${esc(m.id)}" ${m.id === colFilters.material ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}
+    </select>`);
+  }
+
+  // price
+  return wrap(`<div class="flex items-center gap-1.5">
+      <input id="colFilterPriceMin" type="text" inputmode="numeric" autocomplete="off"
+        value="${formatPriceForInput(colFilters.priceMin)}" placeholder="Từ" oninput="onPriceInput(this)"
+        onkeydown="if(event.key==='Enter')applyColFilterPrice()"
+        class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+      <span class="text-gray-400 text-xs">—</span>
+      <input id="colFilterPriceMax" type="text" inputmode="numeric" autocomplete="off"
+        value="${formatPriceForInput(colFilters.priceMax)}" placeholder="Đến" oninput="onPriceInput(this)"
+        onkeydown="if(event.key==='Enter')applyColFilterPrice()"
+        class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+    </div>
+    <p class="text-[11px] text-gray-400 mt-1.5">Bỏ trống một ô = không chặn đầu đó. Sản phẩm chưa có giá không hiện.</p>
+    <button type="button" onclick="applyColFilterPrice()"
+      class="mt-2 w-full bg-amber-500 hover:bg-amber-600 text-white rounded px-2 py-1.5 text-sm font-medium">Áp dụng</button>`);
 }
 
 function fmDate(v) {
@@ -1441,6 +1518,12 @@ async function applyProductSearchNow(value) {
   const next = (value || '').trim();
   if (next === productSearch) return;
   productSearch = next;
+  // Phễu lọc ở cột SẢN PHẨM cũng gọi hàm này, mà lúc đó ô tìm kiếm trên cùng
+  // không tự đổi theo. Không đồng bộ lại thì ô trên trống trơn trong khi bảng
+  // đang lọc — người dùng tưởng không có bộ lọc nào bật.
+  const input = document.getElementById('productSearchInput');
+  if (input && input.value.trim() !== next) input.value = next;
+  document.getElementById('productSearchClear')?.classList.toggle('hidden', !next);
   productPage = 1;
   await loadProducts();
 }
@@ -1489,6 +1572,109 @@ function syncMissingChips() {
   });
 }
 
+/* ========== LỌC THEO GIÁ TRỊ CỘT ==========
+ *
+ * Bảng phân trang ở server (50 dòng/trang) nên lọc phải chạy dưới API —
+ * lọc mảng `products` chỉ lọc trong đúng trang đang xem, các trang sau vẫn
+ * lọt sản phẩm không khớp.
+ *
+ * `name` là ngoại lệ: nó dùng chung đường ?q= với ô tìm kiếm sẵn có thay vì
+ * thêm tham số mới, nên gõ ở đây và gõ ở ô tìm trên cùng là một.
+ *
+ * Danh mục dùng lại currentCategoryFilter (?category=<slug>) vốn đã có, để
+ * bấm badge danh mục trên dòng và chọn trong dropdown không đá nhau.
+ */
+const colFilters = { material: '', priceMin: '', priceMax: '' };
+let openColFilter = null;   // key của dropdown đang mở
+
+/** Cột nào đang có bộ lọc bật — dùng để tô cam biểu tượng phễu. */
+function colFilterActive(key) {
+  if (key === 'name') return !!productSearch;
+  if (key === 'category') return !!currentCategoryFilter;
+  if (key === 'material') return !!colFilters.material;
+  if (key === 'price') return colFilters.priceMin !== '' || colFilters.priceMax !== '';
+  return false;
+}
+
+function toggleColFilter(key, ev) {
+  if (ev) ev.stopPropagation();
+  openColFilter = openColFilter === key ? null : key;
+  renderProducts();
+  if (openColFilter) {
+    // Con trỏ nhảy thẳng vào ô nhập để gõ được ngay, khỏi phải bấm thêm lần nữa.
+    const el = document.querySelector(`#colFilterPanel-${key} input`);
+    if (el) { el.focus(); el.select?.(); }
+  }
+}
+
+function closeColFilter() {
+  if (openColFilter === null) return;
+  openColFilter = null;
+  renderProducts();
+}
+
+async function applyColFilterMaterial(value) {
+  colFilters.material = value || '';
+  openColFilter = null;
+  productPage = 1;
+  await loadProducts();
+}
+
+async function applyColFilterCategory(slug) {
+  openColFilter = null;
+  if (!slug) { await clearCategoryFilter(); return; }
+  navigateToCategoryProducts(null, slug);
+}
+
+async function applyColFilterPrice() {
+  // parsePriceInput trả '' khi ô trống và NaN khi gõ bậy — '' nghĩa là không
+  // chặn đầu đó, nên chỉ chặn lại khi thật sự NaN.
+  const min = parsePriceInput(document.getElementById('colFilterPriceMin')?.value || '');
+  const max = parsePriceInput(document.getElementById('colFilterPriceMax')?.value || '');
+  if (Number.isNaN(min) || Number.isNaN(max)) { toast('Giá không hợp lệ'); return; }
+  if (min !== '' && max !== '' && min > max) { toast('Giá thấp nhất đang lớn hơn giá cao nhất'); return; }
+  colFilters.priceMin = min;
+  colFilters.priceMax = max;
+  openColFilter = null;
+  productPage = 1;
+  await loadProducts();
+}
+
+async function clearColFilter(key) {
+  openColFilter = null;
+  productPage = 1;
+  if (key === 'name') { await clearProductSearch(); return; }
+  if (key === 'category') { await clearCategoryFilter(); return; }
+  if (key === 'material') { colFilters.material = ''; }
+  if (key === 'price') { colFilters.priceMin = ''; colFilters.priceMax = ''; }
+  await loadProducts();
+}
+
+async function clearAllColFilters() {
+  openColFilter = null;
+  colFilters.material = '';
+  colFilters.priceMin = '';
+  colFilters.priceMax = '';
+  currentCategoryFilter = null;
+  productSearch = '';
+  const input = document.getElementById('productSearchInput');
+  if (input) input.value = '';
+  document.getElementById('productSearchClear')?.classList.add('hidden');
+  productPage = 1;
+  navigateTo('/admin/products');
+  await loadProducts();
+}
+
+/** Bấm ra ngoài hoặc bấm Esc thì đóng dropdown đang mở. */
+document.addEventListener('click', (e) => {
+  if (openColFilter === null) return;
+  if (e.target.closest('.col-filter-wrap')) return;
+  closeColFilter();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && openColFilter !== null) closeColFilter();
+});
+
 function productsUrl(page) {
   let url = `/products?page=${page}&limit=${PRODUCTS_PER_PAGE}`;
   if (currentCategoryFilter) {
@@ -1499,6 +1685,15 @@ function productsUrl(page) {
   }
   if (productMissing) {
     url += '&missing=' + encodeURIComponent(productMissing);
+  }
+  if (colFilters.material) {
+    url += '&materialCategoryId=' + encodeURIComponent(colFilters.material);
+  }
+  if (colFilters.priceMin !== '') {
+    url += '&priceMin=' + encodeURIComponent(colFilters.priceMin);
+  }
+  if (colFilters.priceMax !== '') {
+    url += '&priceMax=' + encodeURIComponent(colFilters.priceMax);
   }
   if (productSort) {
     url += `&sort=${encodeURIComponent(productSort)}&order=${encodeURIComponent(productOrder)}`;
@@ -1610,6 +1805,10 @@ function renderThumbnails(thumbs, productId) {
 
 function renderProducts() {
   const el = document.getElementById('productTable');
+  // #productTable có overflow-hidden để bo tròn 4 góc bảng. Nhưng overflow ẩn
+  // cũng cắt luôn dropdown lọc (định vị absolute, thò xuống dưới hàng tiêu đề),
+  // nên khi có panel đang mở phải tạm nhả ra rồi trả lại lúc đóng.
+  el.classList.toggle('overflow-hidden', !openColFilter);
   // Ưu tiên tên loại từ danh mục (/categories); fallback cho dữ liệu cũ
   const typeFallback = { WALLET:'Ví', BELT:'Thắt lưng', WATCH_STRAP:'Dây đồng hồ', BAG:'Túi', ACCESSORY:'Phụ kiện' };
   const typeLabelOf = code => prodCats.find(c => c.code === code)?.name || typeFallback[code] || code;
@@ -1642,7 +1841,19 @@ function renderProducts() {
     </div>`;
   }
   if (!products.length) {
-    const emptyMsg = productSearch
+    // Lọc theo cột mà ra rỗng thì bảng biến mất — kể cả hàng tiêu đề, tức là
+    // mất luôn cái phễu vừa dùng để lọc. Không có lối bỏ lọc thì người dùng
+    // kẹt cứng, nên phải chèn nút thoát riêng cho trường hợp này.
+    const colOn = ['name', 'category', 'material', 'price'].filter(colFilterActive);
+    const emptyMsg = colOn.length
+      ? `<div class="text-center py-12 text-gray-400">
+          <i class="fas fa-filter text-4xl mb-3"></i>
+          <p>Không có sản phẩm nào khớp bộ lọc đang bật.</p>
+          <button onclick="clearAllColFilters()" class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">
+            <i class="fas fa-times text-xs"></i> Bỏ hết bộ lọc
+          </button>
+        </div>`
+      : productSearch
       ? `<div class="text-center py-12 text-gray-400"><i class="fas fa-search text-4xl mb-3"></i><p>Không tìm thấy sản phẩm nào khớp «${esc(productSearch)}»</p></div>`
       : productMissing
       ? '<div class="text-center py-12 text-green-500"><i class="fas fa-circle-check text-4xl mb-3"></i><p>Tuyệt vời! Không còn sản phẩm nào thiếu dữ liệu này.</p></div>'
@@ -1666,7 +1877,7 @@ function renderProducts() {
       </button>
     </div>`;
   }
-  el.innerHTML = missingBanner + searchBanner + filterBanner + `<div class="overflow-x-auto"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase">${PRODUCT_SORT_COLUMNS.map(sortHeader).join('')}<th class="px-4 py-3 text-right whitespace-nowrap w-px">Thao tác</th></tr></thead><tbody>${products.map(p => {
+  el.innerHTML = missingBanner + searchBanner + filterBanner + `<div class="${openColFilter ? 'overflow-visible' : 'overflow-x-auto'}"><table class="w-full"><thead><tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase">${PRODUCT_SORT_COLUMNS.map(sortHeader).join('')}<th class="px-4 py-3 text-right whitespace-nowrap w-px">Thao tác</th></tr></thead><tbody>${products.map(p => {
     const schemaProps = p.category?.specsSchema ? (() => { try { const s = typeof p.category.specsSchema === 'string' ? JSON.parse(p.category.specsSchema) : p.category.specsSchema; return s.properties; } catch { return null; } })() : null;
     const specs = typeof p.technicalSpecs === 'string' ? (() => { try { return JSON.parse(p.technicalSpecs); } catch { return {}; } })() : (p.technicalSpecs || {});
     const cats = (p.categories && p.categories.length) ? p.categories : (p.category ? [p.category] : []);

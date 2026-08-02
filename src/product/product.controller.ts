@@ -100,6 +100,23 @@ export class ProductController {
     description:
       "Todolist filter: chỉ sản phẩm còn thiếu dữ liệu. Nhận 'material' (chưa gán loại da), 'price' (chưa có giá), 'specs' (chưa có thông số), 'category' (chưa phân loại), 'images' (chưa có ảnh), 'any' (thiếu bất kỳ), hoặc nhiều giá trị phân tách bởi dấu phẩy (thiếu tất cả).",
   })
+  @ApiQuery({
+    name: "materialCategoryId",
+    required: false,
+    description:
+      "Lọc theo loại da (id của KoiMaterialCategory). Khớp cả bảng nối nhiều-nhiều lẫn cột materialCategoryId đơn của bản cũ.",
+  })
+  @ApiQuery({
+    name: "priceMin",
+    required: false,
+    description:
+      "Giá thấp nhất (VNĐ, tính cả mốc này). Sản phẩm chưa có giá không nằm trong kết quả.",
+  })
+  @ApiQuery({
+    name: "priceMax",
+    required: false,
+    description: "Giá cao nhất (VNĐ, tính cả mốc này).",
+  })
   findAll(
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query("limit", new DefaultValuePipe(20), ParseIntPipe) limit: number,
@@ -111,7 +128,18 @@ export class ProductController {
     @Query("sort") sort?: string,
     @Query("order") order?: string,
     @Query("missing") missing?: string,
+    @Query("materialCategoryId") materialCategoryId?: string,
+    @Query("priceMin") priceMin?: string,
+    @Query("priceMax") priceMax?: string,
   ) {
+    // Query string luôn là chuỗi. Dùng ParseFloatPipe thì ô trống ("") ném 400,
+    // mà "không lọc giá" là trạng thái hợp lệ — nên tự parse và bỏ qua giá trị
+    // rỗng/không phải số.
+    const toNum = (v?: string) => {
+      if (v === undefined || v === null || v.trim() === "") return undefined;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    };
     return this.productService.findAll(
       page,
       limit,
@@ -123,6 +151,9 @@ export class ProductController {
       sort,
       order,
       missing,
+      materialCategoryId,
+      toNum(priceMin),
+      toNum(priceMax),
     ); // <--- Pass search parameter to service
   }
 

@@ -583,6 +583,9 @@ export class ProductService {
     sort?: string,
     order?: string,
     missing?: string,
+    materialCategoryId?: string,
+    priceMin?: number,
+    priceMax?: number,
   ) {
     const where: Prisma.KoiProductWhereInput = { isDeleted: false };
     if (type) where.productType = type as any;
@@ -662,6 +665,39 @@ export class ProductService {
     }
     if (resolvedCategoryId) {
       where.categoryLinks = { some: { categoryId: resolvedCategoryId } };
+    }
+
+    // --- Lọc theo loại da ---
+    // Sản phẩm gán nhiều loại da qua bảng nối; cột materialCategoryId đơn là
+    // của bản cũ và chỉ giữ loại da đầu tiên. Phải khớp CẢ HAI, nếu không
+    // những sản phẩm nhập trước khi có bảng nối sẽ biến mất khỏi kết quả.
+    if (materialCategoryId) {
+      const andList = Array.isArray(where.AND)
+        ? where.AND
+        : where.AND
+          ? [where.AND]
+          : [];
+      andList.push({
+        OR: [
+          { materialCategoryLinks: { some: { materialCategoryId } } },
+          { materialCategoryId },
+        ],
+      });
+      where.AND = andList;
+    }
+
+    // --- Lọc theo khoảng giá ---
+    // Chỉ áp khi là số thật. Sản phẩm chưa có giá (basePrice = null) tự rơi
+    // khỏi kết quả — muốn tìm chúng thì đã có chip "Chưa có giá".
+    const priceRange: Prisma.FloatFilter = {};
+    if (typeof priceMin === "number" && Number.isFinite(priceMin)) {
+      priceRange.gte = priceMin;
+    }
+    if (typeof priceMax === "number" && Number.isFinite(priceMax)) {
+      priceRange.lte = priceMax;
+    }
+    if (Object.keys(priceRange).length) {
+      where.basePrice = priceRange;
     }
 
     // --- Search Logic Added ---
