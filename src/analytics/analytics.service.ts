@@ -39,6 +39,15 @@ const CUA_SO_ONLINE_MS = 5 * 60 * 1000;
  */
 const HAN_DON_RAC_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Múi giờ để cắt ngày.
+ *
+ * Máy chủ Vercel chạy giờ UTC, cửa hàng bán ở Việt Nam. Cắt ngày theo giờ máy
+ * chủ thì "hôm nay" bắt đầu lúc 7 giờ sáng giờ ta — mọi đơn/lượt xem từ nửa
+ * đêm tới 7h sáng bị tính sang hôm qua. Mọi phép cắt ngày đều phải đi qua đây.
+ */
+const MUI_GIO = "Asia/Ho_Chi_Minh";
+
 @Injectable()
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
@@ -264,6 +273,29 @@ export class AnalyticsService {
 
 
   /**
+   * Mốc 00:00 hôm nay theo giờ Việt Nam, trả về Date mang giá trị UTC để so
+   * sánh thẳng với cột createdAt.
+   *
+   * Không dùng setHours(0,0,0,0): hàm đó cắt theo giờ CỦA MÁY CHỦ. Trên Vercel
+   * (UTC) nó cho 00:00 UTC = 07:00 giờ ta, nên "hôm nay" mất trắng 7 tiếng đầu
+   * ngày và mọi lượt xem sáng sớm bị đẩy sang hôm qua. Máy lập trình chạy giờ
+   * Việt Nam nên bản địa lại đúng — lỗi chỉ hiện ra khi lên production.
+   */
+  private dauNgayVN(luiNgay = 0): Date {
+    const now = new Date();
+    // Đọc số ngày/tháng/năm mà ĐỒNG HỒ VIỆT NAM đang chỉ, bất kể máy chủ ở đâu.
+    const [{ value: d }, , { value: m }, , { value: y }] = new Intl.DateTimeFormat(
+      "en-GB",
+      { timeZone: MUI_GIO, year: "numeric", month: "2-digit", day: "2-digit" },
+    ).formatToParts(now);
+
+    // 00:00 giờ VN = 17:00 UTC hôm trước. Việt Nam cố định UTC+7, không có giờ
+    // mùa hè, nên trừ thẳng 7 tiếng là đủ — không cần thư viện múi giờ.
+    const mocUTC = Date.UTC(Number(y), Number(m) - 1, Number(d)) - 7 * 60 * 60 * 1000;
+    return new Date(mocUTC - luiNgay * 24 * 60 * 60 * 1000);
+  }
+
+  /**
    * Tổng quan cho trang admin.
    *
    * Dùng $queryRaw cho phần gom nhóm theo ngày: Prisma groupBy không cắt được
@@ -272,13 +304,13 @@ export class AnalyticsService {
    */
   async summary(days = 30) {
     const soNgay = Math.min(Math.max(Number(days) || 30, 1), 365);
-    const tu = new Date();
-    tu.setDate(tu.getDate() - soNgay + 1);
-    tu.setHours(0, 0, 0, 0);
+    // Đầu ngày của (soNgay - 1) ngày trước, cắt theo giờ Việt Nam.
+    const tu = this.dauNgayVN(soNgay - 1);
+    const dauHomNay = this.dauNgayVN(0);
 
     const where = { createdAt: { gte: tu } };
 
-    const [tongLuot, khachRieng, theoNgay, topTrang, theoNguon, theoThietBi] =
+    const [tongLuot, khachRieng, theoNgay, topTrang, theoNguon, theoThietBi, homNay] =
       await Promise.all([
         this.prisma.koiPageView.count({ where }),
 
@@ -286,8 +318,13 @@ export class AnalyticsService {
           .findMany({ where, select: { visitorHash: true }, distinct: ["visitorHash"] })
           .then((r) => r.length),
 
+        // createdAt là 'timestamp without time zone' chứa giờ UTC. Phải nói rõ
+        // AT TIME ZONE 'UTC' để Postgres hiểu đó là giờ UTC rồi mới đổi sang giờ
+        // ta. Thiếu vế đó thì Postgres coi giá trị đang là giờ Việt Nam và TRỪ
+        // đi 7 tiếng thay vì cộng — lượt lúc 10h sáng rơi về 3h sáng, còn lượt
+        // từ 00:00 đến 07:00 bị đẩy lùi sang hôm trước.
         this.prisma.$queryRaw<{ ngay: string; luot: number; khach: number }[]>`
-          SELECT to_char("createdAt" AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD') AS ngay,
+          SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${MUI_GIO}, 'YYYY-MM-DD') AS ngay,
                  COUNT(*)::int AS luot,
                  COUNT(DISTINCT "visitorHash")::int AS khach
           FROM koi_free_style.koi_page_views
@@ -324,16 +361,32 @@ export class AnalyticsService {
           GROUP BY 1
           ORDER BY 2 DESC
         `,
+
+        // HÔM NAY: từ 00:00 giờ Việt Nam tới lúc này. Không chặn trần trên —
+        // không có dòng nào ở tương lai, thêm điều kiện chỉ tổ chậm.
+        this.prisma.koiPageView
+          .findMany({
+            where: { createdAt: { gte: dauHomNay } },
+            select: { visitorHash: true },
+          })
+          .then((r) => ({
+            views: r.length,
+            visitors: new Set(r.map((x) => x.visitorHash)).size,
+          })),
       ]);
 
     // Ngày không có lượt nào vẫn phải có mặt, nếu không biểu đồ sẽ nối liền hai
     // ngày cách xa nhau và nhìn như site lúc nào cũng có khách.
+    //
+    // Khoá ngày phải sinh theo giờ VIỆT NAM cho khớp với to_char(...) ở trên.
+    // Dùng thẳng toISOString() trên `tu` sẽ ra ngày UTC (lùi một ngày, vì
+    // 00:00 giờ ta = 17:00 UTC hôm trước) nên không khoá nào khớp — biểu đồ
+    // hiện toàn cột 0 dù bảng có dữ liệu.
     const mocNgay = new Map(theoNgay.map((r) => [r.ngay, r]));
     const chuoiNgay: { ngay: string; luot: number; khach: number }[] = [];
     for (let i = 0; i < soNgay; i++) {
-      const d = new Date(tu);
-      d.setDate(d.getDate() + i);
-      const key = d.toISOString().slice(0, 10);
+      const mocVN = +tu + (i * 24 + 7) * 60 * 60 * 1000;
+      const key = new Date(mocVN).toISOString().slice(0, 10);
       chuoiNgay.push(mocNgay.get(key) ?? { ngay: key, luot: 0, khach: 0 });
     }
 
@@ -341,6 +394,7 @@ export class AnalyticsService {
       days: soNgay,
       from: tu.toISOString(),
       totals: { views: tongLuot, visitors: khachRieng },
+      today: homNay,
       daily: chuoiNgay,
       topPages: topTrang,
       sources: theoNguon,

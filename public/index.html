@@ -1972,6 +1972,9 @@ const DEVICE_LABELS = { mobile: 'Điện thoại', tablet: 'Máy tính bảng', 
 function renderTraffic(d) {
   const el = document.getElementById('trafficBody');
   const { totals, daily, topPages, sources, devices } = d;
+  // Mặc định 0: phản hồi cũ còn trong sessionStorage (cache 60 giây) chưa có
+  // khoá `today`, thiếu lớp đỡ này thì cả bảng trắng vì đọc thuộc tính undefined.
+  const homNay = d.today || { views: 0, visitors: 0 };
 
   if (!totals.views) {
     el.innerHTML = `<div class="text-center py-16 text-gray-400">
@@ -1993,6 +1996,17 @@ function renderTraffic(d) {
       </div>
       <div class="mt-1.5 text-2xl font-bold text-gray-800">${value}</div>
       ${sub ? `<div class="text-xs text-gray-400 mt-0.5">${sub}</div>` : ''}
+    </div>`;
+
+  // Thẻ HÔM NAY tô màu khác hẳn: đây là con số hay được liếc nhất trong ngày,
+  // để lẫn vào bốn thẻ xám thì phải dò mới thấy.
+  const cardHomNay = (value, sub) => `
+    <div class="bg-amber-50 rounded-xl border border-amber-200 shadow-sm p-4">
+      <div class="flex items-center gap-2 text-xs text-amber-700 uppercase tracking-wide">
+        <i class="fas fa-sun text-amber-500"></i>Hôm nay
+      </div>
+      <div class="mt-1.5 text-2xl font-bold text-amber-900">${value}</div>
+      <div class="text-xs text-amber-600 mt-0.5">${sub}</div>
     </div>`;
 
   const nf = n => new Intl.NumberFormat('vi-VN').format(n);
@@ -2052,8 +2066,13 @@ function renderTraffic(d) {
       <td class="px-4 py-2.5 text-right text-gray-500">${nf(r.khach)}</td>
     </tr>`).join('');
 
+  // 5 thẻ: điện thoại 2 cột (thẻ Hôm nay chiếm trọn hàng đầu cho dễ liếc),
+  // màn hình lớn xếp đủ 5 trên một hàng.
   el.innerHTML = `
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
+      <div class="col-span-2 lg:col-span-1">
+        ${cardHomNay(nf(homNay.views), `${nf(homNay.visitors)} khách · từ 00:00`)}
+      </div>
       ${card('Lượt xem', nf(totals.views), 'fa-eye', `${d.days} ngày qua`)}
       ${card('Khách riêng', nf(totals.visitors), 'fa-users', 'không trùng trong ngày')}
       ${card('Trang / khách', trangMoiKhach, 'fa-layer-group', 'càng cao càng chịu xem')}
