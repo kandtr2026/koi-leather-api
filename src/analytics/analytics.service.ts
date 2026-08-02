@@ -5,10 +5,6 @@ import { PrismaService } from "../prisma/prisma.service";
 /**
  * Theo dõi lưu lượng truy cập storefront.
  *
- * Thay cho VisitsService cũ (một bộ đếm tổng duy nhất cho kitleather.vn, không
- * ngày, không trang, không phân biệt người — không trả lời được câu nào đáng
- * giá cho việc bán hàng).
- *
  * QUYỀN RIÊNG TƯ: không lưu IP thô ở bất cứ đâu. Xem ghi chú ở visitorHash().
  */
 

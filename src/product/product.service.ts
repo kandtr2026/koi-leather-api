@@ -8,7 +8,6 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { SpecsValidatorService } from "../common/specs-validator.service";
-import { InventorySyncService } from "../inventory-sync/inventory-sync.service";
 import { CreateProductDto, VariantDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { Prisma } from "@prisma/client";
@@ -31,7 +30,6 @@ export class ProductService {
   constructor(
     private prisma: PrismaService,
     private specsValidator: SpecsValidatorService,
-    private inventorySync: InventorySyncService,
   ) {}
 
   private readonly categoryLinksInclude = {
@@ -1058,58 +1056,43 @@ export class ProductService {
   async remove(id: string) {
     await this.findById(id);
 
-    const { syncedMaterialIds, deletedAt } = await this.prisma.$transaction(
-      async (tx) => {
-        const now = new Date();
+    const { deletedAt } = await this.prisma.$transaction(async (tx) => {
+      const now = new Date();
 
-        await tx.koiProductionOrder.updateMany({
-          where: { variant: { productId: id } },
-          data: { status: "CANCELLED" },
-        });
+      await tx.koiProductionOrder.updateMany({
+        where: { variant: { productId: id } },
+        data: { status: "CANCELLED" },
+      });
 
-        await tx.koiProduct.update({
-          where: { id },
-          data: { isDeleted: true, deletedAt: now },
-        });
+      await tx.koiProduct.update({
+        where: { id },
+        data: { isDeleted: true, deletedAt: now },
+      });
 
-        const cancelledOrders = await tx.koiProductionOrder.findMany({
-          where: { variant: { productId: id } },
-        });
-        const materialIds: string[] = [];
-        for (const order of cancelledOrders) {
-          const allocations = order.materialsAllocated as unknown as Array<{
-            material_id: string;
-            qty: number;
-          }>;
-          if (!allocations || allocations.length === 0) continue;
-          for (const alloc of allocations) {
-            if (!alloc.material_id) continue;
-            await tx.koiRawMaterial.update({
-              where: { id: alloc.material_id },
-              data: {
-                reservedQuantity: { decrement: alloc.qty },
-                availableQuantity: { increment: alloc.qty },
-              },
-            });
-            materialIds.push(alloc.material_id);
-          }
+      // Đơn bị huỷ thì trả nguyên liệu đã giữ chỗ về lại kho khả dụng.
+      const cancelledOrders = await tx.koiProductionOrder.findMany({
+        where: { variant: { productId: id } },
+      });
+      for (const order of cancelledOrders) {
+        const allocations = order.materialsAllocated as unknown as Array<{
+          material_id: string;
+          qty: number;
+        }>;
+        if (!allocations || allocations.length === 0) continue;
+        for (const alloc of allocations) {
+          if (!alloc.material_id) continue;
+          await tx.koiRawMaterial.update({
+            where: { id: alloc.material_id },
+            data: {
+              reservedQuantity: { decrement: alloc.qty },
+              availableQuantity: { increment: alloc.qty },
+            },
+          });
         }
-
-        return { syncedMaterialIds: materialIds, deletedAt: now };
-      },
-    );
-
-    if (syncedMaterialIds.length > 0) {
-      for (const materialId of [...new Set(syncedMaterialIds)]) {
-        this.inventorySync
-          .pushUpdate(materialId)
-          .catch((err) =>
-            Logger.warn(
-              `Failed to sync material ${materialId} to kitleather.vn after product delete: ${err.message}`,
-            ),
-          );
       }
-    }
+
+      return { deletedAt: now };
+    });
 
     return { deleted: true, id, deletedAt };
   }

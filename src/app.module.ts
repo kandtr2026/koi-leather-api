@@ -10,13 +10,11 @@ import { KoiProductionOrderModule } from "./production-order/production-order.mo
 import { KoiCraftingSpecModule } from "./crafting-spec/crafting-spec.module";
 import { KoiSeoModule } from "./seo/seo.module";
 import { KoiInventoryModule } from "./inventory/inventory.module";
-import { KoiInventorySyncModule } from "./inventory-sync/inventory-sync.module";
 import { KoiImageCategoryModule } from "./image-category/image-category.module";
 import { MaterialCategoryModule } from "./material-category/material-category.module";
 import { AuthModule } from "./auth/auth.module";
 import { AuthGuard } from "./auth/auth.guard";
 import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
-import { VisitsModule } from "./visits/visits.module";
 import { ShopModule } from "./shop/shop.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 
@@ -32,10 +30,8 @@ import { AnalyticsModule } from "./analytics/analytics.module";
     KoiCraftingSpecModule,
     KoiSeoModule,
     KoiInventoryModule,
-    KoiInventorySyncModule,
     KoiImageCategoryModule,
     MaterialCategoryModule,
-    VisitsModule,
     ShopModule,
     AnalyticsModule,
   ],

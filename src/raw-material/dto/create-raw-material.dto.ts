@@ -35,7 +35,7 @@ export class CreateRawMaterialDto {
   @Min(0)
   unitCost: number;
 
-  @ApiPropertyOptional({ description: "ID từ kitleather.vn" })
+  @ApiPropertyOptional({ description: "Mã nguyên liệu bên nhà cung cấp" })
   @IsOptional()
   @IsString()
   externalId?: string;

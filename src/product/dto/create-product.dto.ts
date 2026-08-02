@@ -175,7 +175,7 @@ export class CreateProductDto {
   categoryId?: string;
 
   @ApiPropertyOptional({
-    description: "Website ID (externalId for kitleather.vn sync)",
+    description: "ID sản phẩm bên website cũ, giữ để đối chiếu khi tra cứu",
   })
   @IsOptional()
   @IsString()

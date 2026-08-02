@@ -62,10 +62,6 @@ async function bootstrap() {
       "Lệnh sản xuất & snapshot chi phí nguyên liệu",
     )
     .addTag("SEO", "Slug, JSON-LD Schema.org, OpenGraph, XML Sitemap")
-    .addTag(
-      "Inventory Sync (kitleather.vn)",
-      "Webhook 2-way sync with kitleather.vn",
-    )
     .addServer("http://localhost:3000", "Local development")
     .addServer("https://api.koileather.vn", "KoiProduction")
     .build();

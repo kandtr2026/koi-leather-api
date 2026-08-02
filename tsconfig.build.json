@@ -5,7 +5,6 @@
     "dist",
     "test",
     "**/*spec.ts",
-    "src/**/components",
-    "kitleather-frontend"
+    "src/**/components"
   ]
 }
