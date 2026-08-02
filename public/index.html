@@ -188,6 +188,7 @@
     <button class="tab-btn" data-tab="imgcats"><i class="fas fa-tags mr-2 text-amber-500"></i>Loại ảnh</button>
     <button class="tab-btn" data-tab="matcats"><i class="fas fa-gem mr-2 text-amber-500"></i>Loại da</button>
     <button class="tab-btn" data-tab="traffic"><i class="fas fa-chart-line mr-2 text-amber-500"></i>Lưu lượng</button>
+    <button class="tab-btn" data-tab="ads"><i class="fas fa-bullhorn mr-2 text-amber-500"></i>Quảng cáo</button>
 
   </div>
 
@@ -325,6 +326,67 @@
         </div>
       </div>
       <div id="trafficBody">
+        <div class="skeleton-loading p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUẢNG CÁO PANEL -->
+    <div class="panel" id="panel-ads">
+      <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+        <p class="text-sm text-gray-500">
+          Nối cú bấm quảng cáo Google với đơn chốt trên Zalo — mã ngắn nằm sẵn trong tin nhắn khách gửi
+        </p>
+        <div class="inline-flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+          <button onclick="setAdsRange(7)"  data-ads-range="7"  class="ads-range-btn px-3 py-1.5 hover:bg-gray-50">7 ngày</button>
+          <button onclick="setAdsRange(30)" data-ads-range="30" class="ads-range-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">30 ngày</button>
+          <button onclick="setAdsRange(90)" data-ads-range="90" class="ads-range-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">90 ngày</button>
+        </div>
+      </div>
+
+      <!-- Ô tra mã: chủ shop chép mã từ hộp thoại Zalo dán thẳng vào đây -->
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
+        <div class="flex flex-wrap items-end gap-3">
+          <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Tra mã lấy từ Zalo</label>
+            <input id="adsLookupInput" type="text" autocomplete="off" maxlength="12" placeholder="K7F2QM"
+              aria-label="Nhập mã ngắn khách gửi trong tin nhắn Zalo"
+              onkeydown="if (event.key === 'Enter') lookupAdsToken();"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+          </div>
+          <button onclick="lookupAdsToken()" class="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+            <i class="fas fa-magnifying-glass"></i> Tra
+          </button>
+        </div>
+        <div id="adsLookupResult" class="mt-3"></div>
+      </div>
+
+      <!-- Xuất CSV. Ba điều kiện ghi ngay cạnh nút: thiếu một là Google từ chối
+           file mà không nói vì sao, chủ shop ngồi đoán cả buổi. -->
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
+        <div class="flex flex-wrap items-end gap-3">
+          <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Tên conversion action bên Google Ads</label>
+            <input id="adsExportName" type="text" autocomplete="off" placeholder="Zalo Sale"
+              aria-label="Tên conversion action trong Google Ads"
+              onchange="saveAdsExportName()"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+          </div>
+          <button id="adsExportBtn" onclick="exportAdsCsv()" class="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+            <i class="fas fa-file-arrow-down"></i> Xuất CSV
+          </button>
+        </div>
+        <ul class="mt-3 text-xs text-gray-500 space-y-1 list-disc pl-4">
+          <li>Trong Google Ads phải tạo sẵn conversion action nguồn <strong>“Import from clicks”</strong> (mục “Conversions offline”) — action của website dùng không được.</li>
+          <li>Tên gõ ở ô trên phải khớp <strong>từng chữ</strong> với tên action đó.</li>
+          <li>Tạo action xong phải chờ <strong>4–6 tiếng</strong> rồi mới tải lên lần đầu.</li>
+        </ul>
+      </div>
+
+      <div id="adsBody">
         <div class="skeleton-loading p-6 space-y-3">
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
           <div class="h-6 bg-gray-100 rounded animate-pulse w-3/4"></div>
@@ -662,6 +724,45 @@
   </div>
 </div>
 
+<!-- CHỐT ĐƠN QUẢNG CÁO MODAL -->
+<div class="modal-overlay" id="adsConvertModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 fade-in">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold" id="adsConvertTitle">Chốt đơn</h2>
+      <button onclick="closeModal('adsConvertModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="space-y-3">
+      <input type="hidden" id="adsConvertToken">
+      <div class="text-xs text-gray-500">
+        Mã <span id="adsConvertTokenText" class="font-mono font-semibold text-gray-800">—</span>
+        <span id="adsConvertProduct"></span>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Số tiền đơn hàng (VNĐ)</label>
+        <input id="adsConvertValue" type="text" inputmode="numeric" autocomplete="off" placeholder="1.250.000"
+          oninput="onPriceInput(this)"
+          onkeydown="if (event.key === 'Enter') saveAdsConvert();"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Ngày chốt</label>
+        <input id="adsConvertDate" type="datetime-local"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        <p class="text-[11px] text-gray-400 mt-1">Đơn chốt từ hôm trước thì sửa lại ngày cho đúng.</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Ghi chú</label>
+        <textarea id="adsConvertNote" rows="2" placeholder="Khách lấy thêm dây đồng hồ"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+      <button onclick="closeModal('adsConvertModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+      <button id="adsConvertSaveBtn" onclick="saveAdsConvert()" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> Lưu</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRM DIALOG -->
 <div class="modal-overlay" id="confirmModal">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 fade-in text-center" style="transform:translateY(0)">
@@ -752,12 +853,18 @@ function showConfirm({ title, message, confirmText, cancelText, danger }) {
 let trafficLoaded = false;
 let trafficRange = 30;
 
+// Cùng lý do với trafficLoaded: applyRoute đọc adsLoaded nên phải khai báo ở trên.
+let adsLoaded = false;
+let adsRange = 90;
+let adsGoogleData = null;
+
 const ROUTE_MAP = {
   '/admin/products':    { panel: 'products', label: 'Sản phẩm' },
   '/admin/categories':  { panel: 'prodcats', label: 'Loại sản phẩm' },
   '/admin/media-types': { panel: 'imgcats',  label: 'Loại ảnh' },
   '/admin/material-categories': { panel: 'matcats', label: 'Loại da' },
   '/admin/traffic':     { panel: 'traffic',  label: 'Lưu lượng' },
+  '/admin/ads':         { panel: 'ads',      label: 'Quảng cáo' },
 
 };
 const ROUTES = Object.keys(ROUTE_MAP);
@@ -782,6 +889,7 @@ function applyRoute(route) {
 
   // Tab ads nạp lười: endpoint audit quét cả bảng theo ngày nên không gọi sẵn
   // lúc init cho người chỉ vào sửa sản phẩm.
+  if (entry.panel === 'ads' && !adsLoaded) loadAds();
 
   // Lưu lượng cũng nạp lười: truy vấn gom nhóm cả bảng lượt xem, không nên
   // chạy cho người chỉ vào sửa một cái giá.
@@ -1032,15 +1140,14 @@ function applyAuth(user) {
 
   // Endpoint ads chặn cả GET khi chưa có token, nên lần gọi trước lúc đăng nhập
   // chắc chắn đã 401. Nạp lại ngay để tab hiện số liệu mà không cần refresh.
+  //
+  // Đang mở tab Quảng cáo thì nạp luôn; đứng ở tab khác thì chỉ hạ cờ xuống để
+  // lần bấm vào tab sau đó gọi lại API thay vì hiện bảng rỗng của lượt 401.
   if (document.getElementById('panel-ads')?.classList.contains('active')) {
-    loadAdsAudit(true);
+    loadAds();
   } else {
-    adsLoadedOnce = false;
+    adsLoaded = false;
   }
-
-  // Đổi code phải có JWT admin, nên chỉ xử lý sau khi đăng nhập xong. Chưa đăng
-  // nhập thì code cứ nằm lại trên URL — mất nó là phải uỷ quyền lại từ đầu.
-  captureShopeeAuthCode();
 }
 
 function logout() {
@@ -2307,6 +2414,394 @@ function startRealtime() {
 
 function stopRealtime() {
   if (realtimeTimer) { clearInterval(realtimeTimer); realtimeTimer = null; }
+}
+
+// ========== QUẢNG CÁO: NỐI CÚ BẤM GOOGLE VỚI ĐƠN ZALO ==========
+//
+// Shop không bán online, đơn chốt hết trong hộp thoại Zalo — Google không tự
+// thấy được doanh số. Khách vào từ quảng cáo mang theo gclid trên URL, backend
+// lưu lại và sinh một mã ngắn nhét sẵn vào tin nhắn Zalo. Chủ shop chốt đơn thì
+// gõ mã + số tiền ở đây, rồi xuất CSV tải lên Google Ads để nó học theo doanh
+// số thật thay vì chỉ đếm cú bấm.
+//
+// adsLoaded/adsRange/adsGoogleData khai báo ở TRÊN applyRoute (dòng ~757) vì
+// hàm đó đọc adsLoaded — `let` không hoisted, để dưới là mở thẳng /admin/ads sẽ
+// ném ReferenceError và hỏng cả trang admin.
+
+/** Google chỉ nhận doanh số trong 90 ngày kể từ cú bấm. Dưới mốc này thì kêu. */
+const ADS_SAP_HET_HAN = 14;
+
+function setAdsRange(days) {
+  adsRange = days;
+  loadAds();
+}
+
+/**
+ * value và doanhThu là CHUỖI: backend dùng BigInt, JSON không tải nổi số to.
+ * Cộng thẳng chuỗi là ra "12000001250000" nên phải Number() trước mọi phép tính.
+ */
+function adsTien(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  return Number.isFinite(n) ? fm(n) : '—';
+}
+
+async function loadAds() {
+  const el = document.getElementById('adsBody');
+  document.querySelectorAll('.ads-range-btn').forEach(b => {
+    const on = Number(b.dataset.adsRange) === adsRange;
+    b.classList.toggle('bg-amber-500', on);
+    b.classList.toggle('text-white', on);
+  });
+  // Đổ tên conversion action đã lưu vào ô ngay khi mở tab, để chủ shop thấy tên
+  // mình gõ lần trước chứ không phải ô trống với placeholder trông như chưa lưu.
+  getAdsExportName();
+
+  try {
+    // noCache: chủ shop vừa chốt đơn ngay trên màn hình này rồi bảng nạp lại.
+    // Đọc trúng bản cache 60 giây thì số tiền vừa gõ không hiện, tưởng mất.
+    const d = await api(`/analytics/ads?days=${adsRange}`, { noCache: true });
+    adsLoaded = true;
+    adsGoogleData = d;
+    renderAds(d);
+  } catch (e) {
+    el.innerHTML = `<div class="text-center py-12 text-gray-400">
+      <i class="fas fa-triangle-exclamation text-3xl mb-3"></i>
+      <p>Không tải được số liệu quảng cáo: ${esc(e.message || 'lỗi không rõ')}</p>
+      <button onclick="loadAds()" class="mt-3 text-xs text-amber-600 hover:underline">Thử lại</button></div>`;
+  }
+}
+
+const ADS_CHANNEL_LABELS = { zalo: 'Zalo', phone: 'Gọi điện', messenger: 'Messenger', form: 'Điền form' };
+
+/** Ba mức: mới vào xem → đã nhắn tin → đã chốt đơn. */
+function adsTrangThai(it) {
+  if (it.convertedAt) return '<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 border border-emerald-200 text-emerald-700">Đã chốt đơn</span>';
+  if (it.contactedAt) return '<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-50 border border-blue-200 text-blue-700">Đã nhắn tin</span>';
+  return '<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-gray-100 border border-gray-200 text-gray-500">Mới vào xem</span>';
+}
+
+function adsHanBadge(it) {
+  const n = Number(it.conLaiNgay);
+  if (!Number.isFinite(n)) return '<span class="text-gray-400">—</span>';
+  if (n <= 0) return '<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-red-50 border border-red-200 text-red-700" title="Quá 90 ngày kể từ cú bấm — Google không nhận nữa">Quá hạn</span>';
+  if (n <= ADS_SAP_HET_HAN) return `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-orange-50 border border-orange-200 text-orange-700" title="Sắp hết hạn tải lên Google">còn ${n} ngày</span>`;
+  return `<span class="text-xs text-gray-500">còn ${n} ngày</span>`;
+}
+
+/**
+ * Token do backend sinh (6 ký tự chữ-số) nhưng vẫn escAttr trước khi nhét vào
+ * onclick: một dấu nháy lọt vào là thoát ra khỏi thuộc tính, mà trang admin có
+ * sẵn Bearer token trong sessionStorage. Xem ghi chú ở escAttr().
+ */
+function adsHanhDong(it) {
+  const t = escAttr(it.token);
+  const quaHan = Number(it.conLaiNgay) <= 0;
+
+  if (it.convertedAt) {
+    return `<div class="inline-flex items-center justify-end gap-1 whitespace-nowrap">
+      <button onclick="openAdsConvert('${t}')" class="w-8 h-8 items-center justify-center text-amber-500 hover:text-amber-600 requires-auth" title="Sửa số tiền"><i class="fas fa-edit"></i></button>
+      <button onclick="unmarkAdsConvert('${t}')" class="w-8 h-8 items-center justify-center text-gray-400 hover:text-red-500 requires-auth" title="Bỏ đánh dấu chốt (ghi nhầm mã)"><i class="fas fa-rotate-left"></i></button>
+    </div>`;
+  }
+  // Quá hạn thì không cho chốt nữa: có gửi lên Google cũng bị bỏ qua, để nút ở
+  // đó chỉ tổ làm chủ shop tưởng đã cứu được đơn.
+  if (quaHan) return '<span class="text-xs text-gray-400">hết hạn ghi</span>';
+
+  return `<button onclick="openAdsConvert('${t}')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white transition requires-auth" title="Đánh dấu đã chốt đơn">
+    <i class="fas fa-check mr-1"></i>Chốt đơn</button>`;
+}
+
+function renderAds(d) {
+  const el = document.getElementById('adsBody');
+  const items = d.items || [];
+
+  const card = (label, value, icon, sub) => `
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div class="flex items-center gap-2 text-xs text-gray-400 uppercase tracking-wide">
+        <i class="fas ${icon} text-amber-500"></i>${label}
+      </div>
+      <div class="mt-1.5 text-2xl font-bold text-gray-800">${value}</div>
+      ${sub ? `<div class="text-xs text-gray-400 mt-0.5">${sub}</div>` : ''}
+    </div>`;
+
+  const nf = n => new Intl.NumberFormat('vi-VN').format(Number(n) || 0);
+
+  const theSoLieu = `
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      ${card('Cú bấm quảng cáo', nf(d.tongCong), 'fa-hand-pointer', `${d.days} ngày qua`)}
+      ${card('Đã nhắn tin', nf(d.daLienHe), 'fa-comments', 'khách bấm sang Zalo')}
+      ${card('Đã chốt đơn', nf(d.daChot), 'fa-handshake', 'có ghi số tiền')}
+      ${card('Doanh thu', adsTien(d.doanhThu), 'fa-sack-dollar', 'từ đơn đã chốt')}
+    </div>`;
+
+  if (!items.length) {
+    el.innerHTML = theSoLieu + `<div class="text-center py-16 text-gray-400">
+      <i class="fas fa-bullhorn text-4xl mb-3"></i>
+      <p class="font-medium text-gray-500">Chưa có cú bấm quảng cáo nào trong ${esc(String(d.days))} ngày qua</p>
+      <p class="text-sm mt-1">Số liệu chỉ bắt đầu có khi quảng cáo Google đã chạy và storefront đã lên bản mới.</p>
+      <p class="text-sm mt-1">Khách vào từ quảng cáo sẽ tự hiện ở đây kèm mã ngắn để đối chiếu với tin nhắn Zalo.</p>
+    </div>`;
+    return;
+  }
+
+  const hang = items.map(it => {
+    const quaHan = Number(it.conLaiNgay) <= 0;
+    const sanPham = it.productName || it.landingPath || '—';
+
+    // Không có gclid thì dòng này không xuất lên Google được — báo ngay tại chỗ,
+    // đừng để chủ shop gõ tiền xong mới thấy nó không nằm trong file CSV.
+    const canhBaoGclid = it.coGclid
+      ? ''
+      : ' <span class="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 text-[10px] font-semibold align-middle" title="Cú bấm này không có mã gclid nên không xuất lên Google được">KHÔNG GCLID</span>';
+
+    const daXuat = it.exportedAt
+      ? ` <span class="inline-block px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-semibold align-middle" title="Đã nằm trong file CSV tải lên Google lúc ${escAttr(new Date(it.exportedAt).toLocaleString('vi-VN'))}"><i class="fas fa-cloud-arrow-up mr-0.5"></i>ĐÃ TẢI LÊN</span>`
+      : '';
+
+    const ghiChu = it.note
+      ? `<div class="text-xs text-gray-400 mt-0.5">${esc(it.note)}</div>`
+      : '';
+
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50 ${quaHan ? 'opacity-60' : ''}">
+      <td class="px-4 py-3 whitespace-nowrap"><span class="font-mono font-semibold tracking-wider text-gray-800">${esc(it.token)}</span>${canhBaoGclid}</td>
+      <td class="px-4 py-3"><div class="font-medium text-gray-800">${esc(sanPham)}</div><div class="text-xs text-gray-400">${esc(it.landingPath || '')}</div>${ghiChu}</td>
+      <td class="px-4 py-3 whitespace-nowrap text-gray-600">${esc(ADS_CHANNEL_LABELS[it.channel] || it.channel || '—')}</td>
+      <td class="px-4 py-3 whitespace-nowrap text-gray-600">${fmDate(it.clickedAt)}</td>
+      <td class="px-4 py-3 whitespace-nowrap">${adsTrangThai(it)}${daXuat}</td>
+      <td class="px-4 py-3 whitespace-nowrap text-right font-medium">${it.convertedAt ? adsTien(it.value) : '<span class="text-gray-300">—</span>'}</td>
+      <td class="px-4 py-3 whitespace-nowrap text-center">${adsHanBadge(it)}</td>
+      <td class="px-4 py-3 text-right whitespace-nowrap w-px">${adsHanhDong(it)}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = theSoLieu + `
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-4 py-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        Cú bấm từ quảng cáo
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead><tr class="text-left text-xs text-gray-400">
+            <th class="px-4 py-2 font-medium">Mã</th>
+            <th class="px-4 py-2 font-medium">Sản phẩm</th>
+            <th class="px-4 py-2 font-medium">Kênh</th>
+            <th class="px-4 py-2 font-medium">Lúc bấm</th>
+            <th class="px-4 py-2 font-medium">Trạng thái</th>
+            <th class="px-4 py-2 font-medium text-right">Giá trị</th>
+            <th class="px-4 py-2 font-medium text-center">Hạn Google</th>
+            <th class="px-4 py-2"></th>
+          </tr></thead>
+          <tbody>${hang}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ----- Tra mã lấy từ hộp thoại Zalo -----
+
+async function lookupAdsToken() {
+  const input = document.getElementById('adsLookupInput');
+  const box = document.getElementById('adsLookupResult');
+  const token = (input.value || '').trim().toUpperCase();
+  if (!token) { box.innerHTML = ''; toast('Nhập mã khách gửi trong Zalo'); return; }
+
+  box.innerHTML = '<div class="text-sm text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>Đang tra…</div>';
+  try {
+    // noCache: tra lại ngay sau khi vừa chốt là để xem tiền đã vào chưa.
+    const r = await api(`/analytics/ads/lookup?token=${encodeURIComponent(token)}`, { noCache: true });
+    renderAdsLookup(r, token);
+  } catch (e) {
+    box.innerHTML = `<div class="text-sm text-red-600">Không tra được: ${esc(e.message || 'lỗi không rõ')}</div>`;
+  }
+}
+
+function renderAdsLookup(r, token) {
+  const box = document.getElementById('adsLookupResult');
+
+  if (!r || !r.found) {
+    box.innerHTML = `<div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+      Không có mã <span class="font-mono font-semibold">${esc(token)}</span>. Kiểm tra lại xem chép thiếu ký tự không —
+      mã gồm 6 ký tự, nằm trong tin nhắn đầu tiên khách gửi.</div>`;
+    return;
+  }
+
+  const sanPham = r.productName || r.landingPath || '—';
+  box.innerHTML = `
+    <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-mono font-semibold tracking-wider text-gray-900">${esc(r.token)}</span>
+            ${adsTrangThai(r)}
+            ${adsHanBadge(r)}
+          </div>
+          <div class="text-sm text-gray-700 mt-1">${esc(sanPham)}</div>
+          <div class="text-xs text-gray-500 mt-0.5">
+            Bấm lúc ${esc(r.clickedAt ? new Date(r.clickedAt).toLocaleString('vi-VN') : '—')}
+            ${r.convertedAt ? ` · đã ghi ${esc(adsTien(r.value))}` : ''}
+          </div>
+        </div>
+        <div>${adsHanhDong(r)}</div>
+      </div>
+    </div>`;
+}
+
+// ----- Chốt đơn -----
+
+/** Date → chuỗi cho input datetime-local (giờ máy, không phải UTC). */
+function adsToLocalInput(d) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/**
+ * Mở hộp nhập tiền. Dữ liệu lấy từ bảng đã nạp; tra bằng ô tra mã mà chưa nạp
+ * bảng thì không có dòng nào khớp — khi đó cứ mở hộp trống, backend chỉ cần
+ * token là đủ.
+ */
+function openAdsConvert(token) {
+  const it = (adsGoogleData?.items || []).find(x => x.token === token);
+
+  document.getElementById('adsConvertToken').value = token;
+  document.getElementById('adsConvertTokenText').textContent = token;
+  document.getElementById('adsConvertProduct').textContent =
+    it ? ' · ' + (it.productName || it.landingPath || '') : '';
+  document.getElementById('adsConvertTitle').textContent =
+    it && it.convertedAt ? 'Sửa đơn đã chốt' : 'Chốt đơn';
+  document.getElementById('adsConvertValue').value =
+    it && it.value !== null && it.value !== undefined ? formatPriceForInput(it.value) : '';
+  document.getElementById('adsConvertNote').value = (it && it.note) || '';
+  document.getElementById('adsConvertDate').value =
+    adsToLocalInput(it && it.convertedAt ? new Date(it.convertedAt) : new Date());
+
+  openModal('adsConvertModal');
+  setTimeout(() => document.getElementById('adsConvertValue').focus(), 50);
+}
+
+async function saveAdsConvert() {
+  const btn = document.getElementById('adsConvertSaveBtn');
+  const token = document.getElementById('adsConvertToken').value;
+  const value = parsePriceInput(document.getElementById('adsConvertValue').value);
+  const note = document.getElementById('adsConvertNote').value.trim();
+  const ngay = document.getElementById('adsConvertDate').value;
+
+  if (value === '' || Number.isNaN(value) || value <= 0) { toast('Nhập số tiền đơn hàng'); return; }
+
+  // Chuỗi từ datetime-local không có múi giờ; new Date() đọc theo giờ máy rồi
+  // toISOString đổi sang UTC — đúng thứ backend chờ.
+  let convertedAt = null;
+  if (ngay) {
+    const d = new Date(ngay);
+    if (!isNaN(d)) convertedAt = d.toISOString();
+  }
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  try {
+    const r = await api('/analytics/ads/convert', {
+      method: 'POST',
+      body: JSON.stringify({ token, value, note: note || null, convertedAt }),
+    });
+    if (r && r.ok === false) throw new Error('Mã không tồn tại hoặc đã quá hạn');
+    closeModal('adsConvertModal');
+    toast('Đã ghi đơn chốt ' + fm(value));
+    await loadAds();
+    if (document.getElementById('adsLookupInput').value.trim()) lookupAdsToken();
+  } catch (e) {
+    toast('Lỗi: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
+}
+
+/** Gỡ đánh dấu chốt — dùng khi chủ shop gõ nhầm mã của khách khác. */
+async function unmarkAdsConvert(token) {
+  const ok = await showConfirm({
+    title: 'Bỏ đánh dấu chốt?',
+    message: `Mã <span class="font-mono font-semibold">${esc(token)}</span> sẽ quay về trạng thái chưa chốt, số tiền đã ghi bị xoá.`,
+    confirmText: 'Bỏ đánh dấu',
+    danger: true,
+  });
+  if (!ok) return;
+
+  try {
+    await api('/analytics/ads/convert', {
+      method: 'POST',
+      body: JSON.stringify({ token, value: null, convertedAt: null }),
+    });
+    toast('Đã bỏ đánh dấu chốt');
+    await loadAds();
+    if (document.getElementById('adsLookupInput').value.trim()) lookupAdsToken();
+  } catch (e) {
+    toast('Lỗi: ' + e.message);
+  }
+}
+
+// ----- Xuất CSV cho Google Ads -----
+
+function getAdsExportName() {
+  const el = document.getElementById('adsExportName');
+  if (el && !el.dataset.restored) {
+    try { el.value = localStorage.getItem('ads_export_name') || 'Zalo Sale'; } catch { el.value = 'Zalo Sale'; }
+    el.dataset.restored = '1';
+  }
+  return (el?.value || '').trim() || 'Zalo Sale';
+}
+
+function saveAdsExportName() {
+  try { localStorage.setItem('ads_export_name', getAdsExportName()); } catch {}
+}
+
+/**
+ * Tải file bằng fetch chứ không mở thẳng link: api() gắn Authorization vào
+ * header, mà thẻ <a> hay window.open không mang header đi được — mở thẳng là
+ * dính 401. Nên phải tự fetch, dựng blob rồi bấm giả một thẻ <a download>.
+ */
+async function exportAdsCsv() {
+  const btn = document.getElementById('adsExportBtn');
+  const name = getAdsExportName();
+  saveAdsExportName();
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  let url = null;
+  try {
+    const res = await fetch(API + '/analytics/ads/export.csv?name=' + encodeURIComponent(name), {
+      headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('auth_token') },
+    });
+    if (!res.ok) throw new Error('máy chủ trả về ' + res.status);
+
+    const blob = await res.blob();
+    // Rỗng = không còn đơn nào CHƯA tải lên, không phải hỏng. Backend chỉ xuất
+    // dòng mới để Google khỏi cộng dồn doanh số hai lần, nên bấm tải lần thứ
+    // hai trong ngày là gặp ngay trường hợp này — phải nói rõ, không báo lỗi.
+    if (!blob.size) {
+      toast('Không có đơn mới nào để tải lên — các đơn đã chốt đều tải rồi');
+      return;
+    }
+
+    url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'koi-google-ads.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    toast('Đã tải file CSV — vào Google Ads › Conversions › Uploads để đưa lên');
+    // Backend vừa đánh dấu các dòng đó là đã xuất, nạp lại cho khớp màn hình.
+    await loadAds();
+  } catch (e) {
+    toast('Không xuất được CSV: ' + e.message);
+  } finally {
+    // Thu hồi sau khi trình duyệt đã nhận: revoke ngay sát click thì bản Safari
+    // cũ huỷ luôn lượt tải đang chạy.
+    if (url) setTimeout(() => URL.revokeObjectURL(url), 10000);
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
 }
 
 // ========== HIỆN / ẨN NGOÀI TRANG KHÁCH ==========
@@ -4195,472 +4690,6 @@ function updateHeaderStatus() {
   const total = productMeta.total || products.length;
   document.getElementById('headerStatus').textContent =
     `${total} sản phẩm · ${prodCats.length} loại SP · ${imgCats.length} loại ảnh · ${matCats.length} loại da`;
-}
-
-// ========== SHOPEE ADS ==========
-// Tab này đọc từ /shopee-ads/audit — dữ liệu đã sync sẵn trong DB, không gọi
-// Shopee API lúc mở tab (Vercel giới hạn 30s/request).
-let adsData = null;
-let adsLoading = false;
-let adsLoadedOnce = false;
-
-function getAdsMargin() {
-  const el = document.getElementById('adsMargin');
-  const saved = localStorage.getItem('ads_margin');
-  if (saved && el && !el.dataset.restored) {
-    el.value = saved;
-    el.dataset.restored = '1';
-  }
-  const v = Number(el?.value ?? 25);
-  return isFinite(v) && v > 0 && v < 100 ? v : 25;
-}
-
-function saveAdsMargin() {
-  try { localStorage.setItem('ads_margin', String(getAdsMargin())); } catch {}
-}
-
-function adsNum(v) {
-  return (v === null || v === undefined) ? '-' : Math.round(v).toLocaleString('vi-VN');
-}
-function adsPct(v) {
-  return (v === null || v === undefined) ? '-' : (v * 100).toFixed(2) + '%';
-}
-function adsRoas(v) {
-  return (v === null || v === undefined) ? '-' : v.toFixed(2);
-}
-
-const ADS_SEV = {
-  critical: { label: 'Nghiêm trọng', cls: 'bg-red-50 border-red-200 text-red-700',       icon: 'fa-circle-exclamation' },
-  high:     { label: 'Cao',         cls: 'bg-orange-50 border-orange-200 text-orange-700', icon: 'fa-triangle-exclamation' },
-  medium:   { label: 'Trung bình',  cls: 'bg-amber-50 border-amber-200 text-amber-700',  icon: 'fa-circle-info' },
-  low:      { label: 'Thấp',        cls: 'bg-slate-50 border-slate-200 text-slate-600',  icon: 'fa-circle-info' },
-  info:     { label: 'Tốt',         cls: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: 'fa-circle-check' },
-};
-
-async function loadAdsAudit(force) {
-  if (adsLoading) return;
-  adsLoading = true;
-  adsLoadedOnce = true;
-
-  const days = Number(document.getElementById('adsDays')?.value || 30);
-  const margin = getAdsMargin();
-  const path = `/shopee-ads/audit?days=${days}&margin=${margin}`;
-
-  // api() cache GET 60s; khi bấm Đồng bộ xong phải đọc lại số mới.
-  if (force) swrCache.remove('GET ' + path);
-
-  try {
-    adsData = await api(path);
-    renderAdsAudit(adsData);
-  } catch (e) {
-    renderAdsError(e);
-  } finally {
-    adsLoading = false;
-  }
-}
-
-function renderAdsError(e) {
-  const box = document.getElementById('adsContent');
-  const info = document.getElementById('adsSyncInfo');
-  if (info) info.textContent = '';
-  if (!box) return;
-
-  if (e && (e.status === 401 || e.status === 403)) {
-    box.innerHTML = `
-      <div class="bg-white rounded-xl border p-8 text-center">
-        <i class="fas fa-lock text-3xl text-gray-300 mb-3"></i>
-        <p class="text-sm text-gray-600 font-medium">Cần đăng nhập bằng email admin để xem số liệu quảng cáo</p>
-        <p class="text-xs text-gray-400 mt-1">Số liệu chi phí và doanh thu không hiển thị cho khách.</p>
-      </div>`;
-    return;
-  }
-  box.innerHTML = `
-    <div class="bg-white rounded-xl border p-8 text-center">
-      <i class="fas fa-circle-exclamation text-3xl text-gray-300 mb-3"></i>
-      <p class="text-sm text-gray-600">Không tải được báo cáo: ${esc(e?.message || 'lỗi không rõ')}</p>
-      <button onclick="loadAdsAudit(true)" class="mt-3 text-xs text-amber-600 hover:underline">Thử lại</button>
-    </div>`;
-}
-
-function renderAdsAudit(d) {
-  const box = document.getElementById('adsContent');
-  const info = document.getElementById('adsSyncInfo');
-  if (!box) return;
-
-  // Dòng trạng thái sync
-  if (info) {
-    const parts = [];
-    if (d.sync?.lastSyncAt) {
-      parts.push('Cập nhật: ' + new Date(d.sync.lastSyncAt).toLocaleString('vi-VN'));
-    } else {
-      parts.push('Chưa đồng bộ lần nào');
-    }
-    if (d.sync?.status && d.sync.status !== 'ok') {
-      parts.push('trạng thái: ' + d.sync.status);
-    }
-    if (d.sync?.balance !== null && d.sync?.balance !== undefined) {
-      parts.push('số dư ví: ' + adsNum(d.sync.balance) + 'đ');
-    }
-    info.textContent = parts.join(' · ');
-  }
-
-  // Chưa khai báo Partner ID / Partner Key / Shop ID
-  if (!d.configured) {
-    box.innerHTML = `
-      <div class="bg-white rounded-xl border p-6 text-center">
-        <i class="fas fa-plug text-3xl text-amber-400 mb-3"></i>
-        <p class="text-sm font-medium text-gray-700">Chưa kết nối Shopee API</p>
-        <p class="text-xs text-gray-500 mt-1 mb-4">Khai báo Partner ID, Partner Key, Shop ID rồi uỷ quyền shop. Thông tin được mã hoá và lưu trong DB.</p>
-        <button onclick="openShopeeConfig()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
-          <i class="fas fa-cog mr-1"></i> Cấu hình
-        </button>
-      </div>`;
-    return;
-  }
-
-  // Đã khai báo nhưng chủ shop chưa bấm đồng ý uỷ quyền -> chưa có access_token
-  if (d.authorized === false) {
-    box.innerHTML = `
-      <div class="bg-white rounded-xl border p-6 text-center">
-        <i class="fas fa-user-shield text-3xl text-amber-400 mb-3"></i>
-        <p class="text-sm font-medium text-gray-700">Chưa uỷ quyền shop</p>
-        <p class="text-xs text-gray-500 mt-1 mb-4">Đã có thông số nhưng thiếu access_token. Mở Cấu hình → bước 2 để uỷ quyền.</p>
-        <button onclick="openShopeeConfig()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
-          <i class="fas fa-key mr-1"></i> Uỷ quyền shop
-        </button>
-      </div>`;
-    return;
-  }
-
-  // Đã cấu hình nhưng chưa có dữ liệu
-  if (!d.period?.days) {
-    box.innerHTML = `
-      <div class="bg-white rounded-xl border p-8 text-center">
-        <i class="fas fa-database text-3xl text-gray-300 mb-3"></i>
-        <p class="text-sm text-gray-600 font-medium">Chưa có dữ liệu trong kỳ này</p>
-        <p class="text-xs text-gray-400 mt-1">Bấm <span class="font-medium">Đồng bộ</span> để lấy số liệu từ Shopee.</p>
-        ${d.sync?.message ? `<p class="text-xs text-gray-400 mt-2">${esc(d.sync.message)}</p>` : ''}
-      </div>`;
-    return;
-  }
-
-  const s = d.shop;
-  const be = d.breakevenRoas;
-  const profitable = be && s.roas !== null ? s.roas >= be : null;
-
-  const kpi = (label, value, sub, tone) => `
-    <div class="bg-white rounded-xl border p-4">
-      <div class="text-xs text-gray-500">${label}</div>
-      <div class="text-xl font-bold mt-1 ${tone || 'text-gray-800'}">${value}</div>
-      ${sub ? `<div class="text-xs text-gray-400 mt-0.5">${sub}</div>` : ''}
-    </div>`;
-
-  const roasTone = profitable === null ? '' : (profitable ? 'text-emerald-600' : 'text-red-600');
-  const roasSub = be
-    ? `hoà vốn ${adsRoas(be)} · ${profitable ? 'đang có lãi' : 'đang lỗ'}`
-    : 'khai báo lãi gộp để biết hoà vốn';
-
-  const kpis = `
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-      ${kpi('Chi phí quảng cáo', adsNum(s.expense) + 'đ', `${d.period.days} ngày`)}
-      ${kpi('GMV từ quảng cáo', adsNum(s.gmv) + 'đ', `${adsNum(s.order)} đơn`)}
-      ${kpi('ROAS', adsRoas(s.roas), roasSub, roasTone)}
-      ${kpi('ACOS', adsPct(s.acos), `CPC ${adsNum(s.cpc)}đ · ${adsNum(s.cpo)}đ/đơn`)}
-    </div>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-      ${kpi('CTR', adsPct(s.ctr), `${adsNum(s.impression)} hiển thị`)}
-      ${kpi('Tỷ lệ chuyển đổi', adsPct(s.cr), `${adsNum(s.click)} click`)}
-      ${kpi('Giá trị đơn TB', adsNum(s.aov) + 'đ', `GMV trực tiếp ${adsPct(s.directShare)}`)}
-      ${kpi('Tiền đốt vô ích', adsNum(d.summary.wastedSpend) + 'đ', 'campaign có click, 0 đơn',
-            d.summary.wastedSpend > 0 ? 'text-red-600' : 'text-gray-800')}
-    </div>`;
-
-  // Findings
-  const findings = (d.findings || []).map((f, i) => {
-    const sev = ADS_SEV[f.severity] || ADS_SEV.low;
-    return `
-      <div class="border rounded-xl p-3 ${sev.cls} mb-2">
-        <div class="flex items-start gap-2">
-          <i class="fas ${sev.icon} mt-0.5"></i>
-          <div class="min-w-0">
-            <div class="text-sm font-semibold">${i + 1}. ${esc(f.title)}
-              <span class="text-xs font-normal opacity-70">· ${sev.label}</span>
-            </div>
-            <div class="text-xs opacity-80 mt-0.5">${esc(f.scope)}</div>
-            <div class="text-xs mt-1">${esc(f.detail)}</div>
-            <div class="text-xs mt-1"><span class="font-medium">Nên làm:</span> ${esc(f.action)}</div>
-          </div>
-        </div>
-      </div>`;
-  }).join('') || '<p class="text-sm text-gray-500">Không phát hiện vấn đề nào trong kỳ này.</p>';
-
-  // Bảng campaign
-  const rows = (d.campaigns || []).map(c => {
-    const bad = be && c.roas !== null && c.click >= 30 && c.roas < be;
-    const zero = c.order === 0 && c.click >= 20;
-    const tone = (zero || bad) ? 'bg-red-50/40' : '';
-    return `
-      <tr class="border-t hover:bg-gray-50 ${tone}">
-        <td class="px-3 py-2">
-          <div class="text-sm font-medium text-gray-800">${esc(c.name || '(không tên)')}</div>
-          <div class="text-xs text-gray-400">#${esc(c.campaignId)}${c.status ? ' · ' + esc(c.status) : ''}</div>
-        </td>
-        <td class="px-3 py-2 text-right text-sm">${adsNum(c.expense)}</td>
-        <td class="px-3 py-2 text-right text-sm">${adsNum(c.gmv)}</td>
-        <td class="px-3 py-2 text-right text-sm">${adsNum(c.order)}</td>
-        <td class="px-3 py-2 text-right text-sm font-semibold ${
-          be && c.roas !== null ? (c.roas >= be ? 'text-emerald-600' : 'text-red-600') : ''
-        }">${adsRoas(c.roas)}</td>
-        <td class="px-3 py-2 text-right text-sm">${adsPct(c.ctr)}</td>
-        <td class="px-3 py-2 text-right text-sm">${adsPct(c.cr)}</td>
-        <td class="px-3 py-2 text-right text-sm">${adsNum(c.cpc)}</td>
-        <td class="px-3 py-2 text-right text-xs text-gray-500">${c.cappedDays}/${c.activeDays}</td>
-      </tr>`;
-  }).join('');
-
-  const table = `
-    <div class="bg-white rounded-xl border overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
-            <tr>
-              <th class="px-3 py-2 text-left">Campaign</th>
-              <th class="px-3 py-2 text-right">Chi phí</th>
-              <th class="px-3 py-2 text-right">GMV</th>
-              <th class="px-3 py-2 text-right">Đơn</th>
-              <th class="px-3 py-2 text-right">ROAS</th>
-              <th class="px-3 py-2 text-right">CTR</th>
-              <th class="px-3 py-2 text-right">CR</th>
-              <th class="px-3 py-2 text-right">CPC</th>
-              <th class="px-3 py-2 text-right" title="Số ngày cạn ngân sách / số ngày có chi">Cạn NS</th>
-            </tr>
-          </thead>
-          <tbody>${rows || '<tr><td colspan="9" class="px-3 py-6 text-center text-sm text-gray-500">Không có campaign nào</td></tr>'}</tbody>
-        </table>
-      </div>
-    </div>`;
-
-  // Biểu đồ cột chi phí/ngày — CSS thuần, không cần thư viện
-  const maxExp = Math.max(...d.daily.map(x => x.expense), 1);
-  const bars = d.daily.map(x => {
-    const h = Math.max(2, Math.round((x.expense / maxExp) * 100));
-    const okBar = be && x.roas !== null ? x.roas >= be : true;
-    return `<div class="flex-1 flex flex-col justify-end" style="min-width:4px"
-      title="${x.date} · chi ${adsNum(x.expense)}đ · ROAS ${adsRoas(x.roas)}">
-      <div class="${okBar ? 'bg-amber-400' : 'bg-red-400'} rounded-t" style="height:${h}%"></div>
-    </div>`;
-  }).join('');
-
-  const chart = `
-    <div class="bg-white rounded-xl border p-4 mb-4">
-      <div class="flex justify-between items-baseline mb-2">
-        <div class="text-xs font-semibold text-gray-500 uppercase">Chi phí theo ngày</div>
-        <div class="text-xs text-gray-400">${d.period.start} → ${d.period.end}${be ? ' · cột đỏ = ROAS dưới hoà vốn' : ''}</div>
-      </div>
-      <div class="flex items-end gap-0.5 h-24">${bars}</div>
-    </div>`;
-
-  const note = d.summary.shopTotalsFromCampaigns
-    ? `<p class="text-xs text-gray-400 mb-3"><i class="fas fa-circle-info mr-1"></i>Không lấy được báo cáo tổng shop nên số liệu tổng được cộng từ các campaign; Shopee quy kết GMV toàn shop hơi khác nên con số có thể lệch nhẹ.</p>`
-    : '';
-
-  box.innerHTML = `
-    ${note}
-    ${kpis}
-    ${chart}
-    <div class="mb-5">
-      <div class="text-xs font-semibold text-gray-500 uppercase mb-2">
-        Phát hiện (${d.findings.length})
-        ${d.summary.countCritical ? `<span class="text-red-600 normal-case font-normal">· ${d.summary.countCritical} nghiêm trọng</span>` : ''}
-      </div>
-      ${findings}
-    </div>
-    <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Campaign (${d.campaigns.length})</div>
-    ${table}`;
-}
-
-// ---------- Kết nối Shopee (khai báo + uỷ quyền) ----------
-let shopeeCfg = null;
-
-async function openShopeeConfig() {
-  openModal('shopeeConfigModal');
-  await refreshShopeeCfg();
-}
-
-/** Vẽ lại dòng trạng thái + điền sẵn các ô đã khai báo (trừ Partner Key). */
-async function refreshShopeeCfg() {
-  const state = document.getElementById('shopeeCfgState');
-  if (state) state.innerHTML = '<span class="text-gray-400">Đang tải trạng thái...</span>';
-  try {
-    swrCache.remove('GET /shopee-ads/config');
-    shopeeCfg = await api('/shopee-ads/config');
-  } catch (e) {
-    if (state) state.innerHTML = `<span class="text-red-600">Không đọc được trạng thái: ${esc(e?.message || '')}</span>`;
-    return;
-  }
-
-  const c = shopeeCfg;
-  if (c.partnerId) document.getElementById('scPartnerId').value = c.partnerId;
-  if (c.shopId) document.getElementById('scShopId').value = c.shopId;
-  if (c.env) document.getElementById('scEnv').value = c.env;
-
-  let html;
-  if (!c.configured) {
-    html = '<span class="inline-flex items-center gap-1 text-gray-500"><i class="fas fa-circle-minus"></i> Chưa khai báo — làm bước 1 rồi bước 2.</span>';
-  } else if (!c.authorized) {
-    html = `<span class="inline-flex items-center gap-1 text-amber-600"><i class="fas fa-triangle-exclamation"></i>
-      Đã khai báo (Partner Key ${esc(c.partnerKeyMasked)}) nhưng chưa uỷ quyền shop.</span>`;
-  } else {
-    const bits = [`Đã kết nối shop ${esc(c.shopId)}`];
-    if (c.authorizedAt) bits.push('uỷ quyền lúc ' + new Date(c.authorizedAt).toLocaleString('vi-VN'));
-    // Hết hạn access_token không phải lỗi: còn refresh_token là hệ thống tự làm mới.
-    if (c.tokenExpired) bits.push('access_token đã hết hạn, sẽ tự làm mới khi đồng bộ');
-    else if (c.tokenExpiresAt) bits.push('token hết hạn ' + new Date(c.tokenExpiresAt).toLocaleString('vi-VN'));
-    if (c.updatedBy) bits.push('bởi ' + esc(c.updatedBy));
-    html = `<span class="inline-flex items-start gap-1 text-emerald-700"><i class="fas fa-circle-check mt-0.5"></i>
-      <span>${bits.join(' · ')}</span></span>`;
-  }
-  // source=env: đang đọc từ biến môi trường, token mới sẽ không lưu được.
-  if (c.source === 'env') {
-    html += `<div class="mt-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
-      Đang dùng thông số từ biến môi trường. Bấm "Lưu khai báo" để chuyển vào DB — cần vậy để token tự làm mới được lưu lại.</div>`;
-  }
-  if (state) state.innerHTML = html;
-}
-
-async function saveShopeeConfig() {
-  const btn = document.getElementById('scSaveBtn');
-  const partnerId = Number(document.getElementById('scPartnerId').value.trim());
-  const shopId = Number(document.getElementById('scShopId').value.trim());
-  const partnerKey = document.getElementById('scPartnerKey').value.trim();
-  const env = document.getElementById('scEnv').value;
-
-  if (!Number.isInteger(partnerId) || partnerId < 1) return toast('Partner ID phải là số nguyên dương');
-  if (!Number.isInteger(shopId) || shopId < 1) return toast('Shop ID phải là số nguyên dương');
-  // Server không trả Partner Key về nên không thể "giữ nguyên" hộ: phải dán lại khi đổi.
-  if (!partnerKey) return toast('Dán Partner Key (server không lưu bản đọc được nên phải nhập lại)');
-
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Đang lưu...'; }
-  try {
-    await api('/shopee-ads/config', {
-      method: 'POST',
-      body: JSON.stringify({ partnerId, shopId, partnerKey, env }),
-    });
-    // Không giữ key trong DOM sau khi đã gửi đi.
-    document.getElementById('scPartnerKey').value = '';
-    toast('Đã lưu khai báo. Tiếp tục bước 2 để uỷ quyền shop.');
-    await refreshShopeeCfg();
-  } catch (e) {
-    toast('Lưu thất bại: ' + (e?.message || 'lỗi không rõ'));
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save mr-1"></i> Lưu khai báo'; }
-  }
-}
-
-async function openShopeeAuth() {
-  const hint = document.getElementById('scRedirectHint');
-  try {
-    // Link uỷ quyền có chữ ký gắn timestamp, Shopee từ chối sign quá cũ.
-    // api() cache GET 60s nên phải xoá trước, không thì lần bấm sau dùng lại sign cũ.
-    swrCache.remove('GET /shopee-ads/auth-url');
-    const r = await api('/shopee-ads/auth-url');
-    if (hint) {
-      hint.classList.remove('hidden');
-      hint.innerHTML = `Redirect URL: <code class="bg-white px-1 rounded">${esc(r.redirect)}</code><br>
-        URL này phải được khai trong App trên Shopee Open Platform, nếu không Shopee sẽ từ chối.`;
-    }
-    window.open(r.url, '_blank', 'noopener');
-  } catch (e) {
-    toast('Không tạo được link uỷ quyền: ' + (e?.message || ''));
-  }
-}
-
-async function exchangeShopeeCode() {
-  const btn = document.getElementById('scCodeBtn');
-  const el = document.getElementById('scCode');
-  // Cho dán cả URL hoặc "code=abc": tự bóc giá trị ra.
-  let code = (el?.value || '').trim();
-  const m = code.match(/[?&]?code=([^&\s]+)/);
-  if (m) code = m[1];
-  if (!code) return toast('Dán mã uỷ quyền (code) vào ô trước');
-
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-  try {
-    await api('/shopee-ads/exchange-code', { method: 'POST', body: JSON.stringify({ code }) });
-    if (el) el.value = '';
-    toast('Kích hoạt thành công. Bấm Đồng bộ để lấy số liệu.');
-    await refreshShopeeCfg();
-    await loadAdsAudit(true);
-  } catch (e) {
-    toast('Kích hoạt thất bại: ' + (e?.message || 'lỗi không rõ'));
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-key mr-1"></i> Kích hoạt'; }
-  }
-}
-
-async function clearShopeeConfig() {
-  const ok = await showConfirm({
-    title: 'Xoá kết nối Shopee?',
-    message: 'Partner Key và token sẽ bị xoá khỏi DB. Số liệu đã đồng bộ vẫn giữ, nhưng muốn đồng bộ tiếp phải khai báo và uỷ quyền lại.',
-    confirmText: 'Xoá kết nối',
-    danger: true,
-  });
-  if (!ok) return;
-  try {
-    await api('/shopee-ads/config', { method: 'DELETE' });
-    document.getElementById('scPartnerKey').value = '';
-    toast('Đã xoá kết nối Shopee');
-    await refreshShopeeCfg();
-    await loadAdsAudit(true);
-  } catch (e) {
-    toast('Xoá thất bại: ' + (e?.message || ''));
-  }
-}
-
-/**
- * Shopee redirect về /admin/shopee-ads?code=...&shop_id=... sau khi chủ shop
- * đồng ý. Bắt lấy code, mở sẵn modal và điền vào ô bước 3.
- *
- * Code được xoá khỏi URL ngay: nó là bí mật dùng một lần, để lại trên address
- * bar sẽ đi vào history và Referer.
- */
-function captureShopeeAuthCode() {
-  const q = new URLSearchParams(window.location.search);
-  const code = q.get('code');
-  if (!code) return;
-  const shopId = q.get('shop_id');
-
-  q.delete('code');
-  q.delete('shop_id');
-  const rest = q.toString();
-  history.replaceState({}, '', window.location.pathname + (rest ? '?' + rest : ''));
-
-  openModal('shopeeConfigModal');
-  refreshShopeeCfg().then(() => {
-    const el = document.getElementById('scCode');
-    if (el) el.value = code;
-    if (shopId) document.getElementById('scShopId').value = shopId;
-    toast('Đã nhận mã uỷ quyền. Bấm Kích hoạt để hoàn tất.');
-  });
-}
-
-async function syncAds() {
-  const btn = document.getElementById('adsSyncBtn');
-  const days = Number(document.getElementById('adsDays')?.value || 30);
-  // Sync giới hạn 14 ngày mỗi lượt: gọi Shopee nhiều vòng dễ vượt 30s của Vercel.
-  const syncDays = Math.min(days, 14);
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang đồng bộ...'; }
-  try {
-    const r = await api(`/shopee-ads/sync?days=${syncDays}`, { method: 'POST' });
-    toast(r.status === 'ok'
-      ? `Đồng bộ xong: ${r.campaignRowsWritten + r.shopRowsWritten} dòng`
-      : `Đồng bộ ${r.status}: ${r.message}`);
-    await loadAdsAudit(true);
-  } catch (e) {
-    toast('Đồng bộ lỗi: ' + (e?.message || 'không rõ'));
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-rotate"></i> Đồng bộ'; }
-  }
 }
 
 // Load each dataset independently — no Promise.all bottleneck

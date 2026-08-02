@@ -17,6 +17,7 @@ import { AuthGuard } from "./auth/auth.guard";
 import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
 import { ShopModule } from "./shop/shop.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
+import { AdsModule } from "./ads/ads.module";
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AnalyticsModule } from "./analytics/analytics.module";
     MaterialCategoryModule,
     ShopModule,
     AnalyticsModule,
+    AdsModule,
   ],
   controllers: [HealthController],
   providers: [

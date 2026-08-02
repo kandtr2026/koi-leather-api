@@ -599,3 +599,58 @@ model KoiPresence {
   @@map("koi_presence")
   @@schema("koi_free_style")
 }
+
+/// Một cú bấm quảng cáo Google, nối với cuộc trò chuyện Zalo mà nó đẻ ra.
+///
+/// VÌ SAO CẦN BẢNG NÀY. Google Ads chỉ học được cách tiêu tiền cho khôn nếu ta
+/// nói lại cho nó biết cú bấm nào ra ĐƠN THẬT. Muốn nói lại thì phải giữ được
+/// `gclid` — mã Google gắn vào URL lúc khách bấm quảng cáo. Site này không bán
+/// online, mọi đơn chốt trong hộp thoại Zalo, nên không có trang "cảm ơn" nào
+/// để tự nối. Bảng này là sợi dây nối thủ công đó.
+///
+/// CÁCH CHẠY: khách vào từ quảng cáo → lưu gclid, sinh một MÃ NGẮN → mã đó
+/// được nhét vào tin nhắn Zalo soạn sẵn → chủ shop thấy mã trong hộp thoại →
+/// chốt đơn thì vào admin gõ mã, điền số tiền → xuất CSV tải lên Google Ads.
+///
+/// HẠN 90 NGÀY: Google chỉ nhận doanh số trong vòng 90 ngày kể từ cú bấm. Quá
+/// hạn thì dòng đó thành rác, xem cột `clickedAt`.
+model KoiAdClick {
+  /// Mã ngắn hiện trong tin nhắn Zalo (ví dụ "K7F2QM"). Chủ shop đọc bằng mắt
+  /// rồi gõ tay vào admin nên phải NGẮN và không có ký tự dễ nhìn nhầm —
+  /// xem BANG_CHU_CAI ở ads.service.ts. Khoá chính luôn: tra cứu toàn theo mã.
+  token       String    @id
+  /// Mã cú bấm của Google, lấy từ tham số ?gclid= trên URL khách vào.
+  /// Đây là thứ DUY NHẤT Google nhận để nối ngược về quảng cáo.
+  gclid       String?
+  /// Bản iOS của gclid: gbraid (web→app) và wbraid (app→web). Hiếm với site
+  /// này nhưng vẫn giữ — mất là mất hẳn, không lấy lại được.
+  gbraid      String?
+  wbraid      String?
+  /// Trang khách đáp xuống. Để biết quảng cáo đang kéo người vào đâu.
+  landingPath String?
+  /// Sản phẩm khách đang xem lúc bấm nút liên hệ. Giúp chủ shop nhận ra cuộc
+  /// trò chuyện nào ứng với mã nào khi hộp thoại Zalo có nhiều người cùng lúc.
+  productName String?
+  /// zalo | messenger | phone — kênh khách đã bấm.
+  channel     String?
+  /// Lúc khách bấm quảng cáo. MỐC TÍNH HẠN 90 NGÀY, không phải lúc chốt đơn.
+  clickedAt   DateTime  @default(now())
+  /// Lúc khách bấm nút Zalo/Messenger. null = mới vào xem rồi đi, chưa nhắn.
+  contactedAt DateTime?
+  /// Chủ shop đánh dấu đã chốt: thời điểm chốt. Đây là giờ gửi cho Google.
+  convertedAt DateTime?
+  /// Giá trị đơn, VND. Dùng BigInt cho khớp nếp giá của bảng products và vì
+  /// tiền Việt số to — Int 32-bit chỉ tới ~2,1 tỉ, một đơn buôn là tràn.
+  value       BigInt?
+  /// Ghi chú tay của chủ shop (tên khách, mã đơn...).
+  note        String?
+  /// Đã xuất ra CSV tải lên Google chưa. Chặn tính hai lần khi xuất nhiều lần.
+  exportedAt  DateTime?
+
+  /// Bảng xếp theo thứ tự thời gian ở admin, và hàm dọn rác xoá theo cột này.
+  @@index([clickedAt])
+  /// Lọc nhanh "đã chốt nhưng chưa xuất" — truy vấn chính của nút xuất CSV.
+  @@index([convertedAt])
+  @@map("koi_ad_clicks")
+  @@schema("koi_free_style")
+}
