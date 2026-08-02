@@ -178,9 +178,6 @@ export class InventoryService {
       0,
     );
     const lowStock = materials.filter((m) => Number(m.totalQuantity) < 10);
-    const syncedCount = materials.filter(
-      (m) => m.syncStatus === "SYNCED",
-    ).length;
 
     return {
       totalMaterials: materials.length,
@@ -192,8 +189,6 @@ export class InventoryService {
         stock: Number(m.totalQuantity),
         unit: m.unit,
       })),
-      syncedCount,
-      pendingSync: materials.length - syncedCount,
     };
   }
 }

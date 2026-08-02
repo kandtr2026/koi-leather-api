@@ -422,8 +422,6 @@ model KoiRawMaterial {
   unitCost           Float
   currency           String                    @default("VND")
   externalId         String?
-  lastSyncedAt       DateTime?
-  syncStatus         String?                   @default("SYNCED")
   createdAt          DateTime                  @default(now())
   updatedAt          DateTime                  @updatedAt
   materialCategoryId String?

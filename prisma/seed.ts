@@ -79,16 +79,16 @@ async function main() {
   // === RAW MATERIALS ===
   await prisma.koiRawMaterial.createMany({
     data: [
-      { id: 'mat-epsom-navy', name: 'Da Epsom Navy - Haas', materialType: 'OUTER_LEATHER', supplier: 'Haas', unit: 'SQFT', color: 'Navy', totalQuantity: 20, availableQuantity: 20, unitCost: 450000, externalId: 'MAT-EPS-NAVY-001', syncStatus: 'SYNCED' },
-      { id: 'mat-zermatt', name: 'Da lót Zermatt Beige - Haas', materialType: 'LINING_LEATHER', supplier: 'Haas', unit: 'SQFT', color: 'Beige', totalQuantity: 15, availableQuantity: 15, unitCost: 280000, externalId: 'MAT-ZER-BGE-002', syncStatus: 'SYNCED' },
-      { id: 'mat-buttero', name: 'Da bò Buttero Havana - Walpier', materialType: 'OUTER_LEATHER', supplier: 'Walpier', unit: 'SQFT', color: 'Havana', totalQuantity: 25, availableQuantity: 25, unitCost: 380000, externalId: 'MAT-BUT-HAV-003', syncStatus: 'SYNCED' },
-      { id: 'mat-pueblo', name: 'Da bò Pueblo - Badalassi Carlo', materialType: 'OUTER_LEATHER', supplier: 'Badalassi Carlo', unit: 'SQFT', color: 'Natural', totalQuantity: 18, availableQuantity: 18, unitCost: 320000, syncStatus: 'SYNCED' },
-      { id: 'mat-chevre', name: 'Da lót Chevre Alran', materialType: 'LINING_LEATHER', supplier: 'Alran', unit: 'SQFT', color: 'Various', totalQuantity: 10, availableQuantity: 10, unitCost: 350000, syncStatus: 'SYNCED' },
-      { id: 'mat-meisi-045', name: 'Chỉ Meisi 0.45mm', materialType: 'THREAD', supplier: 'Meisi', unit: 'METER', totalQuantity: 80, availableQuantity: 80, unitCost: 12000, syncStatus: 'SYNCED' },
-      { id: 'mat-lin-hasard', name: 'Chỉ Lin Hasard 0.55mm', materialType: 'THREAD', supplier: 'Lin Hasard', unit: 'METER', totalQuantity: 50, availableQuantity: 50, unitCost: 15000, syncStatus: 'SYNCED' },
-      { id: 'mat-buckle-34', name: 'Khóa inox mờ 3.4cm', materialType: 'BUCKLE', supplier: 'Craft Supplies', unit: 'PIECE', totalQuantity: 30, availableQuantity: 30, unitCost: 85000, syncStatus: 'SYNCED' },
-      { id: 'mat-salpa', name: 'Độn Salpa 1.0mm - Salamander', materialType: 'INTERLINING', supplier: 'Salamander', unit: 'SQFT', totalQuantity: 40, availableQuantity: 40, unitCost: 95000, syncStatus: 'SYNCED' },
-      { id: 'mat-velodon', name: 'Độn Velodon 0.8mm', materialType: 'INTERLINING', supplier: 'Salamander', unit: 'SQFT', totalQuantity: 25, availableQuantity: 25, unitCost: 85000, syncStatus: 'SYNCED' },
+      { id: 'mat-epsom-navy', name: 'Da Epsom Navy - Haas', materialType: 'OUTER_LEATHER', supplier: 'Haas', unit: 'SQFT', color: 'Navy', totalQuantity: 20, availableQuantity: 20, unitCost: 450000, externalId: 'MAT-EPS-NAVY-001' },
+      { id: 'mat-zermatt', name: 'Da lót Zermatt Beige - Haas', materialType: 'LINING_LEATHER', supplier: 'Haas', unit: 'SQFT', color: 'Beige', totalQuantity: 15, availableQuantity: 15, unitCost: 280000, externalId: 'MAT-ZER-BGE-002' },
+      { id: 'mat-buttero', name: 'Da bò Buttero Havana - Walpier', materialType: 'OUTER_LEATHER', supplier: 'Walpier', unit: 'SQFT', color: 'Havana', totalQuantity: 25, availableQuantity: 25, unitCost: 380000, externalId: 'MAT-BUT-HAV-003' },
+      { id: 'mat-pueblo', name: 'Da bò Pueblo - Badalassi Carlo', materialType: 'OUTER_LEATHER', supplier: 'Badalassi Carlo', unit: 'SQFT', color: 'Natural', totalQuantity: 18, availableQuantity: 18, unitCost: 320000 },
+      { id: 'mat-chevre', name: 'Da lót Chevre Alran', materialType: 'LINING_LEATHER', supplier: 'Alran', unit: 'SQFT', color: 'Various', totalQuantity: 10, availableQuantity: 10, unitCost: 350000 },
+      { id: 'mat-meisi-045', name: 'Chỉ Meisi 0.45mm', materialType: 'THREAD', supplier: 'Meisi', unit: 'METER', totalQuantity: 80, availableQuantity: 80, unitCost: 12000 },
+      { id: 'mat-lin-hasard', name: 'Chỉ Lin Hasard 0.55mm', materialType: 'THREAD', supplier: 'Lin Hasard', unit: 'METER', totalQuantity: 50, availableQuantity: 50, unitCost: 15000 },
+      { id: 'mat-buckle-34', name: 'Khóa inox mờ 3.4cm', materialType: 'BUCKLE', supplier: 'Craft Supplies', unit: 'PIECE', totalQuantity: 30, availableQuantity: 30, unitCost: 85000 },
+      { id: 'mat-salpa', name: 'Độn Salpa 1.0mm - Salamander', materialType: 'INTERLINING', supplier: 'Salamander', unit: 'SQFT', totalQuantity: 40, availableQuantity: 40, unitCost: 95000 },
+      { id: 'mat-velodon', name: 'Độn Velodon 0.8mm', materialType: 'INTERLINING', supplier: 'Salamander', unit: 'SQFT', totalQuantity: 25, availableQuantity: 25, unitCost: 85000 },
     ],
   });
 
