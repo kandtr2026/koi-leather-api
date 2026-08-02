@@ -543,4 +543,41 @@ model KoiPageView {
   @@schema("koi_free_style")
 }
 
+/// Ai đang ở trên web NGAY LÚC NÀY, và đang đứng ở trang nào.
+///
+/// Vì sao phải có bảng riêng, không suy ra từ koi_page_views:
+///
+///  1. Muốn biết khách CÒN đang xem hay đã đóng tab thì phải có nhịp tim
+///     (heartbeat) gửi đều đặn. Nếu nhồi nhịp tim vào koi_page_views thì một
+///     khách ngồi đọc 10 phút hoá thành 10 "lượt xem" — mọi con số cũ (lượt
+///     xem, trang/khách, biểu đồ theo ngày) phồng lên và không còn tin được.
+///     Tách bảng thì nhịp tim chỉ ghi đè MỘT dòng, bảng lượt xem sạch nguyên.
+///
+///  2. Một dòng cho mỗi khách, ghi đè liên tục => bảng luôn nhỏ (bằng số khách
+///     trong ngày), truy vấn "đang online" chỉ quét vài chục dòng thay vì lọc
+///     cả bảng lượt xem đang lớn dần theo thời gian.
+///
+/// visitorHash làm khoá chính: cùng một khách chỉ giữ đúng một dòng.
+/// Hash đổi mỗi ngày (xem KoiPageView) nên dòng cũ thành rác — dọn theo
+/// lastSeenAt trong realtime(), không phải theo ngày.
+model KoiPresence {
+  /// Băm ẩn danh, y hệt KoiPageView.visitorHash. Khoá chính để upsert.
+  visitorHash String   @id
+  /// Trang khách đang đứng ngay lúc này.
+  path        String
+  /// Nguồn dẫn khách vào site — giữ nguồn ĐẦU phiên, không đè bằng 'internal'.
+  /// Xem ghi chú ở analytics.service.ts: đè thì sau một cú bấm ai cũng thành
+  /// 'internal' và bảng nguồn realtime thành vô nghĩa.
+  source      String
+  device      String
+  /// Lần đầu thấy trong phiên — để hiện "đã ở trên web 3 phút".
+  firstSeenAt DateTime @default(now())
+  /// Nhịp tim gần nhất. Quá ngưỡng thì coi như đã rời đi.
+  lastSeenAt  DateTime @default(now())
+
+  @@index([lastSeenAt])
+  @@map("koi_presence")
+  @@schema("koi_free_style")
+}
+
 

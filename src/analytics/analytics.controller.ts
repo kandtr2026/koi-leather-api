@@ -28,7 +28,7 @@ export class AnalyticsTrackController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: "Ghi một lượt xem trang (ẩn danh)" })
   async track(
-    @Body() body: { path?: string; referrer?: string | null },
+    @Body() body: { path?: string; referrer?: string | null; ping?: boolean },
     @Req() req: Request,
   ): Promise<void> {
     // Sau Vercel/Cloudflare thì req.ip là IP của proxy, không phải của khách.
@@ -43,6 +43,9 @@ export class AnalyticsTrackController {
         ip,
         ua: (req.headers["user-agent"] as string) || "",
         host: (req.headers["host"] as string) || "",
+        // Nhịp tim: khách vẫn đang mở trang cũ. Chỉ làm tươi "đang online",
+        // không tính thêm một lượt xem.
+        ping: body?.ping === true,
       });
     } catch {
       // Nuốt lỗi: hỏng thống kê thì kệ, tuyệt đối không để nó làm lỗi hiện ra
@@ -67,5 +70,11 @@ export class AnalyticsController {
   @ApiOperation({ summary: "Tổng quan lưu lượng theo khoảng ngày" })
   summary(@Query("days") days?: string) {
     return this.analytics.summary(Number(days) || 30);
+  }
+
+  @Get("realtime")
+  @ApiOperation({ summary: "Khách đang ở trên web ngay lúc này" })
+  realtime() {
+    return this.analytics.realtime();
   }
 }

@@ -22,6 +22,23 @@ const SALT =
   // ngược được (không gian IPv4 chỉ 4 tỉ, quét vét cạn trong vài giờ).
   randomBytes(32).toString("hex");
 
+/**
+ * Bao lâu không nghe nhịp tim thì coi như khách đã rời đi.
+ *
+ * 5 phút, khớp thói quen của Google Analytics. Nhịp tim gửi mỗi 60 giây nên
+ * khách phải lỡ 5 nhịp liên tiếp mới biến mất — mạng 3G chập chờn không đủ để
+ * đá nhầm người đang xem ra khỏi danh sách.
+ */
+const CUA_SO_ONLINE_MS = 5 * 60 * 1000;
+
+/**
+ * Giữ dòng hiện diện tối đa 1 ngày rồi dọn.
+ *
+ * Không dọn thì bảng phình mãi: hash đổi mỗi nửa đêm nên dòng của hôm qua vĩnh
+ * viễn không ai ghi đè, nằm lại làm rác.
+ */
+const HAN_DON_RAC_MS = 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
@@ -90,13 +107,21 @@ export class AnalyticsService {
     return p.slice(0, 500) || "/";
   }
 
-  /** Ghi một lượt xem. Gọi từ storefront, không cần đăng nhập. */
+  /**
+   * Ghi một lượt xem. Gọi từ storefront, không cần đăng nhập.
+   *
+   * `ping = true` là NHỊP TIM: khách vẫn đang mở trang cũ, không phải xem trang
+   * mới. Chỉ đụng vào bảng hiện diện, TUYỆT ĐỐI không ghi koi_page_views —
+   * ghi thì một người ngồi đọc 10 phút thành 10 lượt xem và mọi số liệu cũ
+   * (lượt xem, trang/khách, biểu đồ ngày) đều phồng lên.
+   */
   async track(input: {
     path: string;
     referrer?: string | null;
     ip: string;
     ua: string;
     host: string;
+    ping?: boolean;
   }) {
     const ua = (input.ua || "").slice(0, 400);
 
@@ -106,17 +131,137 @@ export class AnalyticsService {
       return { tracked: false, reason: "bot" };
     }
 
+    const path = this.chuanHoa(input.path);
+    const source = this.nguon(input.referrer ?? null, input.host);
+    const device = this.thietBi(ua);
+    const visitorHash = this.visitorHash(input.ip, ua);
+
+    // Hiện diện cập nhật cho CẢ nhịp tim lẫn lượt xem thật.
+    await this.capNhatHienDien({ visitorHash, path, source, device });
+
+    if (input.ping) return { tracked: true, ping: true };
+
     await this.prisma.koiPageView.create({
       data: {
-        path: this.chuanHoa(input.path),
+        path,
         referrer: input.referrer ? input.referrer.slice(0, 500) : null,
-        source: this.nguon(input.referrer ?? null, input.host),
-        device: this.thietBi(ua),
-        visitorHash: this.visitorHash(input.ip, ua),
+        source,
+        device,
+        visitorHash,
       },
     });
     return { tracked: true };
   }
+
+  /**
+   * Ghi đè dòng "khách này đang ở đâu".
+   *
+   * Nguồn CHỈ đặt lúc tạo dòng, không đè khi cập nhật. Lý do: từ trang thứ hai
+   * trở đi referrer là chính koileather.com nên nguon() trả 'internal' — đè thì
+   * khách vào từ Facebook bấm một cái là mất dấu, bảng nguồn realtime chỉ toàn
+   * 'Trong site' và không trả lời được câu đáng giá nhất ("khách đang xem đến
+   * từ đâu"). Giữ nguồn đầu phiên mới đúng nghĩa quy công.
+   */
+  private async capNhatHienDien(d: {
+    visitorHash: string;
+    path: string;
+    source: string;
+    device: string;
+  }) {
+    const now = new Date();
+    await this.prisma.koiPresence.upsert({
+      where: { visitorHash: d.visitorHash },
+      create: {
+        visitorHash: d.visitorHash,
+        path: d.path,
+        source: d.source,
+        device: d.device,
+        firstSeenAt: now,
+        lastSeenAt: now,
+      },
+      update: {
+        path: d.path,
+        device: d.device,
+        lastSeenAt: now,
+        // source: cố ý KHÔNG đụng tới. Xem ghi chú trên.
+      },
+    });
+  }
+
+  /**
+   * Ai đang ở trên web ngay lúc này.
+   *
+   * Trả về vừa danh sách trang đang được xem (kèm số khách trên từng trang),
+   * vừa cùng số đó gom theo nguồn — để admin biết "3 người đang xem, 2 từ
+   * Facebook" chứ không chỉ một con số trống trơn.
+   */
+  async realtime() {
+    const nguong = new Date(Date.now() - CUA_SO_ONLINE_MS);
+
+    const dangOnline = await this.prisma.koiPresence.findMany({
+      where: { lastSeenAt: { gte: nguong } },
+      orderBy: { lastSeenAt: "desc" },
+      // Chốt trần: một đợt khách đổ vào bất thường không được kéo sập trang
+      // admin. 500 dòng đã quá đủ để nhìn tình hình.
+      take: 500,
+    });
+
+    // Dọn rác cơ hội: không có cron trên Vercel serverless nên dọn ké lúc admin
+    // mở tab. Lỗi thì kệ — dọn rác hỏng không được làm hỏng số liệu đang xem.
+    this.prisma.koiPresence
+      .deleteMany({ where: { lastSeenAt: { lt: new Date(Date.now() - HAN_DON_RAC_MS) } } })
+      .catch(() => {});
+
+    // Gom theo trang: nhiều khách cùng đứng một trang thì hiện một dòng, đếm số.
+    const theoTrang = new Map<
+      string,
+      { path: string; khach: number; nguon: Record<string, number>; moiNhat: Date }
+    >();
+    // Gom theo nguồn: cùng tập khách đó, cắt theo chiều khác.
+    const theoNguon = new Map<string, number>();
+    const theoThietBi = new Map<string, number>();
+
+    for (const k of dangOnline) {
+      const t = theoTrang.get(k.path) ?? {
+        path: k.path,
+        khach: 0,
+        nguon: {},
+        moiNhat: k.lastSeenAt,
+      };
+      t.khach++;
+      t.nguon[k.source] = (t.nguon[k.source] ?? 0) + 1;
+      if (k.lastSeenAt > t.moiNhat) t.moiNhat = k.lastSeenAt;
+      theoTrang.set(k.path, t);
+
+      theoNguon.set(k.source, (theoNguon.get(k.source) ?? 0) + 1);
+      theoThietBi.set(k.device, (theoThietBi.get(k.device) ?? 0) + 1);
+    }
+
+    const trang = [...theoTrang.values()]
+      .sort((a, b) => b.khach - a.khach || +b.moiNhat - +a.moiNhat)
+      .map((t) => ({
+        path: t.path,
+        khach: t.khach,
+        // Xếp nguồn theo số khách giảm dần để giao diện lấy vài cái đầu là đủ.
+        nguon: Object.entries(t.nguon)
+          .sort((a, b) => b[1] - a[1])
+          .map(([source, khach]) => ({ source, khach })),
+        moiNhat: t.moiNhat.toISOString(),
+      }));
+
+    return {
+      online: dangOnline.length,
+      windowMinutes: CUA_SO_ONLINE_MS / 60000,
+      pages: trang,
+      sources: [...theoNguon.entries()]
+        .map(([source, khach]) => ({ source, khach }))
+        .sort((a, b) => b.khach - a.khach),
+      devices: [...theoThietBi.entries()]
+        .map(([device, khach]) => ({ device, khach }))
+        .sort((a, b) => b.khach - a.khach),
+    };
+  }
+
 
   /**
    * Tổng quan cho trang admin.
