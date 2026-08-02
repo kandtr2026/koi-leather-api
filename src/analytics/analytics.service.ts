@@ -58,13 +58,30 @@ export class AnalyticsService {
    * Gộp NGÀY vào chuỗi băm nên sang ngày mới cùng một người sẽ ra hash khác.
    * Đổi lại: đếm được khách riêng trong ngày, nhưng KHÔNG lần được hành vi dài
    * ngày và không truy ngược ra danh tính. Đây là đánh đổi cố ý.
+   *
+   * Ngày cắt theo giờ VIỆT NAM. Dùng toISOString() là cắt theo UTC, tức đổi
+   * hash lúc 7 giờ sáng giờ ta: một người vào lúc 6h và 8h sáng bị đếm thành
+   * hai khách, còn người vào 23h hôm trước và 1h sáng hôm sau lại gộp làm một.
+   * Ranh giới của hash phải trùng ranh giới của ngày trên biểu đồ, nếu không
+   * "khách riêng hôm nay" đếm trên một tập ngày khác với "lượt xem hôm nay".
    */
   private visitorHash(ip: string, ua: string): string {
-    const ngay = new Date().toISOString().slice(0, 10);
+    const ngay = this.ngayVN(new Date());
     return createHash("sha256")
       .update(`${ip}|${ua}|${ngay}|${SALT}`)
       .digest("hex")
       .slice(0, 32);
+  }
+
+  /** Ngày YYYY-MM-DD theo đồng hồ Việt Nam, bất kể máy chủ đặt múi giờ nào. */
+  private ngayVN(t: Date): string {
+    // en-CA cho sẵn định dạng YYYY-MM-DD, khỏi ghép tay từ formatToParts.
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: MUI_GIO,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(t);
   }
 
   /** Gom referrer về vài nhóm để đếm — tên miền thô thì tãi ra quá vụn. */
