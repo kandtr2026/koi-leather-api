@@ -23,6 +23,7 @@ import {
 import { ProductService } from "./product.service";
 import { CreateProductDto, VariantDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
+import { CleanDescriptionsDto } from "./dto/clean-descriptions.dto";
 
 @ApiTags("Products")
 @Controller("products")
@@ -166,6 +167,29 @@ export class ProductController {
     @Query("limit", new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
     return this.productService.findDeleted(page, limit);
+  }
+
+  /**
+   * Dọn mô tả cũ hàng loạt.
+   *
+   * PHẢI khai báo TRƯỚC các route động (":id/…") — Nest so khớp theo thứ tự,
+   * nếu để sau thì "descriptions" bị hiểu là một :id và ParseUUIDPipe chặn.
+   *
+   * Mặc định dryRun = true: chỉ báo cáo sẽ dọn gì, mất chữ gì, KHÔNG ghi. Muốn
+   * ghi thật thì gửi {"dryRun": false}.
+   */
+  @Post("descriptions/clean")
+  @ApiOperation({
+    summary:
+      "Dọn mô tả cũ từ WordPress (bỏ <h1> lặp tên, khung UX Builder, style " +
+      "inline, nút CTA cũ, ảnh /wp-content đang 403). Mặc định chạy thử.",
+  })
+  cleanDescriptions(@Body() dto: CleanDescriptionsDto) {
+    return this.productService.cleanDescriptions({
+      dryRun: dto?.dryRun !== false,
+      ids: dto?.ids,
+      limit: dto?.limit,
+    });
   }
 
   @Post(":id/restore")

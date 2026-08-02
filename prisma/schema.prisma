@@ -293,6 +293,13 @@ model KoiProduct {
   productType           String
   categoryId            String?
   description           String?
+  // Mô tả dạng khối (JSON: {"blocks":[…]}) do trình dựng khối trong admin lưu.
+  // `description` vẫn là HTML — koi-storefront render trực tiếp bằng
+  // dangerouslySetInnerHTML nên không được đổi định dạng cột đó. Cột này chỉ để
+  // mở lại đúng cấu trúc người bán đã soạn; HTML luôn được in lại từ nó bằng
+  // blocksToHtml() trong src/product/description-blocks.ts.
+  // Null = mô tả cũ từ WordPress chưa qua trình dựng khối.
+  descriptionBlocks     String?
   basePrice             Float?
   priceMin              Float?
   priceMax              Float?

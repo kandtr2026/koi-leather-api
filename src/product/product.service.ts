@@ -22,6 +22,14 @@ import {
   generateProductJsonLd,
   generateImageAltText,
 } from "../seo/seo-generator.helper";
+import {
+  auditHtml,
+  blocksToHtml,
+  htmlToBlocks,
+  normalizeBlocks,
+  removedText,
+  type DescriptionBlock,
+} from "./description-blocks";
 
 @Injectable()
 export class ProductService {
@@ -98,6 +106,75 @@ export class ProductService {
     return {
       ...r,
       categories: (categoryLinks || []).map((l: any) => l.category),
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Mô tả sản phẩm dạng khối
+  // -------------------------------------------------------------------------
+
+  /** Lấy chuỗi từ field đa ngữ ({vi,en}) hoặc chuỗi trần. */
+  private textOf(v: any): string {
+    if (!v) return "";
+    if (typeof v === "string") return v;
+    return v.vi ?? v.en ?? "";
+  }
+
+  /**
+   * Bổ sung `descriptionBlocks` + `descriptionAudit` cho một sản phẩm khi trả
+   * về admin.
+   *
+   * Mô tả cũ (chưa có cột khối) được phân tích TẠI CHỖ, KHÔNG ghi vào DB: mở
+   * modal xem thôi thì không được đổi dữ liệu. HTML sạch chỉ thực sự được lưu
+   * khi người bán bấm Lưu, hoặc khi chạy dọn hàng loạt.
+   */
+  private withDescriptionBlocks(p: any): any {
+    if (!p) return p;
+    const html = this.textOf(p.description);
+    const name = this.textOf(p.name);
+
+    let blocks: DescriptionBlock[] = normalizeBlocks(
+      Array.isArray(p.descriptionBlocks)
+        ? p.descriptionBlocks
+        : (p.descriptionBlocks as any)?.blocks,
+    );
+    let derived = false;
+    if (!blocks.length && html) {
+      blocks = htmlToBlocks(html, name).blocks;
+      derived = blocks.length > 0;
+    }
+
+    const audit = auditHtml(html);
+    return {
+      ...p,
+      descriptionBlocks: blocks,
+      descriptionAudit: {
+        ...audit,
+        /** true = khối vừa suy ra từ HTML cũ, chưa lưu trong DB. */
+        derivedFromHtml: derived,
+        /** Chữ sẽ mất nếu dọn — để modal báo trước, không dọn âm thầm. */
+        removedText: audit.isLegacy ? removedText(html, name).slice(0, 2000) : "",
+      },
+    };
+  }
+
+  /**
+   * Khối do client gửi → dữ liệu ghi DB.
+   *
+   * Luôn in lại HTML từ khối: `description` (storefront đọc) và
+   * `descriptionBlocks` (admin mở lại) không bao giờ được lệch nhau.
+   * Trả null khi khối rỗng nhưng mô tả cũ có chữ — chặn ca "trình dựng khối
+   * lỗi/gửi mảng rỗng" xoá trắng mô tả đang bán.
+   */
+  private buildDescriptionData(
+    rawBlocks: any[],
+    existingHtml: string,
+  ): { description: any; descriptionBlocks: any } | null {
+    const blocks = normalizeBlocks(rawBlocks);
+    if (!blocks.length && existingHtml.trim()) return null;
+    return {
+      description: { vi: blocksToHtml(blocks) },
+      descriptionBlocks: { blocks },
     };
   }
 
@@ -342,6 +419,14 @@ export class ProductService {
         dto.basePrice,
       );
 
+      // Sản phẩm mới soạn bằng trình dựng khối: HTML sinh từ khối. Sản phẩm mới
+      // chưa có mô tả cũ nên khối rỗng là chấp nhận được (truyền "" làm mô tả
+      // hiện có → buildDescriptionData không chặn).
+      const newDescription =
+        dto.descriptionBlocks !== undefined
+          ? this.buildDescriptionData(dto.descriptionBlocks, "")
+          : null;
+
       // Atomic transaction: slug check, SKU check, create, and variants upsert
       const result = await this.prisma.$transaction(async (tx) => {
         const slug = await this.ensureUniqueSlug(
@@ -377,7 +462,11 @@ export class ProductService {
             productType: productType as any,
             sku,
             categoryId: primaryCategoryId,
-            description: (dto.description || {}) as any,
+            description: (newDescription?.description ||
+              dto.description ||
+              {}) as any,
+            descriptionBlocks: (newDescription?.descriptionBlocks ??
+              null) as any,
             basePrice: dto.basePrice ?? undefined,
             priceMin: computed.priceMin ?? undefined,
             priceMax: computed.priceMax ?? undefined,
@@ -861,7 +950,8 @@ export class ProductService {
       },
     });
     if (!product) throw new NotFoundException("Product not found");
-    return this.withCategories(product);
+    // findById là đường admin đọc để mở modal sửa → kèm khối + kiểm kê rác.
+    return this.withDescriptionBlocks(this.withCategories(product));
   }
 
   async findBySlug(slug: string) {
@@ -912,6 +1002,22 @@ export class ProductService {
     // null = xoá giá, undefined = client không gửi field nên giữ nguyên.
     if (dto.basePrice !== undefined) data.basePrice = dto.basePrice ?? null;
     if (dto.description) data.description = dto.description;
+    // Trình dựng khối gửi `descriptionBlocks` → HTML được in lại từ khối, đè
+    // luôn `description` client gửi kèm (nếu có) để hai chỗ không lệch nhau.
+    if (dto.descriptionBlocks !== undefined) {
+      const built = this.buildDescriptionData(
+        dto.descriptionBlocks,
+        this.textOf((existing as any).description),
+      );
+      if (!built) {
+        throw new BadRequestException(
+          "Mô tả dạng khối rỗng nhưng sản phẩm đang có mô tả — từ chối ghi để " +
+            "không xoá trắng. Muốn xoá mô tả thì gửi description = {vi: \"\"}.",
+        );
+      }
+      data.description = built.description;
+      data.descriptionBlocks = built.descriptionBlocks;
+    }
     if (dto.status) data.status = dto.status;
     if (dto.externalId !== undefined) data.externalId = dto.externalId;
     if (dto.sku !== undefined) data.sku = dto.sku;
@@ -1174,6 +1280,120 @@ export class ProductService {
       where: { isFeatured: true, isDeleted: false },
     });
     return { ...updated, soLuongDinh };
+  }
+
+  // -------------------------------------------------------------------------
+  // Dọn mô tả hàng loạt
+  // -------------------------------------------------------------------------
+
+  /**
+   * Dọn mô tả cũ cho nhiều sản phẩm một lượt.
+   *
+   * `dryRun: true` (mặc định) chỉ TÍNH và báo cáo, không ghi gì — người bán xem
+   * trước sẽ mất chữ nào rồi mới quyết. Đã kiểm chứng trên toàn bộ 324 mô tả
+   * thật (prisma/_verify-desc-clean.mjs): không mất câu mô tả nào, dọn hai lần
+   * ra cùng kết quả, dung lượng giảm 51%.
+   *
+   * Hai chốt an toàn:
+   *   · mô tả nào dọn xong ra rỗng thì GIỮ NGUYÊN bản cũ và báo lại — có 1 sản
+   *     phẩm mô tả chỉ vỏn vẹn cái tiêu đề lặp tên, dọn đúng luật sẽ trắng
+   *     trang, phải để người bán tự viết;
+   *   · mô tả đã sạch (không còn rác) thì bỏ qua, không ghi vô ích.
+   */
+  async cleanDescriptions(opts: {
+    dryRun?: boolean;
+    ids?: string[];
+    limit?: number;
+  }) {
+    const dryRun = opts.dryRun !== false;
+    const rows = await this.prisma.koiProduct.findMany({
+      where: {
+        isDeleted: false,
+        ...(opts.ids?.length ? { id: { in: opts.ids } } : {}),
+      },
+      select: { id: true, slug: true, name: true, description: true },
+      orderBy: { slug: "asc" },
+      ...(opts.limit ? { take: opts.limit } : {}),
+    });
+
+    const items: any[] = [];
+    let cleaned = 0;
+    let skippedClean = 0;
+    let skippedEmpty = 0;
+    let deadImages = 0;
+    let bytesBefore = 0;
+    let bytesAfter = 0;
+
+    for (const r of rows) {
+      const html = this.textOf(r.description);
+      if (!html.trim()) continue;
+
+      const audit = auditHtml(html);
+      if (!audit.isLegacy) {
+        skippedClean++;
+        continue;
+      }
+
+      const name = this.textOf(r.name);
+      const parsed = htmlToBlocks(html, name);
+      const nextHtml = blocksToHtml(parsed.blocks);
+
+      if (!nextHtml.trim()) {
+        skippedEmpty++;
+        items.push({
+          id: r.id,
+          slug: r.slug,
+          ketQua: "BO_QUA_VI_RONG",
+          lyDo:
+            "Mô tả cũ chỉ có tiêu đề lặp tên sản phẩm — dọn sẽ trắng trang nên " +
+            "giữ nguyên. Cần tự viết mô tả mới.",
+        });
+        continue;
+      }
+
+      cleaned++;
+      deadImages += parsed.deadImages.length;
+      bytesBefore += html.length;
+      bytesAfter += nextHtml.length;
+
+      items.push({
+        id: r.id,
+        slug: r.slug,
+        ketQua: dryRun ? "SE_DON" : "DA_DON",
+        soKhoi: parsed.blocks.length,
+        anhChetBo: parsed.deadImages,
+        chuBiBo: removedText(html, name).slice(0, 500),
+        truoc: html.length,
+        sau: nextHtml.length,
+      });
+
+      if (!dryRun) {
+        await this.prisma.koiProduct.update({
+          where: { id: r.id },
+          data: {
+            description: { vi: nextHtml } as any,
+            descriptionBlocks: { blocks: parsed.blocks } as any,
+          },
+        });
+      }
+    }
+
+    return {
+      dryRun,
+      tongSanPham: rows.length,
+      daDon: cleaned,
+      boQuaVdSach: skippedClean,
+      boQuaVdRong: skippedEmpty,
+      anhChetDaBo: deadImages,
+      dungLuong: {
+        truoc: bytesBefore,
+        sau: bytesAfter,
+        giamPhanTram: bytesBefore
+          ? Math.round(((bytesBefore - bytesAfter) / bytesBefore) * 100)
+          : 0,
+      },
+      chiTiet: items,
+    };
   }
 
   async createVariant(productId: string, dto: VariantDto) {

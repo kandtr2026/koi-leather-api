@@ -59,6 +59,11 @@
     .lightbox-counter { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 70; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: #fff; font-size: 13px; font-weight: 500; padding: 6px 18px; border-radius: 20px; letter-spacing: 0.5px; white-space: nowrap; }
     .lightbox-loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 65; color: rgba(255,255,255,0.5); font-size: 14px; }
     #lightboxModal.modal-overlay { background: rgba(0,0,0,0.92); z-index: 60; }
+    /* Hộp xác nhận luôn nằm trên cùng. Nó được gọi TỪ TRONG các modal khác
+       (xoá ảnh trong modal sản phẩm, "Dọn thật" trong modal dọn mô tả) — mọi
+       .modal-overlay đều z-index 50 nên thứ tự vẽ rơi về thứ tự trong DOM, và
+       modal nào đứng sau sẽ che mất hộp xác nhận. */
+    #confirmModal.modal-overlay { z-index: 80; }
     .image-carousel { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
     .image-carousel::-webkit-scrollbar { height: 3px; }
     .image-carousel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
@@ -98,6 +103,99 @@
     }
     .cat-tag button { color: #d97706; line-height: 1; padding: 2px; cursor: pointer; background: none; border: 0; }
     .cat-tag button:hover { color: #92400e; }
+
+    /* ===== Modal sản phẩm: thẻ trong modal ===== */
+    /* Không dùng .tab-btn/.panel của trang: chúng bị applyRoute() quét bằng
+       querySelectorAll('.tab-btn') / ('.panel') nên mỗi lần đổi route là thẻ
+       trong modal bị bật/tắt theo. Đặt tên riêng để hai bộ không đụng nhau. */
+    .pmodal-tab {
+      padding: 8px 14px; font-size: 13px; font-weight: 500; color: #6b7280;
+      border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer;
+      background: none; border-top: 0; border-left: 0; border-right: 0;
+      transition: color .15s, border-color .15s;
+    }
+    .pmodal-tab:hover { color: #111827; }
+    .pmodal-tab.active { color: #b45309; border-bottom-color: #f59e0b; }
+    .pmodal-panel { display: none; }
+    .pmodal-panel.active { display: block; }
+
+    /* ===== Trình dựng khối mô tả ===== */
+    .blk-add {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12px; color: #4b5563; background: #fff;
+      border: 1px solid #e5e7eb; border-radius: 9999px; padding: 4px 11px;
+      cursor: pointer; transition: all .15s;
+    }
+    .blk-add:hover { border-color: #f59e0b; color: #b45309; background: #fffbeb; }
+    .blk {
+      position: relative; border: 1px solid #e5e7eb; border-radius: 10px;
+      background: #fff; padding: 8px 10px 10px;
+    }
+    .blk:hover { border-color: #d1d5db; }
+    .blk.is-focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.12); }
+    .blk-head {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 5px;
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .04em; color: #9ca3af;
+    }
+    .blk-tools { margin-left: auto; display: flex; align-items: center; gap: 1px; }
+    .blk-tool {
+      width: 24px; height: 24px; display: inline-flex; align-items: center;
+      justify-content: center; border: 0; background: none; border-radius: 6px;
+      color: #9ca3af; cursor: pointer; font-size: 11px; transition: all .12s;
+    }
+    .blk-tool:hover { background: #f3f4f6; color: #374151; }
+    .blk-tool.is-danger:hover { background: #fee2e2; color: #dc2626; }
+    .blk-tool:disabled { opacity: .3; cursor: default; background: none; }
+    /* Ô soạn: contenteditable để giữ được <strong>/<em>/<a> mà không cần
+       thư viện rich-text nào. Nội dung được lọc lại ở server bằng
+       normalizeBlocks() nên dán bừa từ Word cũng không hại storefront. */
+    .blk-edit {
+      min-height: 34px; font-size: 13.5px; line-height: 1.65; color: #1f2937;
+      border: 1px solid #e5e7eb; border-radius: 8px; padding: 7px 10px;
+      outline: none; background: #fff; word-break: break-word;
+    }
+    .blk-edit:focus { border-color: #f59e0b; }
+    .blk-edit:empty::before { content: attr(data-ph); color: #c3c8d0; }
+    .blk-edit.is-h { font-size: 16px; font-weight: 700; }
+    .blk-edit.is-h3 { font-size: 14.5px; font-weight: 600; }
+    .blk-edit.is-quote { font-style: italic; border-left: 3px solid #fcd34d; color: #4b5563; }
+    .blk-li { display: flex; align-items: flex-start; gap: 6px; }
+    .blk-li .blk-edit { flex: 1; min-height: 30px; }
+    .blk-li.lv1 { padding-left: 26px; }
+    .blk-img-thumb {
+      width: 74px; height: 74px; object-fit: cover; border-radius: 8px;
+      border: 1px solid #e5e7eb; background: #f9fafb; cursor: pointer;
+    }
+    .blk-pick {
+      width: 60px; height: 60px; object-fit: cover; border-radius: 8px;
+      border: 2px solid transparent; cursor: pointer; transition: border-color .12s;
+    }
+    .blk-pick:hover { border-color: #f59e0b; }
+    .blk-pick.is-on { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,.25); }
+
+    /* ===== Xem trước: bám theo .prose-koi của koi-storefront ===== */
+    /* Chỉ để người bán ước lượng bố cục; chữ và khoảng cách không cam kết
+       giống hệt storefront (bên đó dùng font riêng). */
+    .prose-koi { font-size: 14px; line-height: 1.75; color: #374151; }
+    .prose-koi h2 { font-size: 18px; font-weight: 700; color: #111827; margin: 18px 0 8px; }
+    .prose-koi h2:first-child { margin-top: 0; }
+    .prose-koi h3 { font-size: 15px; font-weight: 600; color: #1f2937; margin: 14px 0 6px; }
+    .prose-koi p { margin: 0 0 10px; }
+    .prose-koi ul, .prose-koi ol { margin: 0 0 10px; padding-left: 22px; }
+    .prose-koi ul { list-style: disc; }
+    .prose-koi ol { list-style: decimal; }
+    .prose-koi ul ul, .prose-koi ol ol { margin: 4px 0 0; list-style: circle; }
+    .prose-koi li { margin: 3px 0; }
+    .prose-koi blockquote {
+      margin: 0 0 10px; padding: 6px 0 6px 14px;
+      border-left: 3px solid #fcd34d; font-style: italic; color: #4b5563;
+    }
+    .prose-koi figure { margin: 0 0 12px; }
+    .prose-koi img { max-width: 100%; border-radius: 10px; }
+    .prose-koi figcaption { font-size: 12px; color: #9ca3af; margin-top: 4px; text-align: center; }
+    .prose-koi a { color: #b45309; text-decoration: underline; }
+    .prose-koi strong { font-weight: 600; color: #111827; }
   </style>
 </head>
 <body>
@@ -213,6 +311,9 @@
               <i class="fas fa-times"></i>
             </button>
           </div>
+          <button onclick="openCleanDescriptions()" title="Dọn mô tả cũ từ website WordPress cho tất cả sản phẩm" class="border border-gray-300 bg-white hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
+            <i class="fas fa-broom text-amber-500"></i> Dọn mô tả cũ
+          </button>
           <button onclick="openCreateProduct()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 requires-auth">
             <i class="fas fa-plus"></i> Thêm sản phẩm
           </button>
@@ -401,13 +502,31 @@
 
 <!-- PRODUCT MODAL -->
 <div class="modal-overlay" id="productModal">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-6 fade-in max-h-[90vh] overflow-y-auto relative">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-lg font-bold" id="productModalTitle">Thêm sản phẩm</h2>
-      <button id="btnCloseProductModal" onclick="closeModal('productModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 fade-in max-h-[92vh] flex flex-col relative">
+    <!-- Đầu modal + thanh thẻ: dính trên, không cuộn theo nội dung. Nội dung mô
+         tả có thể rất dài nên phải luôn thấy được nút chuyển thẻ và nút Lưu. -->
+    <div class="px-6 pt-6 pb-0 shrink-0">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-bold" id="productModalTitle">Thêm sản phẩm</h2>
+        <button id="btnCloseProductModal" onclick="closeModal('productModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="flex gap-1 border-b -mx-6 px-6">
+        <button type="button" class="pmodal-tab active" data-ptab="info" onclick="switchProductTab('info')">
+          <i class="fas fa-circle-info mr-1.5"></i>Thông tin
+        </button>
+        <button type="button" class="pmodal-tab" data-ptab="desc" onclick="switchProductTab('desc')">
+          <i class="fas fa-align-left mr-1.5"></i>Mô tả
+          <span id="pDescDirtyDot" class="hidden ml-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 inline-block align-middle" title="Có thay đổi chưa lưu"></span>
+        </button>
+      </div>
     </div>
-    <div class="space-y-3">
+
+    <div class="px-6 py-4 overflow-y-auto grow">
       <input type="hidden" id="editProductId">
+
+      <!-- ================= THẺ: THÔNG TIN ================= -->
+      <div class="pmodal-panel active" id="ppanel-info">
+      <div class="space-y-3">
 
       <!-- IMAGE UPLOAD & PREVIEW — luôn hiển thị ở đầu modal -->
       <div>
@@ -438,7 +557,7 @@
           <input id="fileInput" type="file" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
           <div id="uploadProgress" class="hidden mt-3"><div class="w-full bg-gray-200 rounded-full h-1.5"><div id="progressBar" class="bg-amber-500 h-1.5 rounded-full" style="width:0%"></div></div><p id="progressText" class="text-xs text-gray-400 mt-1">Đang xử lý...</p></div>
         </div>
-          
+
       </div>
 
       <div>
@@ -485,10 +604,59 @@
       </div>
 
 
+      </div>
+      </div>
+
+      <!-- ================= THẺ: MÔ TẢ ================= -->
+      <div class="pmodal-panel" id="ppanel-desc">
+        <!-- Bảng báo đã dọn rác WordPress khi mở (chỉ hiện khi có dọn) -->
+        <div id="pDescCleanNotice" class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <div class="flex items-start gap-2">
+            <i class="fas fa-broom text-amber-500 mt-0.5"></i>
+            <div class="grow text-xs text-amber-900 leading-relaxed">
+              <div class="font-semibold mb-0.5">Đã dọn mô tả cũ từ website WordPress</div>
+              <div id="pDescCleanDetail"></div>
+              <button type="button" onclick="toggleRemovedText()" class="mt-1 text-amber-700 underline hover:text-amber-900">Xem phần đã bỏ</button>
+              <div id="pDescRemovedText" class="hidden mt-1.5 p-2 bg-white/70 border border-amber-200 rounded-lg text-[11px] text-gray-500 max-h-32 overflow-y-auto whitespace-pre-wrap"></div>
+              <div class="mt-1 text-amber-700">Bản dọn chỉ được ghi khi bạn bấm <strong>Lưu</strong>.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1">
+            <i class="fas fa-cubes text-amber-500"></i> Khối nội dung
+            <span id="pBlockCount" class="text-gray-400 font-normal normal-case"></span>
+          </div>
+          <button type="button" onclick="toggleDescPreview()" id="pDescPreviewBtn" class="text-[11px] text-gray-500 hover:text-amber-600">
+            <i class="fas fa-eye mr-1"></i>Xem như khách thấy
+          </button>
+        </div>
+
+        <!-- Danh sách khối -->
+        <div id="pDescBlocks" class="space-y-2"></div>
+
+        <!-- Xem trước: HTML dựng từ khối, hiện bằng chính lớp .prose-koi của storefront -->
+        <div id="pDescPreview" class="hidden prose-koi border border-gray-200 rounded-xl p-4 bg-gray-50/60"></div>
+
+        <!-- Thêm khối -->
+        <div id="pDescAddBar" class="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t">
+          <span class="text-[11px] text-gray-400 mr-1">Thêm khối:</span>
+          <button type="button" onclick="addDescBlock('paragraph')" class="blk-add"><i class="fas fa-paragraph"></i> Đoạn văn</button>
+          <button type="button" onclick="addDescBlock('heading')" class="blk-add"><i class="fas fa-heading"></i> Tiêu đề</button>
+          <button type="button" onclick="addDescBlock('list')" class="blk-add"><i class="fas fa-list-ul"></i> Gạch đầu dòng</button>
+          <button type="button" onclick="addDescBlock('quote')" class="blk-add"><i class="fas fa-quote-left"></i> Trích dẫn</button>
+          <button type="button" onclick="addDescBlock('image')" class="blk-add"><i class="fas fa-image"></i> Ảnh</button>
+        </div>
+      </div>
     </div>
-    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
-      <button id="btnCancelProduct" onclick="closeModal('productModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
-      <button id="btnSaveProduct" onclick="saveProduct()" class="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> <span id="btnSaveText">Lưu</span></button>
+
+    <div class="flex justify-between items-center gap-3 px-6 py-4 border-t shrink-0">
+      <div id="pModalHint" class="text-[11px] text-gray-400"></div>
+      <div class="flex items-center gap-3">
+        <button id="btnCancelProduct" onclick="closeModal('productModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+        <button id="btnSaveProduct" onclick="saveProduct()" class="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> <span id="btnSaveText">Lưu</span></button>
+      </div>
     </div>
 
     <!-- Processing State Overlay -->
@@ -776,6 +944,31 @@
     <div class="flex gap-3 justify-center">
       <button id="confirmCancelBtn" class="px-5 py-2.5 text-sm font-medium text-gray-600 rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors">Huỷ</button>
       <button id="confirmOkBtn" class="px-5 py-2.5 text-sm font-medium text-white rounded-xl bg-red-500 hover:bg-red-600 transition-colors">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<!-- DỌN MÔ TẢ CŨ HÀNG LOẠT -->
+<!-- Luôn chạy thử (dryRun) trước rồi mới cho ghi: 325 mô tả là công sức viết
+     bài của người bán, không có nút hoàn tác nên phải xem trước mất gì. -->
+<div class="modal-overlay" id="cleanDescModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 fade-in max-h-[90vh] flex flex-col">
+    <div class="flex justify-between items-center px-6 pt-6 pb-3 shrink-0">
+      <h2 class="text-lg font-bold flex items-center gap-2"><i class="fas fa-broom text-amber-500"></i> Dọn mô tả cũ từ WordPress</h2>
+      <button onclick="closeModal('cleanDescModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="px-6 overflow-y-auto grow" id="cleanDescBody">
+      <p class="text-sm text-gray-500">Đang kiểm tra...</p>
+    </div>
+    <div class="flex justify-between items-center gap-3 px-6 py-4 border-t shrink-0">
+      <div id="cleanDescNote" class="text-[11px] text-gray-400"></div>
+      <div class="flex items-center gap-3">
+        <button onclick="closeModal('cleanDescModal')" class="px-4 py-2 text-sm text-gray-600">Đóng</button>
+        <button id="cleanDescApplyBtn" onclick="applyCleanDescriptions()" disabled
+          class="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-medium">
+          <i class="fas fa-check mr-1"></i><span id="cleanDescApplyText">Dọn thật</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -1180,6 +1373,10 @@ let currentProductId = null;
 let pendingFiles = [];
 let isSaving = false;
 const deletingSet = new Set();
+// Ảnh của sản phẩm đang mở — khối "Ảnh" trong trình dựng mô tả chọn từ đây.
+// Ảnh /wp-content của web cũ đang trả 403 nên không cho dán URL ngoài; chỉ
+// chọn trong bộ ảnh đã tải lên CDN.
+let currentGalleryImages = [];
 
 // File drag–drop setup (init once)
 (function setupDragDrop() {
@@ -1317,6 +1514,7 @@ async function loadGallery(productId) {
   const wrapper = document.getElementById('imageCarouselWrapper');
   try {
     const images = await api(`/products/${productId}/images`);
+    currentGalleryImages = images; // khối ảnh trong tab Mô tả chọn từ đây
     if (!images.length) {
       empty.classList.remove('hidden');
       wrapper.classList.add('hidden');
@@ -1346,6 +1544,7 @@ async function loadGallery(productId) {
       }).join('');
     }
   } catch(e) {
+    currentGalleryImages = [];
     empty.classList.remove('hidden');
     wrapper.classList.add('hidden');
     el.innerHTML = '';
@@ -3365,6 +3564,610 @@ function updateMaterialCatCount() {
   el.textContent = n ? `Đã chọn ${n}/${MAX_MATERIAL_CATS}` : '';
 }
 
+// ========================================================================
+// TRÌNH DỰNG KHỐI MÔ TẢ
+// ========================================================================
+// Mô tả sản phẩm được soạn theo KHỐI, không phải gõ HTML. Server nhận mảng
+// khối, tự in ra HTML bằng blocksToHtml() rồi lưu vào description — đúng một
+// nguồn sự thật, và mọi thứ client gửi lên đều bị lọc lại vì koi-storefront
+// render bằng dangerouslySetInnerHTML.
+//
+// 325 mô tả cũ từ WordPress còn đủ rác: <h1> lặp tên sản phẩm, khung UX Builder
+// của Flatsome, style inline, ảnh /wp-content đã 403. Backend tự tách chúng
+// thành khối sạch khi trả về (descriptionAudit.derivedFromHtml = true) — bản
+// dọn CHỈ được ghi khi người bán bấm Lưu.
+
+/** Khối đang soạn của sản phẩm trong modal. */
+let descBlocks = [];
+/** Kiểm kê rác backend trả về, để hiện bảng "đã dọn". */
+let descAudit = null;
+/** Có sửa gì chưa — quyết định việc gửi descriptionBlocks lúc Lưu. */
+let descDirty = false;
+/** Thẻ đang mở trong modal sản phẩm. */
+let productTab = 'info';
+
+const BLOCK_META = {
+  paragraph: { label: 'Đoạn văn', icon: 'fa-paragraph' },
+  heading: { label: 'Tiêu đề', icon: 'fa-heading' },
+  list: { label: 'Gạch đầu dòng', icon: 'fa-list-ul' },
+  quote: { label: 'Trích dẫn', icon: 'fa-quote-left' },
+  image: { label: 'Ảnh', icon: 'fa-image' },
+};
+
+function switchProductTab(tab) {
+  productTab = tab;
+  document.querySelectorAll('.pmodal-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.ptab === tab);
+  });
+  document.querySelectorAll('.pmodal-panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'ppanel-' + tab);
+  });
+  const hint = document.getElementById('pModalHint');
+  if (hint) {
+    hint.innerHTML = tab === 'desc'
+      ? 'Mô tả và thông tin dùng chung một nút <strong>Lưu</strong>.'
+      : '';
+  }
+}
+
+function markDescDirty() {
+  descDirty = true;
+  const dot = document.getElementById('pDescDirtyDot');
+  if (dot) dot.classList.remove('hidden');
+}
+
+/** Đặt lại trạng thái mô tả — gọi mỗi lần mở modal. */
+function resetDescEditor(blocks, audit) {
+  descBlocks = Array.isArray(blocks) ? JSON.parse(JSON.stringify(blocks)) : [];
+  descAudit = audit || null;
+  descDirty = false;
+  document.getElementById('pDescDirtyDot').classList.add('hidden');
+  document.getElementById('pDescPreview').classList.add('hidden');
+  document.getElementById('pDescBlocks').classList.remove('hidden');
+  document.getElementById('pDescAddBar').classList.remove('hidden');
+  document.getElementById('pDescPreviewBtn').innerHTML = '<i class="fas fa-eye mr-1"></i>Xem như khách thấy';
+  document.getElementById('pDescRemovedText').classList.add('hidden');
+  renderDescCleanNotice();
+  renderDescBlocks();
+}
+
+/** Bảng vàng "đã dọn mô tả cũ" — chỉ hiện khi backend thật sự có dọn gì. */
+function renderDescCleanNotice() {
+  const box = document.getElementById('pDescCleanNotice');
+  const a = descAudit;
+  // derivedFromHtml = mô tả này chưa từng qua trình dựng khối, vừa được tách
+  // từ HTML cũ. Nếu false thì nó đã sạch, không có gì để báo.
+  if (!a || !a.derivedFromHtml || !a.isLegacy) { box.classList.add('hidden'); return; }
+
+  const bits = [];
+  if (a.duplicateH1) bits.push(`bỏ <strong>${a.duplicateH1}</strong> tiêu đề lặp tên sản phẩm`);
+  if (a.builderShell) bits.push(`bỏ <strong>${a.builderShell}</strong> khung dàn trang của theme cũ`);
+  if (a.inlineStyle) bits.push(`bỏ <strong>${a.inlineStyle}</strong> định dạng dán cứng`);
+  if (a.brokenImages) bits.push(`bỏ <strong>${a.brokenImages}</strong> ảnh đang lỗi 403`);
+  if (!bits.length) { box.classList.add('hidden'); return; }
+
+  document.getElementById('pDescCleanDetail').innerHTML =
+    bits.join(', ') + `. Còn lại <strong>${descBlocks.length}</strong> khối nội dung.`;
+  const rm = document.getElementById('pDescRemovedText');
+  const hasRemoved = !!(a.removedText || '').trim();
+  rm.textContent = a.removedText || '';
+  rm.previousElementSibling.classList.toggle('hidden', !hasRemoved);
+  box.classList.remove('hidden');
+}
+
+function toggleRemovedText() {
+  document.getElementById('pDescRemovedText').classList.toggle('hidden');
+}
+
+/** Escape cho thuộc tính HTML (esc() chỉ escape phần nội dung text). */
+function escAttr(s) {
+  return esc(String(s ?? '')).replace(/"/g, '&quot;');
+}
+
+/**
+ * Lọc HTML inline ngay tại client về đúng bộ thẻ cho phép.
+ *
+ * Server vẫn lọc lại lần nữa (đó mới là chốt an toàn thật), nhưng lọc ở đây để
+ * người bán dán từ Word/web về không thấy chữ nhảy phông loạn xạ trong ô soạn.
+ */
+const INLINE_OK = new Set(['STRONG', 'B', 'EM', 'I', 'U', 'A', 'BR']);
+function cleanInlineHtml(html) {
+  const box = document.createElement('div');
+  box.innerHTML = String(html ?? '');
+  const walk = (node) => {
+    [...node.childNodes].forEach(child => {
+      if (child.nodeType === 3) return; // text
+      if (child.nodeType !== 1) { child.remove(); return; }
+      const tag = child.tagName;
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'IFRAME' || tag === 'NOSCRIPT') {
+        child.remove(); // bỏ cả ruột, không bóc vỏ giữ chữ
+        return;
+      }
+      walk(child);
+      if (!INLINE_OK.has(tag)) {
+        child.replaceWith(...child.childNodes); // bóc vỏ, giữ chữ
+        return;
+      }
+      [...child.attributes].forEach(at => {
+        const keep = tag === 'A' && at.name === 'href' && !/^javascript:/i.test(at.value.trim());
+        if (!keep) child.removeAttribute(at.name);
+      });
+      if (tag === 'A' && !child.getAttribute('href')) child.replaceWith(...child.childNodes);
+    });
+  };
+  walk(box);
+  return box.innerHTML.replace(/\s+/g, ' ').trim();
+}
+
+function renderDescBlocks() {
+  const wrap = document.getElementById('pDescBlocks');
+  document.getElementById('pBlockCount').textContent =
+    descBlocks.length ? `· ${descBlocks.length} khối` : '';
+
+  if (!descBlocks.length) {
+    wrap.innerHTML = `<div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
+      <i class="fas fa-cubes text-2xl text-gray-300 mb-2"></i>
+      <p class="text-sm text-gray-400">Chưa có mô tả. Bấm một khối bên dưới để bắt đầu.</p>
+    </div>`;
+    return;
+  }
+  wrap.innerHTML = descBlocks.map((b, i) => renderOneBlock(b, i)).join('');
+}
+
+function renderOneBlock(b, i) {
+  const meta = BLOCK_META[b.type] || { label: b.type, icon: 'fa-cube' };
+  const last = i === descBlocks.length - 1;
+  const tools = `<div class="blk-tools">
+    <button type="button" class="blk-tool" title="Lên" onclick="moveDescBlock(${i},-1)" ${i === 0 ? 'disabled' : ''}><i class="fas fa-arrow-up"></i></button>
+    <button type="button" class="blk-tool" title="Xuống" onclick="moveDescBlock(${i},1)" ${last ? 'disabled' : ''}><i class="fas fa-arrow-down"></i></button>
+    <button type="button" class="blk-tool is-danger" title="Xoá khối" onclick="removeDescBlock(${i})"><i class="fas fa-trash-alt"></i></button>
+  </div>`;
+
+  let head = `<i class="fas ${meta.icon}"></i> ${meta.label}`;
+  let body = '';
+
+  if (b.type === 'heading') {
+    head += ` <select onchange="setHeadingLevel(${i}, this.value)" class="ml-1 text-[10px] border border-gray-200 rounded px-1 py-0.5 text-gray-500 bg-white cursor-pointer">
+      <option value="2" ${b.level !== 3 ? 'selected' : ''}>Mục lớn</option>
+      <option value="3" ${b.level === 3 ? 'selected' : ''}>Mục nhỏ</option>
+    </select>`;
+    body = editBox(b.html, i, b.level === 3 ? 'is-h3' : 'is-h', 'Tên mục…');
+  } else if (b.type === 'paragraph') {
+    body = editBox(b.html, i, '', 'Nhập nội dung…');
+  } else if (b.type === 'quote') {
+    body = editBox(b.html, i, 'is-quote', 'Câu trích dẫn…');
+  } else if (b.type === 'list') {
+    head += ` <button type="button" onclick="toggleListOrdered(${i})" class="ml-1 text-[10px] border border-gray-200 rounded px-1.5 py-0.5 text-gray-500 bg-white hover:border-amber-400" title="Đổi kiểu">
+      ${b.ordered ? '<i class="fas fa-list-ol"></i> Số' : '<i class="fas fa-list-ul"></i> Chấm'}
+    </button>`;
+    const items = (b.items || []).map((it, j) => `
+      <div class="blk-li ${it.level === 1 ? 'lv1' : ''}">
+        <button type="button" class="blk-tool" title="${it.level === 1 ? 'Đưa ra ngoài' : 'Thụt vào'}" onclick="toggleItemLevel(${i},${j})">
+          <i class="fas fa-${it.level === 1 ? 'outdent' : 'indent'}"></i>
+        </button>
+        <div class="blk-edit" contenteditable="true" data-ph="Nội dung dòng…"
+             data-bi="${i}" data-li="${j}"
+             oninput="markDescDirty()"
+             onblur="syncItem(${i},${j}, this)"
+             onpaste="onBlockPaste(event)"
+             onkeydown="onItemKey(event,${i},${j})">${it.html || ''}</div>
+        <button type="button" class="blk-tool is-danger" title="Xoá dòng" onclick="removeItem(${i},${j})"><i class="fas fa-times"></i></button>
+      </div>`).join('');
+    body = `<div class="space-y-1">${items}
+      <button type="button" onclick="addItem(${i})" class="text-[11px] text-gray-400 hover:text-amber-600 pl-1"><i class="fas fa-plus mr-1"></i>Thêm dòng</button>
+    </div>`;
+  } else if (b.type === 'image') {
+    const picks = currentGalleryImages.length
+      ? `<div class="flex flex-wrap gap-1.5 mt-1.5">${currentGalleryImages.map(img => `
+          <img src="${escAttr(img.thumbnailUrl || img.url)}" class="blk-pick ${img.url === b.url ? 'is-on' : ''}"
+               title="${escAttr(img.altText || '')}" loading="lazy"
+               onclick="pickBlockImage(${i}, '${escAttr(img.url)}', '${escAttr(img.altText || '')}')">`).join('')}</div>`
+      : `<p class="text-[11px] text-gray-400 mt-1.5">Sản phẩm chưa có ảnh nào. Tải ảnh ở thẻ <strong>Thông tin</strong> rồi quay lại chọn.</p>`;
+    body = `<div class="flex gap-3">
+        <div class="shrink-0">
+          ${b.url
+            ? `<img src="${escAttr(b.url)}" class="blk-img-thumb" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'blk-img-thumb flex items-center justify-center text-red-300',innerHTML:'<i class=\\'fas fa-image-slash\\'></i>'}))">`
+            : `<div class="blk-img-thumb flex items-center justify-center text-gray-300"><i class="fas fa-image"></i></div>`}
+        </div>
+        <div class="grow min-w-0">
+          <div class="text-[11px] text-gray-400 mb-1">${b.url ? 'Chọn ảnh khác từ bộ ảnh sản phẩm:' : 'Chọn ảnh từ bộ ảnh sản phẩm:'}</div>
+          ${picks}
+          <input value="${escAttr(b.caption || '')}" oninput="markDescDirty()" onblur="setImageCaption(${i}, this.value)"
+                 class="w-full mt-2 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs" placeholder="Chú thích dưới ảnh (không bắt buộc)">
+        </div>
+      </div>`;
+  }
+
+  return `<div class="blk" id="blk-${i}"><div class="blk-head">${head}${tools}</div>${body}</div>`;
+}
+
+function editBox(html, i, cls, ph) {
+  return `<div class="blk-edit ${cls}" contenteditable="true" data-ph="${escAttr(ph)}"
+    data-bi="${i}" oninput="markDescDirty()" onblur="syncBlock(${i}, this)"
+    onpaste="onBlockPaste(event)"
+    onfocus="this.closest('.blk').classList.add('is-focus')"
+    onkeydown="onBlockKey(event, ${i})">${html || ''}</div>`;
+}
+
+/**
+ * Dán: lấy HTML rồi lọc, thay vì để browser nhét nguyên khối markup từ Word.
+ * Không dùng document.execCommand('insertHTML') vì nó vẫn giữ style inline.
+ */
+function onBlockPaste(ev) {
+  ev.preventDefault();
+  const dt = ev.clipboardData;
+  const html = dt.getData('text/html');
+  const clean = html ? cleanInlineHtml(html) : esc(dt.getData('text/plain'));
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  sel.deleteFromDocument();
+  const frag = document.createRange().createContextualFragment(clean);
+  sel.getRangeAt(0).insertNode(frag);
+  sel.collapseToEnd();
+  markDescDirty();
+}
+
+/** Đọc nội dung ô soạn về mảng khối. Gọi lúc blur và trước khi Lưu. */
+function syncBlock(i, el) {
+  el.closest('.blk')?.classList.remove('is-focus');
+  const b = descBlocks[i];
+  if (!b) return;
+  const html = cleanInlineHtml(el.innerHTML);
+  if (b.html !== html) { b.html = html; markDescDirty(); }
+}
+
+function syncItem(i, j, el) {
+  const it = descBlocks[i]?.items?.[j];
+  if (!it) return;
+  const html = cleanInlineHtml(el.innerHTML);
+  if (it.html !== html) { it.html = html; markDescDirty(); }
+}
+
+/**
+ * Gom mọi ô soạn đang hiện về mảng khối.
+ *
+ * Bắt buộc trước khi Lưu: người bán gõ xong bấm thẳng nút Lưu thì ô soạn không
+ * hề blur, nên chữ vừa gõ vẫn chỉ nằm trong DOM. Không có bước này là "gõ rồi
+ * bấm Lưu mà mất chữ".
+ */
+function flushDescEditors() {
+  document.querySelectorAll('#pDescBlocks .blk-edit').forEach(el => {
+    const bi = Number(el.dataset.bi);
+    const li = el.dataset.li;
+    if (li === undefined) syncBlock(bi, el);
+    else syncItem(bi, Number(li), el);
+  });
+}
+
+/** Enter ở cuối đoạn → tạo đoạn mới, giống cảm giác soạn văn bản. */
+function onBlockKey(ev, i) {
+  if (ev.key === 'Enter' && !ev.shiftKey) {
+    ev.preventDefault();
+    syncBlock(i, ev.target);
+    addDescBlock('paragraph', i + 1);
+  }
+}
+
+function onItemKey(ev, i, j) {
+  if (ev.key === 'Enter' && !ev.shiftKey) {
+    ev.preventDefault();
+    syncItem(i, j, ev.target);
+    addItem(i, j + 1);
+    return;
+  }
+  // Tab / Shift+Tab: thụt vào — hai cấp, giống danh sách trong Word.
+  if (ev.key === 'Tab') {
+    ev.preventDefault();
+    syncItem(i, j, ev.target);
+    const it = descBlocks[i].items[j];
+    it.level = ev.shiftKey ? 0 : 1;
+    markDescDirty();
+    renderDescBlocks();
+    focusEdit(i, j);
+  }
+}
+
+function focusEdit(i, j) {
+  const sel = j === undefined
+    ? `#blk-${i} .blk-edit:not([data-li])`
+    : `#blk-${i} .blk-edit[data-li="${j}"]`;
+  const el = document.querySelector(sel);
+  if (!el) return;
+  el.focus();
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  r.collapse(false);
+  const s = window.getSelection();
+  s.removeAllRanges();
+  s.addRange(r);
+  el.scrollIntoView({ block: 'nearest' });
+}
+
+function addDescBlock(type, at) {
+  flushDescEditors();
+  const fresh = {
+    paragraph: { type: 'paragraph', html: '' },
+    heading: { type: 'heading', level: 2, html: '' },
+    list: { type: 'list', ordered: false, items: [{ html: '', level: 0 }] },
+    quote: { type: 'quote', html: '' },
+    image: { type: 'image', url: '', caption: '' },
+  }[type];
+  if (!fresh) return;
+  const idx = at === undefined ? descBlocks.length : at;
+  descBlocks.splice(idx, 0, fresh);
+  markDescDirty();
+  renderDescBlocks();
+  if (type === 'list') focusEdit(idx, 0);
+  else if (type !== 'image') focusEdit(idx);
+}
+
+function removeDescBlock(i) {
+  flushDescEditors();
+  descBlocks.splice(i, 1);
+  markDescDirty();
+  renderDescBlocks();
+}
+
+function moveDescBlock(i, dir) {
+  flushDescEditors();
+  const j = i + dir;
+  if (j < 0 || j >= descBlocks.length) return;
+  [descBlocks[i], descBlocks[j]] = [descBlocks[j], descBlocks[i]];
+  markDescDirty();
+  renderDescBlocks();
+}
+
+function setHeadingLevel(i, level) {
+  flushDescEditors();
+  descBlocks[i].level = Number(level) === 3 ? 3 : 2;
+  markDescDirty();
+  renderDescBlocks();
+}
+
+function toggleListOrdered(i) {
+  flushDescEditors();
+  descBlocks[i].ordered = !descBlocks[i].ordered;
+  markDescDirty();
+  renderDescBlocks();
+}
+
+function addItem(i, at) {
+  flushDescEditors();
+  const items = descBlocks[i].items || (descBlocks[i].items = []);
+  const idx = at === undefined ? items.length : at;
+  // Dòng mới thừa hưởng cấp của dòng trên: đang gõ danh sách con thì Enter phải
+  // ra dòng con tiếp, không nhảy về cấp ngoài.
+  items.splice(idx, 0, { html: '', level: items[idx - 1]?.level === 1 ? 1 : 0 });
+  markDescDirty();
+  renderDescBlocks();
+  focusEdit(i, idx);
+}
+
+function removeItem(i, j) {
+  flushDescEditors();
+  const items = descBlocks[i].items || [];
+  items.splice(j, 1);
+  // Danh sách rỗng thì bỏ luôn cả khối — server cũng loại khối không có dòng nào.
+  if (!items.length) descBlocks.splice(i, 1);
+  markDescDirty();
+  renderDescBlocks();
+}
+
+function toggleItemLevel(i, j) {
+  flushDescEditors();
+  const it = descBlocks[i].items[j];
+  it.level = it.level === 1 ? 0 : 1;
+  markDescDirty();
+  renderDescBlocks();
+}
+
+function pickBlockImage(i, url, alt) {
+  flushDescEditors();
+  const b = descBlocks[i];
+  b.url = url;
+  if (alt) b.alt = alt;
+  markDescDirty();
+  renderDescBlocks();
+}
+
+function setImageCaption(i, val) {
+  const b = descBlocks[i];
+  const clean = cleanInlineHtml(val);
+  if (b.caption !== clean) { b.caption = clean; markDescDirty(); }
+}
+
+/** Dựng HTML xem trước ngay tại client — không gọi server. */
+function blocksToPreviewHtml(blocks) {
+  const parts = [];
+  for (const b of blocks) {
+    if (b.type === 'heading' && (b.html || '').trim()) {
+      parts.push(`<h${b.level === 3 ? 3 : 2}>${b.html}</h${b.level === 3 ? 3 : 2}>`);
+    } else if (b.type === 'paragraph' && (b.html || '').trim()) {
+      parts.push(`<p>${b.html}</p>`);
+    } else if (b.type === 'quote' && (b.html || '').trim()) {
+      parts.push(`<blockquote>${b.html}</blockquote>`);
+    } else if (b.type === 'list') {
+      const tag = b.ordered ? 'ol' : 'ul';
+      const rows = [];
+      let openSub = false, liOpen = false;
+      // Gạch đầu dòng con phải nằm TRONG <li> cha — cùng luật với server, nếu
+      // khác thì xem trước sẽ lệch với trang thật.
+      for (const it of (b.items || [])) {
+        const h = (it.html || '').trim();
+        if (!h) continue;
+        if (it.level !== 1) {
+          if (openSub) { rows.push(`</${tag}>`); openSub = false; }
+          if (liOpen) { rows.push('</li>'); liOpen = false; }
+          rows.push(`<li>${h}`); liOpen = true;
+          continue;
+        }
+        if (!liOpen) { rows.push('<li>'); liOpen = true; }
+        if (!openSub) { rows.push(`<${tag}>`); openSub = true; }
+        rows.push(`<li>${h}</li>`);
+      }
+      if (openSub) rows.push(`</${tag}>`);
+      if (liOpen) rows.push('</li>');
+      if (rows.length) parts.push(`<${tag}>${rows.join('')}</${tag}>`);
+    } else if (b.type === 'image' && b.url) {
+      const cap = (b.caption || '').trim();
+      parts.push(`<figure><img src="${escAttr(b.url)}" alt="${escAttr(b.alt || '')}">${cap ? `<figcaption>${cap}</figcaption>` : ''}</figure>`);
+    }
+  }
+  return parts.join('\n');
+}
+
+function toggleDescPreview() {
+  flushDescEditors();
+  const pv = document.getElementById('pDescPreview');
+  const list = document.getElementById('pDescBlocks');
+  const bar = document.getElementById('pDescAddBar');
+  const btn = document.getElementById('pDescPreviewBtn');
+  const showing = pv.classList.contains('hidden');
+  if (showing) {
+    const html = blocksToPreviewHtml(descBlocks);
+    pv.innerHTML = html || '<p class="text-gray-400">Chưa có nội dung nào.</p>';
+    pv.classList.remove('hidden');
+    list.classList.add('hidden');
+    bar.classList.add('hidden');
+    btn.innerHTML = '<i class="fas fa-pen mr-1"></i>Về chế độ sửa';
+  } else {
+    pv.classList.add('hidden');
+    list.classList.remove('hidden');
+    bar.classList.remove('hidden');
+    btn.innerHTML = '<i class="fas fa-eye mr-1"></i>Xem như khách thấy';
+  }
+}
+
+// ========================================================================
+// DỌN MÔ TẢ CŨ HÀNG LOẠT
+// ========================================================================
+// Hai bước cứng: chạy thử để xem báo cáo, rồi mới cho bấm "Dọn thật". Không có
+// nút hoàn tác nên không bao giờ ghi ngay từ lần bấm đầu.
+
+let cleanDryReport = null;
+
+async function openCleanDescriptions() {
+  cleanDryReport = null;
+  const body = document.getElementById('cleanDescBody');
+  const btn = document.getElementById('cleanDescApplyBtn');
+  btn.disabled = true;
+  document.getElementById('cleanDescNote').textContent = '';
+  body.innerHTML = `<div class="py-8 text-center text-sm text-gray-400">
+    <i class="fas fa-spinner fa-spin mr-2"></i>Đang kiểm tra toàn bộ mô tả...
+  </div>`;
+  openModal('cleanDescModal');
+
+  try {
+    const r = await api('/products/descriptions/clean', {
+      method: 'POST',
+      body: JSON.stringify({ dryRun: true }),
+    });
+    cleanDryReport = r;
+    renderCleanReport(r);
+  } catch (e) {
+    body.innerHTML = `<div class="py-6 text-center text-sm text-red-500">Lỗi: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderCleanReport(r) {
+  const body = document.getElementById('cleanDescBody');
+  const btn = document.getElementById('cleanDescApplyBtn');
+  const kb = n => Math.round(n / 1024) + 'KB';
+
+  if (!r.daDon) {
+    btn.disabled = true;
+    body.innerHTML = `<div class="py-8 text-center">
+      <i class="fas fa-circle-check text-3xl text-emerald-500 mb-2"></i>
+      <p class="text-sm text-gray-600">Không có mô tả nào cần dọn.</p>
+      <p class="text-xs text-gray-400 mt-1">Đã kiểm ${r.tongSanPham} sản phẩm, ${r.boQuaVdSach} cái đã sạch.</p>
+    </div>`;
+    return;
+  }
+
+  const willClean = r.chiTiet.filter(x => x.ketQua === 'SE_DON' || x.ketQua === 'DA_DON');
+  const skipped = r.chiTiet.filter(x => x.ketQua === 'BO_QUA_VI_RONG');
+
+  const rows = willClean.map(x => `
+    <div class="border-b border-gray-100 py-2">
+      <div class="flex items-baseline justify-between gap-2">
+        <span class="text-xs font-medium text-gray-700 truncate">${esc(x.slug)}</span>
+        <span class="text-[11px] text-gray-400 shrink-0">${x.soKhoi} khối · ${kb(x.truoc)} → ${kb(x.sau)}</span>
+      </div>
+      ${x.anhChetBo?.length ? `<div class="text-[11px] text-red-500 mt-0.5"><i class="fas fa-image mr-1"></i>bỏ ${x.anhChetBo.length} ảnh lỗi 403</div>` : ''}
+      ${x.chuBiBo ? `<div class="text-[11px] text-gray-400 mt-0.5 line-clamp-2"><span class="text-gray-500">Bỏ chữ:</span> ${esc(x.chuBiBo.slice(0, 160))}${x.chuBiBo.length > 160 ? '…' : ''}</div>` : ''}
+    </div>`).join('');
+
+  body.innerHTML = `
+    <div class="grid grid-cols-4 gap-2 mb-3">
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-center">
+        <div class="text-xl font-bold text-amber-700">${r.daDon}</div>
+        <div class="text-[10px] text-amber-800 uppercase tracking-wide">sẽ dọn</div>
+      </div>
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-center">
+        <div class="text-xl font-bold text-gray-600">${r.boQuaVdSach}</div>
+        <div class="text-[10px] text-gray-500 uppercase tracking-wide">đã sạch</div>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded-xl p-2.5 text-center">
+        <div class="text-xl font-bold text-red-600">${r.anhChetDaBo}</div>
+        <div class="text-[10px] text-red-700 uppercase tracking-wide">ảnh lỗi bỏ</div>
+      </div>
+      <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center">
+        <div class="text-xl font-bold text-emerald-700">−${r.dungLuong.giamPhanTram}%</div>
+        <div class="text-[10px] text-emerald-800 uppercase tracking-wide">${kb(r.dungLuong.truoc)} → ${kb(r.dungLuong.sau)}</div>
+      </div>
+    </div>
+
+    ${skipped.length ? `<div class="rounded-xl border border-gray-200 bg-gray-50 p-3 mb-3">
+      <div class="text-xs font-semibold text-gray-600 mb-1"><i class="fas fa-circle-exclamation text-amber-500 mr-1"></i>${skipped.length} sản phẩm được giữ nguyên</div>
+      <div class="text-[11px] text-gray-500 leading-relaxed">Mô tả cũ chỉ có tiêu đề lặp tên sản phẩm — dọn thì trắng trang, nên giữ bản cũ. Cần tự viết mô tả mới cho: ${skipped.map(s => `<span class="font-medium text-gray-600">${esc(s.slug)}</span>`).join(', ')}</div>
+    </div>` : ''}
+
+    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Chi tiết ${willClean.length} sản phẩm</div>
+    <div class="border border-gray-200 rounded-xl px-3 py-1 mb-4">${rows}</div>`;
+
+  document.getElementById('cleanDescNote').innerHTML =
+    'Đây là bản <strong>chạy thử</strong> — chưa ghi gì vào dữ liệu.';
+  document.getElementById('cleanDescApplyText').textContent = `Dọn thật ${r.daDon} mô tả`;
+  btn.disabled = false;
+}
+
+async function applyCleanDescriptions() {
+  if (!cleanDryReport || !cleanDryReport.daDon) return;
+  const ok = await showConfirm({
+    title: 'Dọn thật mô tả cũ',
+    message: `Ghi lại mô tả của <strong>${cleanDryReport.daDon}</strong> sản phẩm. `
+      + 'Phần chữ trong danh sách "Bỏ chữ" sẽ mất và <strong>không hoàn tác được</strong>. Tiếp tục?',
+    confirmText: 'Dọn thật',
+    danger: true,
+  });
+  if (!ok) return;
+
+  const btn = document.getElementById('cleanDescApplyBtn');
+  btn.disabled = true;
+  document.getElementById('cleanDescApplyText').textContent = 'Đang dọn...';
+  try {
+    // Gửi đúng danh sách id đã xem trước, không dọn "tất cả cái nào còn rác":
+    // giữa lúc xem báo cáo và lúc bấm, nếu có sản phẩm mới thêm thì nó không
+    // nằm trong cái người bán đã đồng ý.
+    const ids = cleanDryReport.chiTiet
+      .filter(x => x.ketQua === 'SE_DON' || x.ketQua === 'DA_DON')
+      .map(x => x.id);
+    const r = await api('/products/descriptions/clean', {
+      method: 'POST',
+      body: JSON.stringify({ dryRun: false, ids }),
+    });
+    swrCache.clearProductCache();
+    r.chiTiet.forEach(x => swrCache.remove('GET /products/' + x.id));
+    await loadProducts();
+    toast(`Đã dọn ${r.daDon} mô tả`);
+    closeModal('cleanDescModal');
+  } catch (e) {
+    toast('Lỗi: ' + e.message);
+    document.getElementById('cleanDescApplyText').textContent = 'Dọn thật';
+    btn.disabled = false;
+  }
+}
+
 function openCreateProduct() {
   document.getElementById('productModalTitle').textContent = 'Thêm sản phẩm';
   ['editProductId','pNameVi','pPrice'].forEach(id => document.getElementById(id).value = '');
@@ -3383,6 +4186,9 @@ function openCreateProduct() {
   document.getElementById('imageGalleryEmpty').classList.remove('hidden');
   document.getElementById('imageCarouselWrapper').classList.add('hidden');
   document.getElementById('uploadProgress').classList.add('hidden');
+  currentGalleryImages = [];
+  switchProductTab('info');
+  resetDescEditor([], null);
   openModal('productModal');
 }
 
@@ -3421,8 +4227,15 @@ async function editProduct(id) {
   renderColorSlots();
   renderColorFamilies();
 
+  // Mô tả: backend trả sẵn khối. Với mô tả cũ từ WordPress thì khối được tách
+  // tại chỗ (descriptionAudit.derivedFromHtml = true) và chỉ ghi vào DB khi bấm
+  // Lưu — mở modal xem rồi đóng thì không đổi gì.
+  switchProductTab('info');
+  // Ảnh phải có TRƯỚC khi vẽ khối: khối ảnh chọn từ currentGalleryImages, vẽ
+  // trước thì ô chọn ảnh rỗng cho tới lần vẽ lại kế tiếp.
   openModal('productModal');
   await loadGallery(id);
+  resetDescEditor(p.descriptionBlocks, p.descriptionAudit);
 }
 
 // ========== PROCESSING STATE HELPERS ==========
@@ -3508,9 +4321,13 @@ function formatPriceForInput(v) {
 async function saveProduct() {
   if (isSaving) return;
 
+  // Gõ xong bấm thẳng Lưu thì ô soạn mô tả không blur — phải tự gom về mảng
+  // khối, không thì chữ vừa gõ nằm lại trong DOM và không được gửi đi.
+  flushDescEditors();
+
   // Validate
   const name = document.getElementById('pNameVi').value.trim();
-  if (!name) { toast('Nhập tên sản phẩm'); return; }
+  if (!name) { toast('Nhập tên sản phẩm'); switchProductTab('info'); return; }
 
   const id = document.getElementById('editProductId').value;
   const categoryIds = getSelectedCategoryIds();
@@ -3541,6 +4358,21 @@ async function saveProduct() {
   const pt = primary ? toProductType(primary) : null;
   if (pt) body.productType = pt;
 
+  // Mô tả: CHỈ gửi khi người bán thật sự sửa gì trong thẻ Mô tả.
+  //
+  // Gửi luôn thì mở modal sửa giá rồi bấm Lưu cũng ghi đè mô tả bằng bản dọn —
+  // đúng ý ở chỗ dọn được rác, nhưng sai ở chỗ ghi mà người bán không hề biết.
+  // Có sửa mới ghi; muốn dọn cả loạt thì dùng nút "Dọn mô tả cũ".
+  if (descDirty) {
+    // Khối rỗng + sản phẩm đang có mô tả = backend trả 400 để tránh xoá trắng.
+    // Chặn ngay tại đây cho người bán thấy lỗi rõ hơn là đọc lỗi HTTP.
+    if (!descBlocks.length && id) {
+      toast('Mô tả đang trống — thêm nội dung hoặc bỏ sửa mô tả rồi lưu lại');
+      switchProductTab('desc');
+      return;
+    }
+    if (descBlocks.length) body.descriptionBlocks = descBlocks;
+  }
 
   isSaving = true;
   showProcessing(id ? 'save' : 'upload');

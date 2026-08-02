@@ -9,3 +9,6 @@ public/build-meta.json
 
 .vercel
 .env*
+
+# Token JWT ky tay de goi API luc kiem thu — la bi mat, khong duoc commit.
+*token*.txt

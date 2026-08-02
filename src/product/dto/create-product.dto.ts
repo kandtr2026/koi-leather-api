@@ -186,6 +186,28 @@ export class CreateProductDto {
   @IsObject()
   description?: { vi: string; en?: string };
 
+  /**
+   * Mô tả dạng khối do trình dựng khối trong admin gửi lên.
+   *
+   * Khi có field này, server TỰ IN LẠI HTML cho `description` bằng
+   * blocksToHtml() và bỏ qua `description` client gửi kèm — chỉ một nguồn sự
+   * thật, tránh hai chỗ lệch nhau. Nội dung được lọc lại qua normalizeBlocks()
+   * vì koi-storefront render bằng dangerouslySetInnerHTML.
+   *
+   * Mảng thô, không dùng @ValidateNested: cấu trúc khối là union nhiều dạng,
+   * class-validator diễn đạt rất rối; normalizeBlocks() đã bỏ mọi thứ lạ.
+   */
+  @ApiPropertyOptional({
+    description:
+      "Mô tả dạng khối: [{type:'paragraph'|'heading'|'list'|'quote'|'image', …}]. " +
+      "Gửi field này thì HTML mô tả được sinh lại từ nó.",
+    type: "array",
+    items: { type: "object" },
+  })
+  @IsOptional()
+  @IsArray()
+  descriptionBlocks?: any[];
+
   @ApiPropertyOptional({
     description: "Giá cơ bản. Gửi null để xoá giá; bỏ hẳn field để giữ nguyên.",
     nullable: true,

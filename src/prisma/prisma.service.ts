@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
 
 const JSON_FIELDS: Record<string, string[]> = {
-  KoiProduct: ["name", "description", "technicalSpecs"],
+  KoiProduct: ["name", "description", "technicalSpecs", "descriptionBlocks"],
   KoiProductVariant: ["options", "images"],
   KoiCraftingSpec: [
     "patternFiles",
