@@ -52,13 +52,28 @@ export class ShopController {
 
   @Get("categories/:slug")
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
-  @ApiOperation({ summary: "Danh mục theo slug + sản phẩm trong danh mục" })
+  @ApiOperation({
+    summary: "Danh mục theo slug + sản phẩm trong danh mục (lọc + sắp xếp được)",
+    description:
+      "Nhận thêm loại da / màu / thứ tự vì đây là trang khách từ Google vào " +
+      "nhiều nhất. Facet cho sidebar lấy riêng ở /shop/filters?category=… — " +
+      "nó không đổi theo page/sort nên tách ra để dùng chung một bản đã đệm.",
+  })
   categoryBySlug(
     @Param("slug") slug: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
+    @Query("material") material?: string,
+    @Query("color") color?: string,
+    @Query("sort") sort?: string,
   ) {
-    return this.shop.categoryBySlug(slug, Number(page) || 1, Number(limit) || 24);
+    return this.shop.categoryBySlug(slug, Number(page) || 1, Number(limit) || 24, {
+      material,
+      color,
+      // Cùng danh sách trắng với /shop/products: ?sort gõ sai rơi về "popular"
+      // thay vì ném lỗi — địa chỉ cũ hay bị dán sai vẫn ra trang bình thường.
+      sort: SORT_HOP_LE.includes(sort as string) ? sort : undefined,
+    });
   }
 
   @Get("filters")

@@ -509,13 +509,23 @@ export class ShopService {
     color?: string;
     unpicked?: boolean;
     sort?: string;
+    /**
+     * id danh mục bên gọi ĐÃ TRA RỒI — truyền vào để khỏi tra lại.
+     * categoryBySlug bắt buộc phải đọc bản ghi danh mục (cần tên, mô tả), rồi
+     * gọi hàm này với cùng slug đó; không có tham số này là 2 truy vấn y hệt
+     * nhau cho mỗi lượt xem trang danh mục. Bỏ trống thì tra như cũ.
+     */
+    catId?: string | null;
   }) {
     const page = Math.max(1, opts.page || 1);
     const limit = Math.min(48, Math.max(1, opts.limit || 24));
 
     // Cùng một hàm dựng điều kiện với shopFilters — số trong ngoặc ở sidebar và
     // số hàng thực trả về đây không thể lệch nhau nữa.
-    const where = this.dieuKienLoc(opts, await this.idDanhMuc(opts.categorySlug));
+    const where = this.dieuKienLoc(
+      opts,
+      opts.catId ?? (await this.idDanhMuc(opts.categorySlug)),
+    );
 
     const [rows, total] = await Promise.all([
       this.prisma.koiProduct.findMany({
@@ -537,7 +547,24 @@ export class ShopService {
     };
   }
 
-  async categoryBySlug(slug: string, page = 1, limit = 24) {
+  /**
+   * Trang một danh mục: bản ghi danh mục + sản phẩm trong đó.
+   *
+   * Nhận cả loại da / màu / thứ tự vì đây là chỗ khách từ Google rơi vào nhiều
+   * nhất — trước đây chỉ nhận page/limit nên trang danh mục là danh sách cứng,
+   * khách muốn lọc phải mò sang /cua-hang/ rồi chọn lại danh mục từ đầu.
+   *
+   * KHÔNG trả kèm facet ở đây. Facet của một danh mục KHÔNG phụ thuộc page hay
+   * sort, nên để riêng ở /shop/filters?category=… thì mọi trang và mọi thứ tự
+   * dùng chung một bản đã đệm; gộp vào đây là bắt 11 truy vấn của shopFilters
+   * chạy lại cho từng tổ hợp page × sort × loại da × màu.
+   */
+  async categoryBySlug(
+    slug: string,
+    page = 1,
+    limit = 24,
+    opts: { material?: string; color?: string; sort?: string } = {},
+  ) {
     const cat = await this.prisma.koiCategory.findUnique({
       where: { slug },
       include: { _count: { select: { categoryLinks: true } } },
@@ -545,7 +572,16 @@ export class ShopService {
     if (!cat || cat.isActive === false)
       throw new NotFoundException("Không tìm thấy danh mục");
 
-    const list = await this.listProducts({ page, limit, categorySlug: slug });
+    const list = await this.listProducts({
+      page,
+      limit,
+      categorySlug: slug,
+      // Đã có bản ghi danh mục ở trên rồi — đừng tra lại lần nữa.
+      catId: cat.id,
+      material: opts.material,
+      color: opts.color,
+      sort: opts.sort,
+    });
     return { category: this.mapCategory(cat), ...list };
   }
 
