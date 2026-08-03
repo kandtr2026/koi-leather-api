@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { randomInt } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
+import { dauNgayVN } from "../common/ngay-vn";
 
 /**
  * Nối cú bấm quảng cáo Google với đơn hàng chốt trên Zalo.
@@ -167,9 +168,16 @@ export class AdsService {
    *
    * Chỉ trả dòng CÓ gclid (hoặc braid): dòng không có thì vĩnh viễn không tải
    * lên Google được, hiện ra chỉ làm nhiễu bảng.
+   *
+   * Cắt theo NGÀY LỊCH giờ Việt Nam, không phải 24 giờ trượt. Trước đây dùng
+   * `Date.now() - days * 86_400_000`: bấm "1 ngày" lúc 9 giờ sáng thì bảng gộp
+   * cả từ 9 giờ sáng HÔM QUA, trong khi trang /admin/traffic ngay cạnh lại cắt
+   * từ 00:00 hôm nay — hai trang cùng ghi "1 ngày" mà đếm hai khoảng khác nhau,
+   * đối chiếu cú bấm với lượt xem là ra số vênh không giải thích được.
    */
   async danhSach(days = 90): Promise<unknown> {
-    const tu = new Date(Date.now() - days * 86_400_000);
+    const soNgay = Math.min(Math.max(Number(days) || 90, 1), 365);
+    const tu = dauNgayVN(soNgay - 1);
     const rows = await this.prisma.koiAdClick.findMany({
       where: {
         clickedAt: { gte: tu },
@@ -184,7 +192,8 @@ export class AdsService {
     });
 
     return {
-      days,
+      days: soNgay,
+      from: tu.toISOString(),
       tongCong: rows.length,
       // Đếm sẵn cho admin khỏi phải tự cộng: ba con số này là toàn bộ câu
       // chuyện — bao nhiêu cú bấm, bao nhiêu ra hội thoại, bao nhiêu ra tiền.

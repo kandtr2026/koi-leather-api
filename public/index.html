@@ -421,7 +421,8 @@
       <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
         <p class="text-sm text-gray-500">Lưu lượng truy cập koileather.com — số liệu ẩn danh, không lưu IP</p>
         <div class="inline-flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-          <button onclick="setTrafficRange(7)"  data-range="7"  class="range-btn px-3 py-1.5 hover:bg-gray-50">7 ngày</button>
+          <button onclick="setTrafficRange(1)"  data-range="1"  class="range-btn px-3 py-1.5 hover:bg-gray-50">Hôm nay</button>
+          <button onclick="setTrafficRange(7)"  data-range="7"  class="range-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">7 ngày</button>
           <button onclick="setTrafficRange(30)" data-range="30" class="range-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">30 ngày</button>
           <button onclick="setTrafficRange(90)" data-range="90" class="range-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">90 ngày</button>
         </div>
@@ -442,7 +443,8 @@
           Nối cú bấm quảng cáo Google với đơn chốt trên Zalo — mã ngắn nằm sẵn trong tin nhắn khách gửi
         </p>
         <div class="inline-flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-          <button onclick="setAdsRange(7)"  data-ads-range="7"  class="ads-range-btn px-3 py-1.5 hover:bg-gray-50">7 ngày</button>
+          <button onclick="setAdsRange(1)"  data-ads-range="1"  class="ads-range-btn px-3 py-1.5 hover:bg-gray-50">Hôm nay</button>
+          <button onclick="setAdsRange(7)"  data-ads-range="7"  class="ads-range-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">7 ngày</button>
           <button onclick="setAdsRange(30)" data-ads-range="30" class="ads-range-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">30 ngày</button>
           <button onclick="setAdsRange(90)" data-ads-range="90" class="ads-range-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">90 ngày</button>
         </div>
@@ -2275,6 +2277,9 @@ const SOURCE_LABELS = {
 };
 const DEVICE_LABELS = { mobile: 'Điện thoại', tablet: 'Máy tính bảng', desktop: 'Máy tính' };
 
+/** 9 → "09h". Hai chữ số để nhãn trục ngang không nhảy bề rộng giữa 9h và 10h. */
+const gio2 = h => String(h).padStart(2, '0') + 'h';
+
 function renderTraffic(d) {
   const el = document.getElementById('trafficBody');
   const { totals, daily, topPages, sources, devices } = d;
@@ -2285,7 +2290,7 @@ function renderTraffic(d) {
   if (!totals.views) {
     el.innerHTML = `<div class="text-center py-16 text-gray-400">
       <i class="fas fa-chart-line text-4xl mb-3"></i>
-      <p class="font-medium text-gray-500">Chưa có lượt truy cập nào trong ${d.days} ngày qua</p>
+      <p class="font-medium text-gray-500">Chưa có lượt truy cập nào ${d.days === 1 ? 'hôm nay' : `trong ${d.days} ngày qua`}</p>
       <p class="text-sm mt-1">Số liệu bắt đầu được ghi từ lúc storefront cập nhật bản mới.</p>
     </div>`;
     return;
@@ -2317,28 +2322,44 @@ function renderTraffic(d) {
 
   const nf = n => new Intl.NumberFormat('vi-VN').format(n);
 
-  // ----- Biểu đồ cột theo ngày -----
+  // ----- Biểu đồ cột -----
   // Dựng bằng div thay vì thư viện biểu đồ: chỉ có một biểu đồ duy nhất trong
   // cả trang, kéo thêm Chart.js (~200KB) cho ngần này là không đáng.
-  const maxLuot = Math.max(...daily.map(r => r.luot), 1);
-  const cols = daily.map(r => {
+  //
+  // Xem 1 ngày thì cắt theo GIỜ. Vẽ theo ngày với đúng một ngày chỉ ra được một
+  // cột duy nhất — không thấy được trong ngày khách vào lúc nào, mà đó chính là
+  // câu hỏi khi bấm "Hôm nay".
+  //
+  // d.hourly có thể thiếu: bản phản hồi cũ còn trong sessionStorage (cache 60
+  // giây) chưa có khoá này. Thiếu thì rơi về biểu đồ ngày như cũ.
+  const theoGio = d.days === 1 && Array.isArray(d.hourly) && d.hourly.length === 24;
+  const diem = theoGio ? d.hourly : daily;
+  const nhanCua = r => theoGio
+    ? gio2(r.gio)
+    : (() => { const [, m, dd] = r.ngay.split('-'); return `${dd}/${m}`; })();
+
+  const maxLuot = Math.max(...diem.map(r => r.luot), 1);
+  const cols = diem.map(r => {
     const h = Math.round((r.luot / maxLuot) * 100);
-    const [, m, dd] = r.ngay.split('-');
-    return `<div class="flex-1 flex flex-col justify-end items-center group relative min-w-[6px]">
+    // Giờ chưa tới: tô nhạt CẢ Ô cột, không phải cái thanh. Thanh của giờ chưa
+    // tới luôn cao 0 (chưa có lượt nào) nên đổi màu thanh thì không hiện ra gì
+    // — nhìn y hệt giờ đã qua mà không ai vào, đúng hai chuyện phải phân biệt.
+    const chuaToi = theoGio && r.daQua === false;
+    return `<div class="flex-1 flex flex-col justify-end items-center group relative min-w-[6px] ${chuaToi ? 'bg-gray-50' : ''}">
       <div class="w-full bg-amber-400 hover:bg-amber-500 transition-colors rounded-t"
            style="height:${Math.max(h, r.luot ? 3 : 0)}%"></div>
       <div class="absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap bg-gray-900 text-white text-[11px] px-2 py-1 rounded shadow-lg z-10">
-        ${dd}/${m} · ${nf(r.luot)} lượt · ${nf(r.khach)} khách
+        ${nhanCua(r)} · ${nf(r.luot)} lượt · ${nf(r.khach)} khách${chuaToi ? ' · chưa tới giờ' : ''}
       </div>
     </div>`;
   }).join('');
 
-  // Nhãn trục ngang: nhiều ngày quá thì chữ chồng lên nhau, nên thưa bớt.
-  const buoc = daily.length > 45 ? 7 : daily.length > 14 ? 3 : 1;
-  const nhan = daily.map((r, i) => {
-    if (i % buoc !== 0 && i !== daily.length - 1) return '<div class="flex-1 min-w-[6px]"></div>';
-    const [, m, dd] = r.ngay.split('-');
-    return `<div class="flex-1 min-w-[6px] text-center text-[10px] text-gray-400">${dd}/${m}</div>`;
+  // Nhãn trục ngang: nhiều mốc quá thì chữ chồng lên nhau, nên thưa bớt.
+  // 24 cột giờ trên điện thoại cũng chật, nên cách 3 giờ ghi một lần (0h, 3h…).
+  const buoc = theoGio ? 3 : diem.length > 45 ? 7 : diem.length > 14 ? 3 : 1;
+  const nhan = diem.map((r, i) => {
+    if (i % buoc !== 0 && i !== diem.length - 1) return '<div class="flex-1 min-w-[6px]"></div>';
+    return `<div class="flex-1 min-w-[6px] text-center text-[10px] text-gray-400">${nhanCua(r)}</div>`;
   }).join('');
 
   const tongNguon = sources.reduce((s, r) => s + r.luot, 0) || 1;
@@ -2374,20 +2395,49 @@ function renderTraffic(d) {
 
   // 5 thẻ: điện thoại 2 cột (thẻ Hôm nay chiếm trọn hàng đầu cho dễ liếc),
   // màn hình lớn xếp đủ 5 trên một hàng.
+  //
+  // Xem 1 ngày thì hai thẻ cuối đổi nội dung: "Trung bình ngày" chia cho đúng
+  // một ngày là chép lại y hệt tổng lượt xem, còn thẻ Hôm nay cũng trùng nốt.
+  // Thay bằng giờ đông khách nhất và số lượt trong giờ vừa rồi — đó mới là thứ
+  // người bán cần khi soi trong ngày.
+  // Tới đây chắc chắn totals.views > 0 (ca rỗng đã thoát sớm ở trên), nên khi
+  // xem theo giờ luôn có ít nhất một giờ có lượt — vẫn để lớp đỡ cho ca dữ liệu
+  // lạ, thà hiện "—" còn hơn ném lỗi làm trắng cả bảng.
+  const gioDong = theoGio ? diem.reduce((a, b) => (b.luot > a.luot ? b : a), diem[0]) : null;
+  const gioVuaRoi = theoGio && Number.isInteger(d.nowHour) ? diem[d.nowHour] : null;
+
+  const theGioDong = card(
+    'Giờ đông nhất',
+    gioDong && gioDong.luot ? gio2(gioDong.gio) : '—',
+    'fa-clock',
+    gioDong && gioDong.luot ? `${nf(gioDong.luot)} lượt · ${nf(gioDong.khach)} khách` : 'chưa có lượt nào',
+  );
+  const theGioVuaRoi = card(
+    'Giờ này',
+    nf(gioVuaRoi ? gioVuaRoi.luot : 0),
+    'fa-hourglass-half',
+    gioVuaRoi ? `${gio2(gioVuaRoi.gio)} · ${nf(gioVuaRoi.khach)} khách` : 'lượt xem',
+  );
+  const theTrangMoiKhach = card('Trang / khách', trangMoiKhach, 'fa-layer-group', 'càng cao càng chịu xem');
+  const theTrungBinh = card('Trung bình ngày', nf(Math.round(totals.views / d.days)), 'fa-calendar-day', 'lượt xem');
+
+  const haiOCuoi = theoGio
+    ? theGioDong + theGioVuaRoi
+    : theTrangMoiKhach + theTrungBinh;
+
   el.innerHTML = `
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
       <div class="col-span-2 lg:col-span-1">
         ${cardHomNay(nf(homNay.views), `${nf(homNay.visitors)} khách · từ 00:00`)}
       </div>
-      ${card('Lượt xem', nf(totals.views), 'fa-eye', `${d.days} ngày qua`)}
+      ${card('Lượt xem', nf(totals.views), 'fa-eye', theoGio ? 'từ 00:00 hôm nay' : `${d.days} ngày qua`)}
       ${card('Khách riêng', nf(totals.visitors), 'fa-users', 'không trùng trong ngày')}
-      ${card('Trang / khách', trangMoiKhach, 'fa-layer-group', 'càng cao càng chịu xem')}
-      ${card('Trung bình ngày', nf(Math.round(totals.views / d.days)), 'fa-calendar-day', 'lượt xem')}
+      ${haiOCuoi}
     </div>
 
     <div class="grid lg:grid-cols-3 gap-5 mb-5">
       <div class="lg:col-span-2 min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div class="text-xs text-gray-400 uppercase tracking-wide mb-3">Lượt xem theo ngày</div>
+        <div class="text-xs text-gray-400 uppercase tracking-wide mb-3">${theoGio ? 'Lượt xem theo giờ (hôm nay)' : 'Lượt xem theo ngày'}</div>
         <!-- overflow-x-auto + min-w-0: mỗi cột ngày có min-w-[6px] nên 90 ngày
              đòi ~500px bề ngang. Ô lưới trên điện thoại chỉ ~350px, mà ô lưới
              mặc định KHÔNG co dưới bề rộng nội dung (min-width:auto) — thiếu
@@ -2726,9 +2776,13 @@ function renderAds(d) {
 
   const nf = n => new Intl.NumberFormat('vi-VN').format(Number(n) || 0);
 
+  // "Hôm nay" chứ không phải "1 ngày qua": khoảng cắt là từ 00:00 giờ Việt Nam,
+  // không phải 24 giờ trượt — xem ads.service.ts::danhSach.
+  const nhanKy = d.days === 1 ? 'hôm nay, từ 00:00' : `${d.days} ngày qua`;
+
   const theSoLieu = `
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-      ${card('Cú bấm quảng cáo', nf(d.tongCong), 'fa-hand-pointer', `${d.days} ngày qua`)}
+      ${card('Cú bấm quảng cáo', nf(d.tongCong), 'fa-hand-pointer', nhanKy)}
       ${card('Đã nhắn tin', nf(d.daLienHe), 'fa-comments', 'khách bấm sang Zalo')}
       ${card('Đã chốt đơn', nf(d.daChot), 'fa-handshake', 'có ghi số tiền')}
       ${card('Doanh thu', adsTien(d.doanhThu), 'fa-sack-dollar', 'từ đơn đã chốt')}
@@ -2737,7 +2791,7 @@ function renderAds(d) {
   if (!items.length) {
     el.innerHTML = theSoLieu + `<div class="text-center py-16 text-gray-400">
       <i class="fas fa-bullhorn text-4xl mb-3"></i>
-      <p class="font-medium text-gray-500">Chưa có cú bấm quảng cáo nào trong ${esc(String(d.days))} ngày qua</p>
+      <p class="font-medium text-gray-500">Chưa có cú bấm quảng cáo nào ${d.days === 1 ? 'hôm nay' : `trong ${esc(String(d.days))} ngày qua`}</p>
       <p class="text-sm mt-1">Số liệu chỉ bắt đầu có khi quảng cáo Google đã chạy và storefront đã lên bản mới.</p>
       <p class="text-sm mt-1">Khách vào từ quảng cáo sẽ tự hiện ở đây kèm mã ngắn để đối chiếu với tin nhắn Zalo.</p>
     </div>`;
