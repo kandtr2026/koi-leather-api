@@ -64,10 +64,26 @@ export class ShopController {
   @Get("filters")
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
   @ApiOperation({
-    summary: "Bộ lọc trang cửa hàng: danh mục sản phẩm, loại da, loại ảnh",
+    summary:
+      "Bộ lọc trang cửa hàng: danh mục, loại da, màu, loại ảnh — số đếm theo ngữ cảnh",
+    description:
+      "Truyền bộ lọc khách đang bật để mỗi con số là số hàng còn lại nếu chọn " +
+      "thêm mục đó. Không truyền gì thì đếm trên toàn bộ hàng mặt tiền.",
   })
-  filters() {
-    return this.shop.shopFilters();
+  filters(
+    @Query("category") category?: string,
+    @Query("material") material?: string,
+    @Query("imageType") imageType?: string,
+    @Query("color") color?: string,
+    @Query("search") search?: string,
+  ) {
+    return this.shop.shopFilters({
+      categorySlug: category,
+      material,
+      imageType,
+      color,
+      search,
+    });
   }
 
   @Get("color-families")

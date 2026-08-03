@@ -70,8 +70,27 @@ const VIETNAMESE_MAP: Record<string, string> = {
 
 const VIETNAMESE_REGEX = new RegExp(Object.keys(VIETNAMESE_MAP).join("|"), "g");
 
+/**
+ * Bỏ dấu tiếng Việt.
+ *
+ * VIETNAMESE_MAP chỉ có khoá CHỮ THƯỜNG, nên trước đây chữ hoa có dấu (Ố, Đ, Ư,
+ * Ấ…) không khớp bảng, rồi bị `[^a-z0-9...]` ở dưới XOÁ HẲN. Kết quả trên dữ
+ * liệu thật:
+ *    "Ốp lưng iPhone Da Epsom" -> "p-lung-iphone-da-epsom"   (rụng chữ Ố)
+ *    "Đồng hồ da cá sấu"       -> "ong-ho-da-ca-sau"         (rụng chữ Đ)
+ *    "Bọc Khoá Ô Tô"           -> "boc-khoa-to"              (rụng chữ Ô)
+ *    "ĐỎ ĐEN"                  -> "en"
+ * Đó là ĐƯỜNG DẪN CÔNG KHAI và mã SKU, không phải chuỗi nội bộ — 112/324 sản
+ * phẩm hiện có ít nhất một chữ trong tên không còn trong slug, và khách gõ không
+ * dấu ("op lung") thì tìm không ra hàng.
+ *
+ * Hạ chữ hoa TRƯỚC khi tra bảng nên chỉ cần một bảng chữ thường. generateCode
+ * vẫn ra chữ in vì nó tự .toUpperCase() sau.
+ */
 function removeAccents(str: string): string {
-  return str.replace(VIETNAMESE_REGEX, (match) => VIETNAMESE_MAP[match]);
+  return str
+    .toLowerCase()
+    .replace(VIETNAMESE_REGEX, (match) => VIETNAMESE_MAP[match]);
 }
 
 function normalizeName(name: string): string {

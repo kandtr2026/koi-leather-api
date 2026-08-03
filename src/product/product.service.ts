@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { SpecsValidatorService } from "../common/specs-validator.service";
+import { dieuKienTimSanPham, gopVaoAnd } from "../common/tim-san-pham";
 import { CreateProductDto, VariantDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { Prisma } from "@prisma/client";
@@ -679,7 +680,8 @@ export class ProductService {
     if (status) where.status = status as any;
 
     // --- Todolist filter: chỉ sản phẩm còn thiếu dữ liệu ---
-    // Kết hợp bằng where.AND để không đụng where.OR của ô tìm kiếm bên dưới.
+    // Kết hợp bằng where.AND vì ô tìm kiếm và lọc loại da bên dưới cũng dùng AND
+    // — cả ba phải cộng dồn, không cái nào được đè cái nào (dùng gopVaoAnd).
     // technicalSpecs là JSON nén thành chuỗi trong cột text, nên "rỗng" gồm cả
     // null, chuỗi trống và '{}' (xem PrismaService JSON middleware).
     const emptySpecs: Prisma.KoiProductWhereInput = {
@@ -731,7 +733,7 @@ export class ProductService {
           if (cond) missingAnd.push(cond);
         }
       }
-      if (missingAnd.length) where.AND = missingAnd;
+      gopVaoAnd(where, missingAnd);
     }
     // --- End todolist filter ---
 
@@ -759,18 +761,14 @@ export class ProductService {
     // của bản cũ và chỉ giữ loại da đầu tiên. Phải khớp CẢ HAI, nếu không
     // những sản phẩm nhập trước khi có bảng nối sẽ biến mất khỏi kết quả.
     if (materialCategoryId) {
-      const andList = Array.isArray(where.AND)
-        ? where.AND
-        : where.AND
-          ? [where.AND]
-          : [];
-      andList.push({
-        OR: [
-          { materialCategoryLinks: { some: { materialCategoryId } } },
-          { materialCategoryId },
-        ],
-      });
-      where.AND = andList;
+      gopVaoAnd(where, [
+        {
+          OR: [
+            { materialCategoryLinks: { some: { materialCategoryId } } },
+            { materialCategoryId },
+          ],
+        },
+      ]);
     }
 
     // --- Lọc theo khoảng giá ---
@@ -787,21 +785,22 @@ export class ProductService {
       where.basePrice = priceRange;
     }
 
-    // --- Search Logic Added ---
+    // --- Tìm kiếm ---
+    // Dùng CHUNG vị từ với mặt tiền (src/common/tim-san-pham.ts). Trước đây chỗ
+    // này nhét cả chuỗi vào một `contains` trên các cột JSON, nên gõ "vi" ra tất
+    // cả 324 sản phẩm (khớp cái khoá {"vi":) còn gõ "vi da nam" ra 0 — tức là ô
+    // tìm trong trang quản trị gần như chỉ chạy khi gõ đủ dấu và đúng một từ.
+    //
+    // Gộp vào AND thay vì gán where.OR: ở trên đã có lọc loại da và nhóm "thiếu
+    // thông tin" cùng dùng AND, và giữ AND thì từ khoá nhiều từ mới là "phải có
+    // đủ" chứ không phải "có một trong số".
     if (search) {
-      // `name` and `technicalSpecs` are stored as stringified JSON in text columns
-      // (see PrismaService JSON middleware), so a plain string `contains` matches
-      // the embedded vi/en values — a JSON path filter is invalid on a String column.
-      const searchConditions: Prisma.KoiProductWhereInput[] = [
-        { name: { contains: search, mode: "insensitive" } },
-        { slug: { contains: search, mode: "insensitive" } },
-        { sku: { contains: search, mode: "insensitive" } },
-        { technicalSpecs: { contains: search, mode: "insensitive" } },
-      ];
-
-      where.OR = searchConditions;
+      const nhomToken = dieuKienTimSanPham(search, true);
+      // Từ khoá rỗng nghĩa/không còn token ("   ", "{}") thì bỏ qua, không lọc
+      // rỗng — đừng biến ô tìm gõ nhầm thành danh sách trắng.
+      if (nhomToken) gopVaoAnd(where, nhomToken);
     }
-    // --- End Search Logic ---
+    // --- Hết tìm kiếm ---
 
     // `id` is the tiebreaker, not decoration: the catalog was imported in
     // batches so hundreds of rows share a createdAt down to the millisecond,

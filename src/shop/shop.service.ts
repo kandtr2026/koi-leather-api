@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { Prisma } from "@prisma/client";
 import { COLOR_FAMILIES } from "../common/enums";
+import { dieuKienTimSanPham, gopVaoAnd } from "../common/tim-san-pham";
 
 // Danh sách nhóm màu ĐẦY ĐỦ cho picker admin (khác facet /shop/filters vốn chỉ
 // trả nhóm đang có sản phẩm).
@@ -214,21 +215,132 @@ export class ShopService {
   }
 
   /**
-   * Dữ liệu cho sidebar lọc của trang cửa hàng: danh mục sản phẩm, loại da,
-   * loại ảnh — kèm số sản phẩm (đã publish) cho mỗi mục để hiển thị "(n)".
-   * Chỉ đếm trong tập hàng hiện ở mặt tiền (published, không thuộc danh mục ẩn).
+   * Dựng điều kiện lọc sản phẩm — DÙNG CHUNG cho danh sách và cho số đếm bộ lọc.
+   *
+   * Trước đây listProducts tự dựng where riêng, còn shopFilters đếm trên tập
+   * "toàn shop", nên hai bên trả về hai con số khác nhau cho cùng một điều kiện:
+   * trong "Túi Da Cho Nữ" sidebar ghi "Epsom (89)" mà bấm vào chỉ có 6 món, "Cá
+   * sấu (48)" chỉ có 2. Số trong ngoặc phải là số hàng khách bấm vào sẽ thấy —
+   * nên cả hai đường phải đi qua đúng hàm này.
+   *
+   * `boQua` cho phép bỏ một chiều khỏi điều kiện. Đó là cách đếm facet đúng: số
+   * bên cạnh mỗi loại da phải tính như thể khách CHƯA chọn loại da nào (nếu
+   * không, chọn Epsom rồi thì mọi loại da khác đều về 0 và khách không đổi được
+   * lựa chọn — cụt đường).
+   *
+   * `catId` là id danh mục đã tra sẵn. shopFilters gọi hàm này 4 lần; tra lại
+   * mỗi lần là 3 truy vấn y hệt nhau bắn song song, đúng kiểu đã từng làm sập
+   * pool kết nối (xem ghi chú ở categoriesWithCover).
    */
-  async shopFilters() {
-    const baseWhere: Prisma.KoiProductWhereInput = {
-      ...this.published,
-      ...this.notHidden,
-    };
+  private dieuKienLoc(
+    opts: {
+      categorySlug?: string;
+      search?: string;
+      material?: string;
+      imageType?: string;
+      color?: string;
+      unpicked?: boolean;
+    },
+    catId: string | null,
+    boQua?: "category" | "material" | "imageType" | "color",
+  ): Prisma.KoiProductWhereInput {
+    const where: Prisma.KoiProductWhereInput = { ...this.published };
+
+    if (catId && boQua !== "category") {
+      where.categoryLinks = { some: { categoryId: catId } };
+    } else {
+      // Danh sách chung: loại hàng thuộc danh mục ẩn. Còn khi khách vào thẳng
+      // trang một danh mục (kể cả danh mục ẩn) thì vẫn hiện đủ — giữ URL sống.
+      //
+      // Khi đang bỏ qua chiều "category" để đếm facet, vẫn phải giữ notHidden:
+      // 9 món của danh mục ẩn không được cộng vào số đếm nào cả.
+      Object.assign(where, this.notHidden);
+    }
+
+    // Lọc theo loại da: SP gắn loại da này ở BẤT KỲ vị trí nào (thân hoặc lót).
+    if (opts.material && boQua !== "material") {
+      where.materialCategoryLinks = {
+        some: { materialCategory: { code: opts.material } },
+      };
+    }
+
+    // Lọc theo loại ảnh (imageType trên ảnh SP): SP có ÍT NHẤT 1 ảnh loại đó.
+    if (opts.imageType && boQua !== "imageType") {
+      where.images = { some: { imageType: opts.imageType } };
+    }
+
+    // Lọc theo màu: nhận nhiều mã nhóm màu, phân tách bởi dấu phẩy (union OR).
+    // Đọc bảng nối nên hàng phối 2 tông hiện ở CẢ HAI màu.
+    if (opts.color && boQua !== "color") {
+      const codes = opts.color
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (codes.length) {
+        where.colorLinks = { some: { colorFamily: { in: codes } } };
+      }
+    }
+
+    // Admin: chỉ hàng CHƯA pick màu — để quét cái nào cần gán.
+    // Đặt sau nhánh color: hai cái loại trừ nhau, unpicked thắng (đường admin).
+    if (opts.unpicked) {
+      where.colorLinks = { none: {} };
+    }
+
+    // Tìm kiếm: mỗi token một điều kiện, AND lại (xem common/tim-san-pham.ts).
+    if (opts.search) {
+      const nhomToken = dieuKienTimSanPham(opts.search);
+      // Từ khoá không còn token dùng được ("   ", "{}", "%%%") thì coi như không
+      // tìm gì, KHÔNG phải lọc rỗng — trả cả shop còn hơn trả trang trắng.
+      if (nhomToken) gopVaoAnd(where, nhomToken);
+    }
+
+    return where;
+  }
+
+  /** Tra id danh mục theo slug, ném 404 sạch nếu không có. */
+  private async idDanhMuc(slug?: string): Promise<string | null> {
+    if (!slug) return null;
+    const cat = await this.prisma.koiCategory.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!cat) throw new NotFoundException("Không tìm thấy danh mục");
+    return cat.id;
+  }
+
+  /**
+   * Dữ liệu cho sidebar lọc của trang cửa hàng: danh mục, loại da, màu, loại ảnh
+   * — kèm số sản phẩm cho mỗi mục.
+   *
+   * Số đếm THEO NGỮ CẢNH: truyền vào bộ lọc khách đang bật thì mỗi con số là số
+   * hàng còn lại nếu khách chọn thêm mục đó. Quy tắc "bỏ chiều của chính mình"
+   * (xem dieuKienLoc): số cạnh mỗi loại da tính như thể chưa chọn loại da nào,
+   * nên khách luôn đổi được lựa chọn thay vì thấy 0 khắp nơi.
+   *
+   * Không truyền gì thì hành vi y như trước: đếm trên toàn bộ hàng mặt tiền.
+   */
+  async shopFilters(
+    opts: {
+      categorySlug?: string;
+      search?: string;
+      material?: string;
+      imageType?: string;
+      color?: string;
+    } = {},
+  ) {
+    const catId = await this.idDanhMuc(opts.categorySlug);
+
+    // Mỗi chiều một tập nền riêng: nền của chiều X = mọi điều kiện TRỪ X.
+    const wCat = this.dieuKienLoc(opts, catId, "category");
+    const wMat = this.dieuKienLoc(opts, catId, "material");
+    const wImg = this.dieuKienLoc(opts, catId, "imageType");
+    const wColor = this.dieuKienLoc(opts, catId, "color");
 
     const [cats, materials, imageCats] = await Promise.all([
       this.prisma.koiCategory.findMany({
         where: { isActive: true, slug: { notIn: this.hiddenSlugs } },
         orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-        include: { _count: { select: { categoryLinks: true } } },
       }),
       this.prisma.koiMaterialCategory.findMany({
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -238,27 +350,27 @@ export class ShopService {
       }),
     ]);
 
-    // Loại ảnh: đếm SỐ SẢN PHẨM (không phải số ảnh) có ít nhất 1 ảnh loại đó,
-    // trong tập mặt tiền. Chạy song song từng loại — chỉ 4 loại nên rẻ.
+    // Loại ảnh: đếm SỐ SẢN PHẨM (không phải số ảnh) có ít nhất 1 ảnh loại đó.
+    // Chạy song song từng loại — chỉ 4 loại nên rẻ.
     const imageTypes = await Promise.all(
       imageCats.map(async (ic) => ({
         code: ic.code,
         name: ic.name,
         count: await this.prisma.koiProduct.count({
-          where: { ...baseWhere, images: { some: { imageType: ic.code } } },
+          where: { ...wImg, images: { some: { imageType: ic.code } } },
         }),
       })),
     );
 
-    // Danh mục: đếm qua bảng nối với CÙNG baseWhere của sản phẩm.
+    // Danh mục: đếm qua bảng nối với CÙNG điều kiện của sản phẩm.
     //
     // Trước đây dùng _count.categoryLinks thô — nó đếm mọi liên kết, kể cả hàng
     // DRAFT và hàng đã xoá mềm (isDeleted). Kết quả: "Phụ Kiện Bằng Da (34)"
-    // nhưng bấm vào chỉ có 32 sản phẩm, vì 1 DRAFT + 1 đã xoá vẫn được tính.
-    // Số trong ngoặc phải khớp đúng số hàng khách bấm vào sẽ thấy.
+    // nhưng bấm vào chỉ có 32 sản phẩm. Số trong ngoặc phải khớp đúng số hàng
+    // khách bấm vào sẽ thấy.
     const catGroups = await this.prisma.koiProductCategory.groupBy({
       by: ["categoryId"],
-      where: { product: baseWhere },
+      where: { product: wCat },
       _count: { _all: true },
     });
     const catCount = new Map(
@@ -269,7 +381,7 @@ export class ShopService {
     // cho cả hai, đúng như khi bấm lọc.
     const materialGroups = await this.prisma.koiProductMaterialCategory.groupBy({
       by: ["materialCategoryId"],
-      where: { product: baseWhere },
+      where: { product: wMat },
       _count: { _all: true },
     });
     const materialCount = new Map(
@@ -277,10 +389,9 @@ export class ShopService {
     );
 
     // Màu sắc: đếm qua bảng nối nên hàng phối 2 tông được tính cho CẢ HAI màu.
-    // groupBy trên koi_product_colors, lọc theo cùng baseWhere của sản phẩm.
     const colorGroups = await this.prisma.koiProductColor.groupBy({
       by: ["colorFamily"],
-      where: { product: baseWhere },
+      where: { product: wColor },
       _count: { _all: true },
     });
     const colorCount = new Map(
@@ -380,50 +491,9 @@ export class ShopService {
     const page = Math.max(1, opts.page || 1);
     const limit = Math.min(48, Math.max(1, opts.limit || 24));
 
-    const where: Prisma.KoiProductWhereInput = { ...this.published };
-    if (opts.categorySlug) {
-      const cat = await this.prisma.koiCategory.findUnique({
-        where: { slug: opts.categorySlug },
-      });
-      if (!cat) throw new NotFoundException("Không tìm thấy danh mục");
-      where.categoryLinks = { some: { categoryId: cat.id } };
-    } else {
-      // Danh sách chung: loại hàng thuộc danh mục ẩn. Còn khi khách vào thẳng
-      // trang một danh mục (kể cả danh mục ẩn) thì vẫn hiện đủ — giữ URL sống.
-      Object.assign(where, this.notHidden);
-    }
-    // Lọc theo loại da: SP gắn loại da này ở BẤT KỲ vị trí nào (thân hoặc lót).
-    if (opts.material) {
-      where.materialCategoryLinks = {
-        some: { materialCategory: { code: opts.material } },
-      };
-    }
-    // Lọc theo loại ảnh (imageType trên ảnh SP): SP có ÍT NHẤT 1 ảnh loại đó.
-    if (opts.imageType) {
-      where.images = { some: { imageType: opts.imageType } };
-    }
-    // Lọc theo màu: nhận nhiều mã nhóm màu, phân tách bởi dấu phẩy (union OR).
-    // Đọc bảng nối nên hàng phối 2 tông hiện ở CẢ HAI màu.
-    if (opts.color) {
-      const codes = opts.color
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (codes.length) {
-        where.colorLinks = { some: { colorFamily: { in: codes } } };
-      }
-    }
-    // Admin: chỉ hàng CHƯA pick màu — để quét cái nào cần gán.
-    if (opts.unpicked) {
-      where.colorLinks = { none: {} };
-    }
-    if (opts.search) {
-      where.OR = [
-        { name: { contains: opts.search, mode: "insensitive" } },
-        { slug: { contains: opts.search, mode: "insensitive" } },
-        { sku: { contains: opts.search, mode: "insensitive" } },
-      ];
-    }
+    // Cùng một hàm dựng điều kiện với shopFilters — số trong ngoặc ở sidebar và
+    // số hàng thực trả về đây không thể lệch nhau nữa.
+    const where = this.dieuKienLoc(opts, await this.idDanhMuc(opts.categorySlug));
 
     const [rows, total] = await Promise.all([
       this.prisma.koiProduct.findMany({
