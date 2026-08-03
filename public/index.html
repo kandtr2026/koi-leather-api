@@ -287,6 +287,7 @@
     <button class="tab-btn" data-tab="matcats"><i class="fas fa-gem mr-2 text-amber-500"></i>Loại da</button>
     <button class="tab-btn" data-tab="traffic"><i class="fas fa-chart-line mr-2 text-amber-500"></i>Lưu lượng</button>
     <button class="tab-btn" data-tab="ads"><i class="fas fa-bullhorn mr-2 text-amber-500"></i>Quảng cáo</button>
+    <button class="tab-btn" data-tab="leads"><i class="fas fa-address-book mr-2 text-amber-500"></i>Khách để lại số<span id="leadBadge" class="hidden ml-2 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold align-middle"></span></button>
 
   </div>
 
@@ -490,6 +491,34 @@
       </div>
 
       <div id="adsBody">
+        <div class="skeleton-loading p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse w-3/4"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KHÁCH ĐỂ LẠI SỐ (lead) PANEL -->
+    <div class="panel" id="panel-leads">
+      <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+        <p class="text-sm text-gray-500">
+          Khách điền form trên koileather.com — gọi lại rồi bấm đổi trạng thái để không gọi trùng
+        </p>
+        <div class="flex items-center gap-2">
+          <div class="inline-flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+            <button onclick="setLeadFilter('')"          data-lead-filter=""          class="lead-filter-btn px-3 py-1.5 hover:bg-gray-50">Tất cả</button>
+            <button onclick="setLeadFilter('new')"       data-lead-filter="new"       class="lead-filter-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">Mới</button>
+            <button onclick="setLeadFilter('contacted')" data-lead-filter="contacted" class="lead-filter-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">Đã gọi</button>
+            <button onclick="setLeadFilter('won')"       data-lead-filter="won"       class="lead-filter-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">Chốt</button>
+            <button onclick="setLeadFilter('lost')"      data-lead-filter="lost"      class="lead-filter-btn px-3 py-1.5 border-l border-gray-200 hover:bg-gray-50">Không chốt</button>
+          </div>
+          <button onclick="loadLeads()" title="Tải lại" class="px-3 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">
+            <i class="fas fa-rotate-right"></i>
+          </button>
+        </div>
+      </div>
+      <div id="leadsBody">
         <div class="skeleton-loading p-6 space-y-3">
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
           <div class="h-6 bg-gray-100 rounded animate-pulse w-3/4"></div>
@@ -1053,6 +1082,12 @@ let adsLoaded = false;
 let adsRange = 90;
 let adsGoogleData = null;
 
+// Cùng lý do: applyRoute đọc leadsLoaded. `let` không hoisted như `var` nên để
+// khai báo bên dưới thì mở thẳng /admin/leads sẽ ném ReferenceError.
+let leadsLoaded = false;
+let leadFilter = '';
+let leadsData = null;
+
 const ROUTE_MAP = {
   '/admin/products':    { panel: 'products', label: 'Sản phẩm' },
   '/admin/categories':  { panel: 'prodcats', label: 'Loại sản phẩm' },
@@ -1060,6 +1095,7 @@ const ROUTE_MAP = {
   '/admin/material-categories': { panel: 'matcats', label: 'Loại da' },
   '/admin/traffic':     { panel: 'traffic',  label: 'Lưu lượng' },
   '/admin/ads':         { panel: 'ads',      label: 'Quảng cáo' },
+  '/admin/leads':       { panel: 'leads',    label: 'Khách để lại số' },
 
 };
 const ROUTES = Object.keys(ROUTE_MAP);
@@ -1085,6 +1121,9 @@ function applyRoute(route) {
   // Tab ads nạp lười: endpoint audit quét cả bảng theo ngày nên không gọi sẵn
   // lúc init cho người chỉ vào sửa sản phẩm.
   if (entry.panel === 'ads' && !adsLoaded) loadAds();
+
+  // Lead cũng nạp lười, cùng lý do.
+  if (entry.panel === 'leads' && !leadsLoaded) loadLeads();
 
   // Lưu lượng cũng nạp lười: truy vấn gom nhóm cả bảng lượt xem, không nên
   // chạy cho người chỉ vào sửa một cái giá.
@@ -1343,6 +1382,33 @@ function applyAuth(user) {
   } else {
     adsLoaded = false;
   }
+
+  // Lead cũng bị 401 khi chưa đăng nhập, xử lý y như ads.
+  if (document.getElementById('panel-leads')?.classList.contains('active')) {
+    loadLeads();
+  } else {
+    leadsLoaded = false;
+    // Vẫn đếm số khách chưa gọi để hiện chấm đỏ trên tên tab. Không có bước này
+    // thì badge chỉ xuất hiện sau khi đã bấm vào tab — đúng lúc không cần nữa.
+    demLeadChuaGoi();
+  }
+}
+
+/**
+ * Chỉ lấy số đếm cho badge, không lấy danh sách.
+ *
+ * limit=1 vì phần counts do backend tính trên toàn bảng, không phụ thuộc số dòng
+ * trả về. KHÔNG ghi vào leadsData: dữ liệu 1 dòng này sẽ che mất danh sách đầy
+ * đủ mà suaGhiChuLead() cần đọc ghi chú cũ.
+ */
+async function demLeadChuaGoi() {
+  try {
+    const d = await api('/analytics/leads?limit=1');
+    capNhatLeadBadge(d.counts);
+  } catch {
+    // Chưa đăng nhập hoặc mạng lỗi thì thôi, không có badge. Tuyệt đối không
+    // toast: hàm này chạy nền lúc mở trang, chủ shop không yêu cầu gì cả.
+  }
 }
 
 function logout() {
@@ -1352,6 +1418,13 @@ function logout() {
   document.getElementById('gSignInWrapper').classList.remove('hidden');
   document.getElementById('authUser').classList.add('hidden');
   if (window.google) google.accounts.id.disableAutoSelect();
+
+  // Xoá chấm đỏ số lead: đăng xuất rồi mà vẫn còn con số trên tab là để lộ có
+  // bao nhiêu khách chưa gọi cho người ngồi sau máy, và số đó cũng đứng im.
+  leadsLoaded = false;
+  leadsData = null;
+  capNhatLeadBadge(null);
+
   toast('Đã đăng xuất');
 }
 
@@ -2222,8 +2295,20 @@ function esc(s) { const d=document.createElement('div'); d.textContent=s; return
  * POST /shop/track (đường công khai, không cần đăng nhập) và chuanHoa() chỉ cắt
  * ?query, không đụng dấu nháy — nên kẻ xấu tự chọn được chuỗi này rồi đợi admin
  * mở tab Lưu lượng. Trang admin có sẵn Bearer token trong sessionStorage.
+ *
+ * Đổi cả nháy đơn cho chắc, vì thuộc tính có thể được viết bằng nháy đơn
+ * (href='...'). Nhưng phải nói rõ giới hạn: escAttr KHÔNG cứu được chuỗi nằm
+ * trong onclick="f('…')". Trình duyệt giải mã &#39; về ' TRƯỚC khi biên dịch JS
+ * trong thuộc tính sự kiện, nên dấu nháy vẫn đóng được chuỗi và chèn lệnh. Chỗ
+ * nào cần đưa dữ liệu vào onclick thì truyền CHỈ SỐ hoặc id dạng số, rồi tra dữ
+ * liệu bằng JS — xem pickBlockImage() và leadHanhDong().
+ *
+ * String(s ?? '') để null/undefined ra chuỗi rỗng; esc() dùng textContent nên
+ * gán thẳng undefined sẽ in ra đúng chữ "undefined" trong thuộc tính.
  */
-function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function escAttr(s) {
+  return esc(String(s ?? '')).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 
 // ========== LƯU LƯỢNG TRUY CẬP ==========
@@ -3057,6 +3142,240 @@ async function exportAdsCsv() {
   }
 }
 
+// ========== KHÁCH ĐỂ LẠI SỐ (LEAD) ==========
+//
+// Khách điền form ở koileather.com → POST /shop/leads ghi vào bảng public.leads.
+// Trước tab này không có đường ĐỌC nào: lead nằm chết trong cơ sở dữ liệu, chủ
+// shop không biết có người để lại số nên không ai gọi lại.
+//
+// Đọc từ GET /analytics/leads — KHÔNG phải /shop/leads. auth.guard.ts:35 mở toàn
+// bộ tiền tố /shop cho khách vô danh, đặt đường đọc ở đó là phơi tên và số điện
+// thoại của mọi khách hàng cho cả internet. Xem ghi chú ở analytics.controller.ts.
+//
+// Dữ liệu lead lưu THÔ, không lọc lúc ghi (đã thử: chuỗi <img src=x onerror=…>
+// nằm nguyên trong cột name). Nên trang này chính là chốt escape: mọi trường in
+// ra bắt buộc qua esc() / escAttr(), không có ngoại lệ.
+
+const LEAD_TRANG_THAI = {
+  new:       { nhan: 'Mới',        lop: 'bg-red-50 border-red-200 text-red-700' },
+  contacted: { nhan: 'Đã gọi',    lop: 'bg-blue-50 border-blue-200 text-blue-700' },
+  won:       { nhan: 'Chốt',      lop: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+  lost:      { nhan: 'Không chốt', lop: 'bg-gray-100 border-gray-200 text-gray-500' },
+};
+
+/** Thứ tự nút trên thanh lọc — dùng luôn cho menu đổi trạng thái từng dòng. */
+const LEAD_THU_TU = ['new', 'contacted', 'won', 'lost'];
+
+function setLeadFilter(status) {
+  leadFilter = LEAD_THU_TU.includes(status) ? status : '';
+  loadLeads();
+}
+
+async function loadLeads() {
+  const el = document.getElementById('leadsBody');
+
+  // Tên lớp Tailwind phải viết nguyên chuỗi, không được ghép: bản CSS ở đây là
+  // bản dựng sẵn, lớp sinh ra lúc chạy sẽ không có trong file nên không ăn.
+  document.querySelectorAll('.lead-filter-btn').forEach(b => {
+    const on = (b.dataset.leadFilter || '') === leadFilter;
+    b.classList.toggle('bg-amber-500', on);
+    b.classList.toggle('text-white', on);
+  });
+
+  try {
+    // noCache: chủ shop vừa bấm "đã gọi" xong rồi bảng nạp lại ngay. Đọc trúng
+    // bản cache 60 giây thì trạng thái mới không hiện, tưởng bấm không được.
+    const d = await api(
+      '/analytics/leads' + (leadFilter ? '?status=' + encodeURIComponent(leadFilter) : ''),
+      { noCache: true },
+    );
+    leadsLoaded = true;
+    leadsData = d;
+    renderLeads(d);
+    capNhatLeadBadge(d.counts);
+  } catch (e) {
+    el.innerHTML = `<div class="text-center py-12 text-gray-400">
+      <i class="fas fa-triangle-exclamation text-3xl mb-3"></i>
+      <p>Không tải được danh sách khách: ${esc(e.message || 'lỗi không rõ')}</p>
+      <button onclick="loadLeads()" class="mt-3 text-xs text-amber-600 hover:underline">Thử lại</button></div>`;
+  }
+}
+
+/**
+ * Số lead chưa gọi, hiện đỏ ngay trên tên tab.
+ *
+ * Thêm/bớt đúng lớp 'hidden' có sẵn trong HTML — không ghép chuỗi tên lớp.
+ */
+function capNhatLeadBadge(counts) {
+  const b = document.getElementById('leadBadge');
+  if (!b) return;
+  const n = Number(counts && counts.new) || 0;
+  b.textContent = n > 99 ? '99+' : String(n);
+  b.classList.toggle('hidden', n === 0);
+}
+
+function leadChip(status) {
+  const t = LEAD_TRANG_THAI[status];
+  // Trạng thái lạ (ai đó ghi tay vào cơ sở dữ liệu) vẫn phải in ra được, và
+  // vẫn phải escape — đây là chuỗi từ cơ sở dữ liệu, không phải hằng số.
+  if (!t) {
+    return `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-gray-100 border border-gray-200 text-gray-500">${esc(status || '—')}</span>`;
+  }
+  return `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium border ${t.lop}">${t.nhan}</span>`;
+}
+
+/**
+ * Số điện thoại bấm gọi được luôn.
+ *
+ * Lọc còn chữ số và dấu + cho href tel: — số trong cột đã qua kiểm tra ở
+ * shop.controller.ts (0xxxxxxxxx hoặc +84xxxxxxxxx) nhưng dòng cũ có thể khác,
+ * và href thì không được tin dữ liệu từ khách.
+ */
+function leadDienThoai(phone) {
+  const p = String(phone || '');
+  const so = p.replace(/[^\d+]/g, '');
+  if (!so) return '<span class="text-gray-400">—</span>';
+  return `<a href="tel:${escAttr(so)}" class="font-medium text-gray-800 hover:text-amber-600 whitespace-nowrap">
+    <i class="fas fa-phone text-[10px] text-gray-400 mr-1"></i>${esc(p)}</a>`;
+}
+
+/** Nút đổi trạng thái: chỉ hiện những trạng thái KHÁC trạng thái hiện tại. */
+function leadHanhDong(l) {
+  const nut = LEAD_THU_TU
+    .filter(s => s !== l.status)
+    .map(s => `<button onclick="doiTrangThaiLead(${Number(l.id)}, '${s}')"
+        class="px-2 py-1 rounded border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 whitespace-nowrap requires-auth"
+        title="Đổi sang: ${escAttr(LEAD_TRANG_THAI[s].nhan)}">${LEAD_TRANG_THAI[s].nhan}</button>`)
+    .join('');
+
+  return `<div class="inline-flex items-center justify-end gap-1 flex-wrap">${nut}
+    <button onclick="suaGhiChuLead(${Number(l.id)})"
+      class="w-7 h-7 items-center justify-center rounded text-amber-500 hover:text-amber-600 requires-auth"
+      title="Ghi chú"><i class="fas fa-pen text-xs"></i></button></div>`;
+}
+
+function renderLeads(d) {
+  const el = document.getElementById('leadsBody');
+  const items = d.data || [];
+  const c = d.counts || {};
+
+  const card = (label, value, icon, mau) => `
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div class="flex items-center gap-2 text-xs text-gray-400 uppercase tracking-wide">
+        <i class="fas ${icon} ${mau}"></i>${label}
+      </div>
+      <div class="mt-1.5 text-2xl font-bold text-gray-800">${value}</div>
+    </div>`;
+
+  const theSoLieu = `
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      ${card('Chưa gọi', Number(c.new) || 0, 'fa-bell', 'text-red-500')}
+      ${card('Đã gọi', Number(c.contacted) || 0, 'fa-phone-volume', 'text-blue-500')}
+      ${card('Chốt được', Number(c.won) || 0, 'fa-handshake', 'text-emerald-500')}
+      ${card('Không chốt', Number(c.lost) || 0, 'fa-circle-xmark', 'text-gray-400')}
+    </div>`;
+
+  if (!items.length) {
+    const rong = leadFilter
+      ? `<p class="font-medium text-gray-500">Không có khách nào ở trạng thái "${esc(LEAD_TRANG_THAI[leadFilter] ? LEAD_TRANG_THAI[leadFilter].nhan : leadFilter)}"</p>
+         <p class="text-sm mt-1">Bấm <b>Tất cả</b> để xem hết.</p>`
+      : `<p class="font-medium text-gray-500">Chưa có khách nào để lại thông tin</p>
+         <p class="text-sm mt-1">Khách điền form ở trang <b>koileather.com/lien-he/</b> sẽ tự hiện ở đây.</p>
+         <p class="text-sm mt-1">Chưa có link nào trên web dẫn tới trang đó — thêm vào chân trang thì mới có khách vào điền.</p>`;
+    el.innerHTML = theSoLieu + `<div class="text-center py-16 text-gray-400">
+      <i class="fas fa-address-book text-4xl mb-3"></i>${rong}</div>`;
+    return;
+  }
+
+  const hang = items.map(l => {
+    const email = l.email
+      ? `<div class="text-xs text-gray-400"><a href="mailto:${escAttr(l.email)}" class="hover:text-amber-600">${esc(l.email)}</a></div>`
+      : '';
+    const ghiChu = l.note
+      ? `<div class="text-xs text-amber-700 mt-1 bg-amber-50 border border-amber-100 rounded px-2 py-1"><i class="fas fa-pen text-[10px] mr-1"></i>${esc(l.note)}</div>`
+      : '';
+    // Tên sản phẩm được gộp vào message lúc ghi (shop-content.service.ts) vì cột
+    // product_id trỏ public.products còn hàng đang bán nằm ở koi_free_style.
+    const loiNhan = l.message
+      ? `<div class="text-sm text-gray-600 whitespace-pre-line break-words">${esc(l.message)}</div>`
+      : '<span class="text-gray-300 text-sm">—</span>';
+
+    return `<tr class="border-t border-gray-100 text-sm hover:bg-gray-50 ${l.status === 'lost' ? 'opacity-60' : ''}">
+      <td class="px-4 py-3 align-top"><div class="font-medium text-gray-800 break-words">${esc(l.name || '—')}</div>${email}</td>
+      <td class="px-4 py-3 align-top">${leadDienThoai(l.phone)}</td>
+      <td class="px-4 py-3 align-top max-w-md">${loiNhan}${ghiChu}</td>
+      <td class="px-4 py-3 align-top whitespace-nowrap text-gray-600">${fmDate(l.createdAt)}</td>
+      <td class="px-4 py-3 align-top whitespace-nowrap">${leadChip(l.status)}</td>
+      <td class="px-4 py-3 align-top text-right w-px">${leadHanhDong(l)}</td>
+    </tr>`;
+  }).join('');
+
+  // Backend chặn trần 200 dòng một lượt. Nói thẳng khi bị cắt, đừng để bảng
+  // trông như đã hết khách trong khi còn dòng chưa tải.
+  const conNua = d.total > items.length + (d.offset || 0)
+    ? `<div class="px-4 py-2 text-xs text-gray-400 border-t border-gray-100">Đang xem ${items.length} / ${d.total} khách. Còn dòng cũ hơn chưa tải.</div>`
+    : '';
+
+  el.innerHTML = theSoLieu + `
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-4 py-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        Khách để lại thông tin — mới nhất trước
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead><tr class="text-left text-xs text-gray-400">
+            <th class="px-4 py-2 font-medium">Khách</th>
+            <th class="px-4 py-2 font-medium">Điện thoại</th>
+            <th class="px-4 py-2 font-medium">Lời nhắn</th>
+            <th class="px-4 py-2 font-medium">Lúc gửi</th>
+            <th class="px-4 py-2 font-medium">Trạng thái</th>
+            <th class="px-4 py-2"></th>
+          </tr></thead>
+          <tbody>${hang}</tbody>
+        </table>
+      </div>
+      ${conNua}
+    </div>`;
+}
+
+async function doiTrangThaiLead(id, status) {
+  try {
+    await api('/analytics/leads/' + Number(id), {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+    toast('Đã đổi sang: ' + (LEAD_TRANG_THAI[status] ? LEAD_TRANG_THAI[status].nhan : status));
+    loadLeads();
+  } catch (e) {
+    toast('Không đổi được: ' + (e.message || 'lỗi không rõ'));
+  }
+}
+
+/**
+ * Ghi chú cho một lead — "hẹn gọi lại chiều mai", "khách hỏi ví da bò".
+ *
+ * Đọc lại ghi chú cũ từ leadsData (dữ liệu thô của lượt tải gần nhất) để chủ shop
+ * sửa chứ không phải gõ lại từ đầu. Lấy từ đây chứ không bóc từ DOM: chữ trên
+ * bảng đã qua esc() nên "A & B" sẽ thành "A &amp; B" sau mỗi lần lưu.
+ *
+ * Chuỗi rỗng = xoá ghi chú (backend đổi thành null).
+ */
+async function suaGhiChuLead(id) {
+  const l = (leadsData?.data || []).find(x => Number(x.id) === Number(id));
+  const moi = prompt('Ghi chú cho khách này (để trống là xoá):', (l && l.note) || '');
+  if (moi === null) return;
+  try {
+    await api('/analytics/leads/' + Number(id), {
+      method: 'PATCH',
+      body: JSON.stringify({ note: moi }),
+    });
+    toast(moi.trim() ? 'Đã lưu ghi chú' : 'Đã xoá ghi chú');
+    loadLeads();
+  } catch (e) {
+    toast('Không lưu được ghi chú: ' + (e.message || 'lỗi không rõ'));
+  }
+}
+
 // ========== HIỆN / ẨN NGOÀI TRANG KHÁCH ==========
 //
 // Trang khách chỉ hiển thị hàng status = ACTIVE. Trước đây không có nút này nên
@@ -3713,10 +4032,7 @@ function toggleRemovedText() {
   document.getElementById('pDescRemovedText').classList.toggle('hidden');
 }
 
-/** Escape cho thuộc tính HTML (esc() chỉ escape phần nội dung text). */
-function escAttr(s) {
-  return esc(String(s ?? '')).replace(/"/g, '&quot;');
-}
+/** Escape cho thuộc tính HTML: xem escAttr() định nghĩa ở đầu phần Lưu lượng. */
 
 /**
  * Lọc HTML inline ngay tại client về đúng bộ thẻ cho phép.
@@ -3812,10 +4128,10 @@ function renderOneBlock(b, i) {
     </div>`;
   } else if (b.type === 'image') {
     const picks = currentGalleryImages.length
-      ? `<div class="flex flex-wrap gap-1.5 mt-1.5">${currentGalleryImages.map(img => `
+      ? `<div class="flex flex-wrap gap-1.5 mt-1.5">${currentGalleryImages.map((img, k) => `
           <img src="${escAttr(img.thumbnailUrl || img.url)}" class="blk-pick ${img.url === b.url ? 'is-on' : ''}"
                title="${escAttr(img.altText || '')}" loading="lazy"
-               onclick="pickBlockImage(${i}, '${escAttr(img.url)}', '${escAttr(img.altText || '')}')">`).join('')}</div>`
+               onclick="pickBlockImage(${i}, ${k})">`).join('')}</div>`
       : `<p class="text-[11px] text-gray-400 mt-1.5">Sản phẩm chưa có ảnh nào. Tải ảnh ở thẻ <strong>Thông tin</strong> rồi quay lại chọn.</p>`;
     body = `<div class="flex gap-3">
         <div class="shrink-0">
@@ -4015,11 +4331,24 @@ function toggleItemLevel(i, j) {
   renderDescBlocks();
 }
 
-function pickBlockImage(i, url, alt) {
+/**
+ * Chọn ảnh cho khối "Ảnh" trong trình dựng mô tả.
+ *
+ * Nhận CHỈ SỐ trong currentGalleryImages, không nhận url/alt.
+ *
+ * Trước đây markup nhét thẳng url vào onclick="pickBlockImage(0, 'https://…')".
+ * Escape không cứu được chỗ đó: trình duyệt giải mã &#39; TRƯỚC khi JS trong
+ * onclick được biên dịch, nên một dấu nháy đơn trong url vẫn đóng được chuỗi và
+ * chèn lệnh — mà trang này giữ Bearer token trong sessionStorage. Truyền chỉ số
+ * (một con số) thì không còn dữ liệu nào của người khác nằm trong mã lệnh.
+ */
+function pickBlockImage(i, k) {
+  const img = currentGalleryImages[k];
+  if (!img) return;
   flushDescEditors();
   const b = descBlocks[i];
-  b.url = url;
-  if (alt) b.alt = alt;
+  b.url = img.url;
+  if (img.altText) b.alt = img.altText;
   markDescDirty();
   renderDescBlocks();
 }

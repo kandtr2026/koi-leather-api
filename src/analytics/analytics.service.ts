@@ -443,4 +443,121 @@ export class AnalyticsService {
       devices: theoThietBi,
     };
   }
+
+  // ----- KHÁCH ĐỂ LẠI THÔNG TIN (lead) -----
+  //
+  // Khách gửi lên qua POST /shop/leads (đường công khai). Trước đây không có
+  // đường ĐỌC nào, nên bảng có dữ liệu mà người bán không thấy — lead nằm chết
+  // trong cơ sở dữ liệu.
+  //
+  // Hai hàm dưới đây phục vụ controller /analytics (chỉ admin). KHÔNG được gắn
+  // vào nhóm /shop: auth.guard.ts:35 mở toàn bộ /shop cho khách vô danh, đặt
+  // sai chỗ là phơi tên và số điện thoại khách cho cả internet.
+
+  /** Trạng thái cho phép. Chốt danh sách để không ai ghi bừa chuỗi lạ vào cột. */
+  static readonly TRANG_THAI_LEAD = ["new", "contacted", "won", "lost"] as const;
+
+  /**
+   * Danh sách lead, mới nhất trước.
+   *
+   * `id` trong bảng là BigInt. JSON.stringify() ném TypeError khi gặp BigInt
+   * nên phải đổi sang Number ngay tại đây — để lọt ra ngoài là cả phản hồi
+   * thành lỗi 500, không phải chỉ thiếu một trường.
+   */
+  async leads(input: { status?: string; limit?: number; offset?: number }) {
+    const gioiHan = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
+    const boQua = Math.max(Number(input.offset) || 0, 0);
+
+    // Chỉ nhận trạng thái nằm trong danh sách trên; chuỗi lạ coi như không lọc.
+    const loc = (
+      AnalyticsService.TRANG_THAI_LEAD as readonly string[]
+    ).includes(String(input.status))
+      ? { status: String(input.status) }
+      : {};
+
+    const [dong, tong, theoTrangThai] = await Promise.all([
+      this.prisma.leads.findMany({
+        where: loc,
+        orderBy: { created_at: "desc" },
+        take: gioiHan,
+        skip: boQua,
+      }),
+      this.prisma.leads.count({ where: loc }),
+      this.prisma.leads.groupBy({ by: ["status"], _count: { _all: true } }),
+    ]);
+
+    const dem: Record<string, number> = {};
+    for (const t of AnalyticsService.TRANG_THAI_LEAD) dem[t] = 0;
+    for (const g of theoTrangThai) {
+      dem[g.status] = (dem[g.status] ?? 0) + g._count._all;
+    }
+
+    return {
+      total: tong,
+      limit: gioiHan,
+      offset: boQua,
+      counts: dem,
+      data: dong.map((l) => ({
+        id: Number(l.id),
+        name: l.name,
+        phone: l.phone,
+        email: l.email,
+        message: l.message,
+        // Khoá ngoại trỏ public.products (BigInt). Sản phẩm đang bán nằm ở
+        // koi_free_style dùng UUID nên cột này gần như luôn null — tên món
+        // được gộp vào message lúc ghi, xem shop-content.service.ts:createLead.
+        productId: l.product_id === null ? null : Number(l.product_id),
+        source: l.source,
+        status: l.status,
+        note: l.note,
+        createdAt: l.created_at,
+      })),
+    };
+  }
+
+  /**
+   * Đổi trạng thái / ghi chú một lead. Trả về bản ghi đã cập nhật.
+   *
+   * Trả `null` khi dữ liệu vào không hợp lệ, `"khong-thay"` khi không có lead
+   * mang id đó. Không để lỗi Prisma tự bay ra ngoài: thông báo của nó chứa
+   * đường dẫn tuyệt đối trên máy chủ và cả đoạn mã nguồn quanh chỗ lỗi.
+   */
+  async capNhatLead(
+    id: number,
+    input: { status?: string; note?: string | null },
+  ) {
+    const dulieu: { status?: string; note?: string | null } = {};
+
+    if (input.status !== undefined) {
+      if (
+        !(AnalyticsService.TRANG_THAI_LEAD as readonly string[]).includes(
+          input.status,
+        )
+      ) {
+        return null;
+      }
+      dulieu.status = input.status;
+    }
+    if (input.note !== undefined) {
+      const n = input.note === null ? null : String(input.note).trim();
+      dulieu.note = n ? n.slice(0, 2000) : null;
+    }
+    if (!Object.keys(dulieu).length) return null;
+
+    const co = await this.prisma.leads.findUnique({
+      where: { id: BigInt(id) },
+      select: { id: true },
+    });
+    if (!co) return "khong-thay" as const;
+
+    const l = await this.prisma.leads.update({
+      where: { id: BigInt(id) },
+      data: dulieu,
+    });
+    return {
+      id: Number(l.id),
+      status: l.status,
+      note: l.note,
+    };
+  }
 }

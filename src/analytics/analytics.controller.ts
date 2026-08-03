@@ -1,9 +1,13 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
+  Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -76,5 +80,49 @@ export class AnalyticsController {
   @ApiOperation({ summary: "Khách đang ở trên web ngay lúc này" })
   realtime() {
     return this.analytics.realtime();
+  }
+
+  /**
+   * Danh sách khách để lại thông tin.
+   *
+   * Nằm ở /analytics chứ KHÔNG phải /shop là điều kiện an toàn bắt buộc, không
+   * phải chuyện xếp cho gọn: auth.guard.ts:35 cho qua mọi đường bắt đầu bằng
+   * /shop mà không cần đăng nhập. Chuyển đường này sang đó là phơi tên và số
+   * điện thoại của mọi khách hàng cho bất kỳ ai gọi đúng địa chỉ.
+   */
+  @Get("leads")
+  @ApiOperation({ summary: "Danh sách khách để lại thông tin (chỉ admin)" })
+  leads(
+    @Query("status") status?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    return this.analytics.leads({
+      status,
+      limit: Number(limit) || undefined,
+      offset: Number(offset) || undefined,
+    });
+  }
+
+  @Patch("leads/:id")
+  @ApiOperation({ summary: "Đổi trạng thái hoặc ghi chú một lead" })
+  async capNhatLead(
+    @Param("id") id: string,
+    @Body() body: { status?: string; note?: string | null },
+  ) {
+    const so = Number(id);
+    if (!Number.isInteger(so) || so <= 0) {
+      throw new BadRequestException("id không hợp lệ");
+    }
+    const kq = await this.analytics.capNhatLead(so, body ?? {});
+    if (kq === "khong-thay") {
+      throw new NotFoundException("Không tìm thấy lead");
+    }
+    if (!kq) {
+      throw new BadRequestException(
+        `Cần status thuộc [${AnalyticsService.TRANG_THAI_LEAD.join(", ")}] hoặc note`,
+      );
+    }
+    return kq;
   }
 }
