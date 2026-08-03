@@ -403,28 +403,44 @@ export class ShopService {
     const colorCount = new Map(
       colorGroups.map((g) => [g.colorFamily, g._count._all]),
     );
-    const colors = COLOR_FAMILIES.map((f) => ({
-      code: f.code,
-      name: f.name,
-      hex: f.hex,
-      count: colorCount.get(f.code) ?? 0,
-    })).filter((c) => c.count > 0);
+
+    // Mục count = 0 bị loại, TRỪ mục khách đang chọn.
+    //
+    // Giữ lại mục đang chọn vì sidebar cần TÊN của nó để hiện "đang lọc" và tô
+    // sáng. Bỏ nó đi thì với ?category=watch-case&material=EPSOM (0 kết quả)
+    // mặt tiền không còn gì để tra, phải in thẳng mã thô "watch-case", "EPSOM"
+    // và không mục nào sáng — khách thấy trang trắng mà tưởng chưa lọc gì.
+    // Ở đây count=0 là thông tin thật ("cặp này hết hàng"), không phải rác.
+    const giu = <T extends { count: number }>(ds: T[], dangChon: (t: T) => boolean) =>
+      ds.filter((t) => t.count > 0 || dangChon(t));
+
+    const colors = giu(
+      COLOR_FAMILIES.map((f) => ({
+        code: f.code,
+        name: f.name,
+        hex: f.hex,
+        count: colorCount.get(f.code) ?? 0,
+      })),
+      (c) => c.code === opts.color,
+    );
 
     return {
-      categories: cats
-        .map((c) => ({
+      categories: giu(
+        cats.map((c) => ({
           name: this.text(c.name),
           slug: c.slug,
           count: catCount.get(c.id) ?? 0,
-        }))
-        .filter((c) => c.count > 0),
-      materials: materials
-        .map((m) => ({
+        })),
+        (c) => c.slug === opts.categorySlug,
+      ),
+      materials: giu(
+        materials.map((m) => ({
           name: this.text(m.name),
           code: m.code,
           count: materialCount.get(m.id) ?? 0,
-        }))
-        .filter((m) => m.count > 0),
+        })),
+        (m) => m.code === opts.material,
+      ),
       imageTypes: imageTypes.filter((t) => t.count > 0),
       colors,
     };
