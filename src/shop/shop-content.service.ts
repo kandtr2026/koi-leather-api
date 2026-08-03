@@ -80,7 +80,19 @@ export class ShopContentService {
   // ----- blog -----
 
   async posts(page = 1, limit = 12) {
-    page = Math.max(1, page);
+    // Math.max(1, x) không chặn được Infinity: Number("1e999") là Infinity nên
+    // `skip: Infinity` làm Prisma ném lỗi → /shop/posts?page=1e999 trả 500 trên
+    // production (đo thật). Number.isFinite chặn cả Infinity lẫn NaN, Math.trunc
+    // bỏ phần thập phân. Cùng một lỗi và cùng cách sửa như kepTrang ở ShopService
+    // — bên đó là bảng sản phẩm, bên này là bảng bài viết (schema public).
+    page = Math.min(
+      100_000,
+      Math.max(1, (Number.isFinite(page) ? Math.trunc(page) : 1) || 1),
+    );
+    limit = Math.min(
+      48,
+      Math.max(1, (Number.isFinite(limit) ? Math.trunc(limit) : 12) || 12),
+    );
     const [rows, total, cats] = await Promise.all([
       this.prisma.posts.findMany({
         where: { is_published: true },

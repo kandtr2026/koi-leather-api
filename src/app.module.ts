@@ -15,6 +15,7 @@ import { MaterialCategoryModule } from "./material-category/material-category.mo
 import { AuthModule } from "./auth/auth.module";
 import { AuthGuard } from "./auth/auth.guard";
 import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
+import { KhongDemLoiFilter } from "./common/filters/khong-dem-loi.filter";
 import { ShopModule } from "./shop/shop.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { AdsModule } from "./ads/ads.module";
@@ -40,6 +41,10 @@ import { AdsModule } from "./ads/ads.module";
   controllers: [HealthController],
   providers: [
     { provide: APP_GUARD, useClass: AuthGuard },
+    // Nest áp bộ lọc toàn cục theo thứ tự NGƯỢC với khai báo, nên bộ bắt-tất-cả
+    // đứng trước để bộ hẹp hơn (Prisma) được chọn trước cho lỗi Prisma. Cả hai
+    // đều tự đặt Cache-Control nên thứ tự sai cũng không làm lỗi bị đệm.
+    { provide: APP_FILTER, useClass: KhongDemLoiFilter },
     { provide: APP_FILTER, useClass: PrismaExceptionFilter },
   ],
 })

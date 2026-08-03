@@ -16,6 +16,18 @@ export class PrismaExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
+    // Không cho CDN đệm phản hồi lỗi. Các đường /shop/* khai Cache-Control bằng
+    // @Header nên header đó dính cả vào lỗi: đo thật thì một phản hồi 500 vẫn
+    // mang s-maxage=300, tức một lần nghẽn DB là CDN giữ trang lỗi 5 phút. Đặt
+    // ở CẢ HAI bộ lọc (xem KhongDemLoiFilter) để thứ tự Nest chọn bộ nào cũng
+    // không đổi kết quả. P2025 = không tìm thấy → cho đệm ngắn như 404 thường.
+    response.setHeader(
+      "Cache-Control",
+      exception.code === "P2025"
+        ? "public, max-age=30, s-maxage=60"
+        : "no-store",
+    );
+
     const meta = (exception.meta || {}) as Record<string, any>;
 
     switch (exception.code) {
@@ -39,11 +51,11 @@ export class PrismaExceptionFilter implements ExceptionFilter {
       }
 
       case "P2025": {
+        // KHÔNG trả exception.message ra ngoài: thông điệp của Prisma có chứa
+        // đường dẫn tuyệt đối trên máy chủ và tên bảng/cột nội bộ.
         return response.status(HttpStatus.NOT_FOUND).json({
           statusCode: HttpStatus.NOT_FOUND,
-          message:
-            exception.message?.replace?.(/\n/g, " ") ||
-            "Không tìm thấy bản ghi",
+          message: "Không tìm thấy bản ghi",
           error: "Not Found",
         });
       }

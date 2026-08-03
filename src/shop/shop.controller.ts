@@ -14,12 +14,30 @@ import {
 import { ApiTags, ApiOperation } from "@nestjs/swagger";
 import { ShopService } from "./shop.service";
 import { ShopContentService } from "./shop-content.service";
+import { SlugPipe } from "./slug.pipe";
 
 /**
  * Các kiểu sắp xếp khách được chọn. Bỏ trống = "popular" (mặc định): hàng đinh
  * trước, rồi displayRank. Xem thuTuSapXep() trong shop.service.ts.
  */
 const SORT_HOP_LE = ["popular", "price-asc", "price-desc", "newest"];
+
+/**
+ * Đọc số nguyên từ tham số địa chỉ, KHÔNG để Infinity/NaN lọt xuống dưới.
+ *
+ * `Number("1e999")` là Infinity và `Infinity || 1` vẫn là Infinity, nên cách
+ * cũ (`Number(page) || 1`) đẩy Infinity thẳng xuống Prisma → `skip: Infinity`
+ * → HTTP 500. Đo thật trên production: ?page=1e999 làm 500 ở cả
+ * /shop/categories/:slug, /shop/products và /shop/posts.
+ *
+ * Tầng service vẫn kẹp lần nữa (kepTrang) — đây là chốt ở cửa vào để người gọi
+ * sau không vô tình dựng lại đúng cái lỗi này.
+ */
+function soNguyen(v: string | undefined, macDinh: number): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) || macDinh : macDinh;
+}
+
 
 /**
  * API CÔNG KHAI cho storefront khách hàng (KoiFront).
@@ -60,14 +78,14 @@ export class ShopController {
       "nó không đổi theo page/sort nên tách ra để dùng chung một bản đã đệm.",
   })
   categoryBySlug(
-    @Param("slug") slug: string,
+    @Param("slug", SlugPipe) slug: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
     @Query("material") material?: string,
     @Query("color") color?: string,
     @Query("sort") sort?: string,
   ) {
-    return this.shop.categoryBySlug(slug, Number(page) || 1, Number(limit) || 24, {
+    return this.shop.categoryBySlug(slug, soNguyen(page, 1), soNguyen(limit, 24), {
       material,
       color,
       // Cùng danh sách trắng với /shop/products: ?sort gõ sai rơi về "popular"
@@ -125,8 +143,8 @@ export class ShopController {
     @Query("sort") sort?: string,
   ) {
     return this.shop.listProducts({
-      page: Number(page) || 1,
-      limit: Number(limit) || 24,
+      page: soNguyen(page, 1),
+      limit: soNguyen(limit, 24),
       categorySlug: category,
       search,
       material,
@@ -142,7 +160,7 @@ export class ShopController {
   @Get("products/:slug")
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
   @ApiOperation({ summary: "Chi tiết sản phẩm theo slug + liên quan" })
-  productBySlug(@Param("slug") slug: string) {
+  productBySlug(@Param("slug", SlugPipe) slug: string) {
     return this.shop.productBySlug(slug);
   }
 
@@ -152,13 +170,13 @@ export class ShopController {
   @Header("Cache-Control", "public, max-age=120, s-maxage=600")
   @ApiOperation({ summary: "Danh sách bài viết blog + chuyên mục" })
   posts(@Query("page") page?: string, @Query("limit") limit?: string) {
-    return this.content.posts(Number(page) || 1, Number(limit) || 12);
+    return this.content.posts(soNguyen(page, 1), soNguyen(limit, 12));
   }
 
   @Get("content/:slug")
   @Header("Cache-Control", "public, max-age=120, s-maxage=600")
   @ApiOperation({ summary: "Bài viết hoặc trang tĩnh theo slug" })
-  async contentBySlug(@Param("slug") slug: string) {
+  async contentBySlug(@Param("slug", SlugPipe) slug: string) {
     const found = await this.content.contentBySlug(slug);
     if (!found) throw new NotFoundException("Không tìm thấy nội dung");
     return found;
@@ -168,8 +186,8 @@ export class ShopController {
   @Header("Cache-Control", "public, max-age=120, s-maxage=600")
   @ApiOperation({ summary: "Chuyên mục / tag blog + các bài thuộc nó" })
   async blogTerm(
-    @Param("taxonomy") taxonomy: "category" | "tag",
-    @Param("slug") slug: string,
+    @Param("taxonomy", SlugPipe) taxonomy: "category" | "tag",
+    @Param("slug", SlugPipe) slug: string,
   ) {
     const found = await this.content.blogTerm(taxonomy, slug);
     if (!found) throw new NotFoundException("Không tìm thấy");
@@ -179,7 +197,7 @@ export class ShopController {
   @Get("product-tags/:slug")
   @Header("Cache-Control", "public, max-age=120, s-maxage=600")
   @ApiOperation({ summary: "Từ khoá sản phẩm (schema public) + sản phẩm" })
-  async productTag(@Param("slug") slug: string) {
+  async productTag(@Param("slug", SlugPipe) slug: string) {
     const found = await this.content.productTag(slug);
     if (!found) throw new NotFoundException("Không tìm thấy từ khoá");
     return found;

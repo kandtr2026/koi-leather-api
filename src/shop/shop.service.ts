@@ -265,6 +265,18 @@ export class ShopService {
   ): Prisma.KoiProductWhereInput {
     const where: Prisma.KoiProductWhereInput = { ...this.published };
 
+    // Byte NUL trong tham số làm Postgres từ chối truy vấn → HTTP 500. Đo thật:
+    // /shop/categories/card-holder?material=%00 trả 500 trên production. Đây là
+    // tham số công khai, khách/bot dán gì cũng được, nên rửa ngay tại cửa vào
+    // thay vì tin vào từng nhánh bên dưới. Cắt luôn độ dài: mã loại da / mã màu
+    // thật dài nhất chưa tới 20 ký tự, chuỗi 5000 ký tự chỉ có thể là dò lỗi.
+    const sach = (v?: string) =>
+      v ? v.replace(/\0/g, "").slice(0, 120) || undefined : undefined;
+    const material = sach(opts.material);
+    const imageType = sach(opts.imageType);
+    const color = sach(opts.color);
+    const search = sach(opts.search);
+
     if (catId && boQua !== "category") {
       where.categoryLinks = { some: { categoryId: catId } };
     } else {
@@ -277,21 +289,21 @@ export class ShopService {
     }
 
     // Lọc theo loại da: SP gắn loại da này ở BẤT KỲ vị trí nào (thân hoặc lót).
-    if (opts.material && boQua !== "material") {
+    if (material && boQua !== "material") {
       where.materialCategoryLinks = {
-        some: { materialCategory: { code: opts.material } },
+        some: { materialCategory: { code: material } },
       };
     }
 
     // Lọc theo loại ảnh (imageType trên ảnh SP): SP có ÍT NHẤT 1 ảnh loại đó.
-    if (opts.imageType && boQua !== "imageType") {
-      where.images = { some: { imageType: opts.imageType } };
+    if (imageType && boQua !== "imageType") {
+      where.images = { some: { imageType: imageType } };
     }
 
     // Lọc theo màu: nhận nhiều mã nhóm màu, phân tách bởi dấu phẩy (union OR).
     // Đọc bảng nối nên hàng phối 2 tông hiện ở CẢ HAI màu.
-    if (opts.color && boQua !== "color") {
-      const codes = opts.color
+    if (color && boQua !== "color") {
+      const codes = color
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
@@ -307,8 +319,8 @@ export class ShopService {
     }
 
     // Tìm kiếm: mỗi token một điều kiện, AND lại (xem common/tim-san-pham.ts).
-    if (opts.search) {
-      const nhomToken = dieuKienTimSanPham(opts.search);
+    if (search) {
+      const nhomToken = dieuKienTimSanPham(search);
       // Từ khoá không còn token dùng được ("   ", "{}", "%%%") thì coi như không
       // tìm gì, KHÔNG phải lọc rỗng — trả cả shop còn hơn trả trang trắng.
       if (nhomToken) gopVaoAnd(where, nhomToken);
@@ -317,11 +329,20 @@ export class ShopService {
     return where;
   }
 
-  /** Tra id danh mục theo slug, ném 404 sạch nếu không có. */
+  /**
+   * Tra id danh mục theo slug, ném 404 sạch nếu không có.
+   *
+   * Rửa NUL ngay ở đây vì đây là chỗ DUY NHẤT slug danh mục đi xuống Prisma —
+   * cả shopFilters lẫn listProducts đều gọi qua hàm này. Việc rửa ở đầu
+   * dieuKienLoc không cứu được đường này: id danh mục được tra TRƯỚC, bên ngoài
+   * dieuKienLoc, nên /shop/filters?category=%00 vẫn trả 500 (đo thật) sau khi
+   * đã sửa ?material=%00. Cùng một lỗi, ba đường vào khác nhau.
+   */
   private async idDanhMuc(slug?: string): Promise<string | null> {
-    if (!slug) return null;
+    const sach = slug ? slug.replace(/\0/g, "").trim().slice(0, 200) : "";
+    if (!sach) return null;
     const cat = await this.prisma.koiCategory.findUnique({
-      where: { slug },
+      where: { slug: sach },
       select: { id: true },
     });
     if (!cat) throw new NotFoundException("Không tìm thấy danh mục");
@@ -518,6 +539,33 @@ export class ShopService {
     }
   }
 
+  /**
+   * Kẹp số trang / số hàng mỗi trang về khoảng dùng được.
+   *
+   * Math.max(1, x) KHÔNG đủ: `Number("1e999")` là Infinity, và
+   * `Math.max(1, Infinity)` vẫn là Infinity → `skip: Infinity` làm Prisma ném
+   * lỗi → 500. Đo thật trên production: ?page=1e999, ?page=Infinity,
+   * ?page=1e400 và ?page=99999999999999999999 đều trả HTTP 500 ở cả ba đường
+   * /shop/categories/:slug, /shop/products và /shop/posts — không cần đăng
+   * nhập. (page=abc / -5 / 0 và limit=9999 / -1 thì kẹp đúng, chỉ Infinity lọt
+   * qua.) Nguy hơn nữa: các đường này khai @Header Cache-Control s-maxage=300
+   * nên CDN đệm luôn cả phản hồi lỗi.
+   *
+   * Number.isFinite chặn Infinity và NaN; Math.trunc bỏ phần thập phân để
+   * ?page=1.9 không thành skip lẻ. Trần đặt ở TRAN_TRANG: sâu hơn thế thì
+   * không có trang thật nào, mà OFFSET lớn còn buộc Postgres đếm-rồi-bỏ.
+   */
+  private static readonly TRAN_TRANG = 100_000;
+
+  private kepTrang(page?: number, limit?: number) {
+    const soTrang = Number.isFinite(page) ? Math.trunc(page as number) : 1;
+    const soHang = Number.isFinite(limit) ? Math.trunc(limit as number) : 24;
+    return {
+      page: Math.min(ShopService.TRAN_TRANG, Math.max(1, soTrang || 1)),
+      limit: Math.min(48, Math.max(1, soHang || 24)),
+    };
+  }
+
   async listProducts(opts: {
     page?: number;
     limit?: number;
@@ -536,8 +584,7 @@ export class ShopService {
      */
     catId?: string | null;
   }) {
-    const page = Math.max(1, opts.page || 1);
-    const limit = Math.min(48, Math.max(1, opts.limit || 24));
+    const { page, limit } = this.kepTrang(opts.page, opts.limit);
 
     // Cùng một hàm dựng điều kiện với shopFilters — số trong ngoặc ở sidebar và
     // số hàng thực trả về đây không thể lệch nhau nữa.
