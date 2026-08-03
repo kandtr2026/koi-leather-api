@@ -206,7 +206,7 @@ export class ShopContentService {
   // ----- sitemap -----
 
   async sitemapData() {
-    const [products, categories, posts, pages, tags, postTerms] =
+    const [products, categories, catCounts, posts, pages, tags, postTerms] =
       await Promise.all([
         this.prisma.koiProduct.findMany({
           where: { isDeleted: false, status: "ACTIVE" },
@@ -214,7 +214,16 @@ export class ShopContentService {
         }),
         this.prisma.koiCategory.findMany({
           where: { isActive: true },
-          select: { slug: true },
+          select: { id: true, slug: true },
+        }),
+        // Số hàng ĐANG BÁN mỗi danh mục — để mặt tiền không khai vào sitemap
+        // những danh mục rỗng. KHÔNG dùng _count.categoryLinks: nó đếm cả hàng
+        // DRAFT và hàng đã xoá mềm, đúng cái bug đã sửa ở shopFilters ("Phụ Kiện
+        // Bằng Da (34)" nhưng bấm vào chỉ có 32).
+        this.prisma.koiProductCategory.groupBy({
+          by: ["categoryId"],
+          where: { product: { isDeleted: false, status: "ACTIVE" } },
+          _count: { _all: true },
         }),
         this.prisma.posts.findMany({
           where: { is_published: true },
@@ -232,12 +241,21 @@ export class ShopContentService {
         }),
       ]);
 
+    const soHang = new Map(
+      catCounts.map((g) => [g.categoryId, g._count._all]),
+    );
+
     return {
       products: products.map((p) => ({
         slug: p.slug,
         updated_at: p.updatedAt ? p.updatedAt.toISOString() : null,
       })),
-      categories: categories.map((c) => ({ slug: c.slug })),
+      // Kèm product_count để sitemap lọc được danh mục rỗng — cùng cách đã làm
+      // với tag (productTags.product_count).
+      categories: categories.map((c) => ({
+        slug: c.slug,
+        product_count: soHang.get(c.id) ?? 0,
+      })),
       posts: posts.map((p) => ({
         slug: p.slug,
         published_at: p.published_at ? p.published_at.toISOString() : null,

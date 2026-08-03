@@ -95,6 +95,25 @@ export class ShopService {
     };
   }
 
+  /**
+   * Đếm liên kết danh mục CHỈ trên hàng đang bán.
+   *
+   * `_count: { categoryLinks: true }` thô đếm mọi liên kết, kể cả hàng DRAFT và
+   * hàng đã xoá mềm. Đo trên hàng thật: 8/31 danh mục lệch — "Túi Da Cho Nữ" ghi
+   * 49 nhưng khách bấm vào chỉ thấy 48, "Phụ Kiện Bằng Da" 34 vs 33, và
+   * "qua-tang-su-kien" ghi 1 trong khi trang trống trơn. shopFilters đã sửa lỗi
+   * này bằng groupBy; đây là cùng một lỗi ở đường /shop/categories.
+   *
+   * Số hiện cho khách phải là số hàng khách bấm vào sẽ thấy — không có ngoại lệ.
+   */
+  private readonly demHangDangBan = {
+    _count: {
+      select: {
+        categoryLinks: { where: { product: { isDeleted: false, status: "ACTIVE" as const } } },
+      },
+    },
+  };
+
   private mapCategory(c: any, cover?: string | null) {
     return {
       id: c.id,
@@ -169,7 +188,7 @@ export class ShopService {
     const cats = await this.prisma.koiCategory.findMany({
       where: { isActive: true, slug: { notIn: this.hiddenSlugs } },
       orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-      include: { _count: { select: { categoryLinks: true } } },
+      include: this.demHangDangBan,
       ...(limit ? { take: limit } : {}),
     });
     if (!cats.length) return [];
@@ -567,7 +586,7 @@ export class ShopService {
   ) {
     const cat = await this.prisma.koiCategory.findUnique({
       where: { slug },
-      include: { _count: { select: { categoryLinks: true } } },
+      include: this.demHangDangBan,
     });
     if (!cat || cat.isActive === false)
       throw new NotFoundException("Không tìm thấy danh mục");
