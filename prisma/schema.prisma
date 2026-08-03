@@ -332,6 +332,19 @@ model KoiProduct {
   //                script từ lượt xem thật, không phải sửa truy vấn.
   isFeatured            Boolean                      @default(false)
   displayRank           Int                          @default(999999)
+  // Bản KHÔNG DẤU của `name`, do POSTGRES TỰ TÍNH (GENERATED ALWAYS AS … STORED)
+  // — xem prisma/migrations/20260803150000_add_product_search_text.
+  //
+  // Cần vì bộ sinh slug cũ làm rụng chữ hoa có dấu, nên 120/324 slug đang có bị
+  // sai và 51 sản phẩm gõ đủ tên không dấu vẫn không ra ("Ốp Lưng…" → slug
+  // "p-lung-…"). Không viết lại slug vì đó là URL Google đã đánh chỉ mục.
+  //
+  // KHÔNG BAO GIỜ ghi vào cột này: Postgres từ chối ("can only be updated to
+  // DEFAULT") và Prisma cũng không sinh nó vào input type. Muốn đổi thì sửa
+  // `name`, cột này tự theo. Đó là lý do chọn cột sinh: product.service.ts có
+  // 8+ chỗ ghi sản phẩm, cột thường thì quên một chỗ là dữ liệu tìm kiếm lệch
+  // âm thầm.
+  searchText            String?
   category              KoiCategory?                 @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   materialCategory      KoiMaterialCategory?         @relation(fields: [materialCategoryId], references: [id], onDelete: SetNull)
   categoryLinks         KoiProductCategory[]

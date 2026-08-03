@@ -18,33 +18,26 @@
  *     hoạt động khi gõ đủ dấu và đúng một từ.
  *
  * Không dùng extension `unaccent`: Supabase có sẵn để cài nhưng CHƯA cài, mà tài
- * khoản `postgres` ở đây không phải superuser; hơn nữa gọi unaccent() buộc phải
- * viết lại truy vấn bằng SQL thô, mất chỗ dùng chung vị từ với số đếm bộ lọc.
- * Bỏ dấu ở JavaScript rẻ hơn và không đụng vào schema production.
+ * khoản `postgres` ở đây không phải superuser; hơn nữa unaccent() là STABLE chứ
+ * không phải IMMUTABLE nên Postgres từ chối dùng nó cho cột sinh. Bỏ dấu bằng
+ * translate() trong DB + normalize() trong JavaScript, cùng một bảng chữ.
  *
- * CÒN HỞ (đã đo, cần m quyết chứ không tự sửa được):
- * Bộ sinh slug cũ rụng chữ hoa có dấu (đã sửa ở slugAndCodeGenerator.ts, nhưng
- * chỉ áp cho hàng MỚI). 120/324 slug đang có bị rụng chữ, trong đó 51 món (16%)
- * gõ đủ tên không dấu vẫn KHÔNG ra, vì cả `slug` lẫn slug danh mục đều thiếu chữ:
- *    "Ốp Lưng iPhone Da Cá Sấu…" slug "p-lung-…"  → gõ "op lung" ra 0
- *    "Card Holder Ví Đựng Thẻ…"  slug "…vi-ung-…" → gõ "vi dung the" ra 0
- * Và 7/32 danh mục lệch slug (leather-phonecase, charm-deo-tui-bang-da,
- * signature-leather-goods, leather-passport-cover, boc-khoa-o-to, bao-da-ipad,
- * an-lat-woven).
- * Hai đường sửa, đều có giá: (a) viết lại slug cho đúng rồi khai redirect 301 cho
- * đường dẫn cũ — sạch nhất nhưng đụng URL Google đã đánh chỉ mục; (b) thêm một
- * cột `searchText` không dấu, backfill và cập nhật khi lưu — không đụng URL nhưng
- * là thay đổi schema. KHÔNG tự đổi slug: đó là đường dẫn công khai.
+ * Lỗ hổng slug đã LẤP bằng cột `searchText`: Postgres tự tính bản không dấu của
+ * `name` (GENERATED ALWAYS AS … STORED, xem migration 20260803150000). Trước khi
+ * có nó, 51 sản phẩm (16%) gõ đủ tên không dấu vẫn không ra, vì bộ sinh slug cũ
+ * làm rụng chữ hoa có dấu và 120/324 slug đang có bị sai — mà slug là URL Google
+ * đã đánh chỉ mục nên KHÔNG viết lại. Đo sau khi thêm cột: "op lung" 0 → 19,
+ * "vi dung the" 0 → 10, "do den" 0 → 2.
  */
 import { Prisma } from "@prisma/client";
 
 /**
- * Token KHÔNG được dò vào các cột chứa JSON (`name`, `technicalSpecs`).
+ * Token KHÔNG được dò vào các cột chứa JSON (`technicalSpecs`).
  *
  * Chặn ĐÍCH DANH từng chuỗi, KHÔNG dùng quy tắc "token ngắn thì bỏ": đã đo, kiểu
- * đó làm "ốp lưng" tụt từ 19 kết quả xuống 0, vì token "op" bị chặn oan (slug
- * nhóm này là "p-lung-…", bộ sinh slug cũ rụng chữ Ố).
- * Có "en" để phòng sau này backfill tên tiếng Anh sinh ra khoá {"en":...}.
+ * đó làm "ốp lưng" tụt từ 19 kết quả xuống 0 vì token "op" bị chặn oan.
+ * `name` không còn bị dò trực tiếp nữa (đã có searchText) nên danh sách này giờ
+ * chỉ còn dùng cho technicalSpecs — vẫn là cột TEXT chứa JSON.
  */
 const TOKEN_TRUNG_KHOA_JSON = new Set(["v", "i", "vi", "e", "n", "en"]);
 
@@ -87,11 +80,16 @@ export function tachTuKhoa(raw: string): { tho: string; sach: string }[] {
  *
  * Mỗi token phải khớp ở ÍT NHẤT một đường (OR trong token), và các token AND với
  * nhau. Đường khớp:
- *  - `slug`, `sku`: đã không dấu → gõ không dấu vẫn ra.
- *  - `name`: còn dấu → bắt chữ mà slug làm rụng.
+ *  - `searchText`: bản không dấu của tên, do Postgres tự tính. Đây là đường
+ *    CHÍNH — nó bắt được cả chữ mà slug làm rụng ("op lung", "vi dung the").
+ *  - `slug`, `sku`: mã hàng và đường dẫn khách có thể dán thẳng vào ô tìm.
  *  - slug DANH MỤC: khách hay gõ tên khu hàng vào ô tìm. Đo được "tui da cho nu"
  *    0 → 48, "day lung nam" 0 → 20, "day da dong ho" 1 → 43, trong khi "epsom"
  *    và "ca sau" không đổi — thêm đúng hàng, không thêm nhiễu.
+ *
+ * KHÔNG dò cột `name` nữa: nó là TEXT chứa JSON `{"vi":…}` nên vừa khớp cái khoá
+ * (gõ "vi" ra cả shop), vừa còn dấu nên gõ không dấu không ăn. searchText thay
+ * nó ở cả hai mặt.
  *
  * `themTechnicalSpecs` chỉ bật cho admin: khách không cần tìm theo thông số kỹ
  * thuật, mà cột đó cũng là JSON nên mở ra ở mặt tiền chỉ tăng nhiễu.
@@ -105,6 +103,7 @@ export function dieuKienTimSanPham(
 
   return tokens.map(({ tho, sach }) => {
     const nhanh: Prisma.KoiProductWhereInput[] = [
+      { searchText: { contains: sach } },
       { slug: { contains: sach, mode: "insensitive" } },
       { sku: { contains: sach, mode: "insensitive" } },
       {
@@ -115,11 +114,8 @@ export function dieuKienTimSanPham(
         },
       },
     ];
-    if (!TOKEN_TRUNG_KHOA_JSON.has(sach)) {
-      nhanh.push({ name: { contains: tho, mode: "insensitive" } });
-      if (themTechnicalSpecs) {
-        nhanh.push({ technicalSpecs: { contains: tho, mode: "insensitive" } });
-      }
+    if (themTechnicalSpecs && !TOKEN_TRUNG_KHOA_JSON.has(sach)) {
+      nhanh.push({ technicalSpecs: { contains: tho, mode: "insensitive" } });
     }
     return { OR: nhanh };
   });

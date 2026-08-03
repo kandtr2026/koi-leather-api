@@ -352,6 +352,12 @@ export class ShopService {
 
     // Loại ảnh: đếm SỐ SẢN PHẨM (không phải số ảnh) có ít nhất 1 ảnh loại đó.
     // Chạy song song từng loại — chỉ 4 loại nên rẻ.
+    //
+    // KHÔNG dùng làm bộ lọc cho khách. Đo trên hàng thật: STUDIO phủ 315/315 sản
+    // phẩm, tức bấm vào nó không lọc bỏ được gì; STAMPING 13, LIFESTYLE 9,
+    // CRAFTING 0. Sidebar /cua-hang/ vì thế không hiện nhóm này.
+    // Vẫn TRẢ VỀ vì koi-storefront dùng danh sách này để dựng Lookbook
+    // (getShotsByImageType gom ảnh theo loại) — bỏ đi là làm trắng trang đó.
     const imageTypes = await Promise.all(
       imageCats.map(async (ic) => ({
         code: ic.code,

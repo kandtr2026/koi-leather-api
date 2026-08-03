@@ -77,9 +77,10 @@ describe("tachTuKhoa", () => {
 });
 
 describe("dieuKienTimSanPham", () => {
-  /** Có nhánh nào dò vào cột `name` không? */
-  const coNhanhName = (dk: Prisma.KoiProductWhereInput) =>
-    (dk.OR as Prisma.KoiProductWhereInput[]).some((n) => "name" in n);
+  const nhanhCua = (dk: Prisma.KoiProductWhereInput) =>
+    dk.OR as Prisma.KoiProductWhereInput[];
+  const co = (dk: Prisma.KoiProductWhereInput, cot: string) =>
+    nhanhCua(dk).some((n) => cot in n);
 
   it("trả undefined khi không còn token — bên gọi phải hiểu là KHÔNG lọc gì", () => {
     // Nếu chỗ này trả [] thì where.AND = [] và khách nhận trang trắng.
@@ -93,40 +94,43 @@ describe("dieuKienTimSanPham", () => {
     expect(dk).toHaveLength(3);
   });
 
-  it('KHÔNG dò cột name với token trùng khoá JSON ("vi", "en"…)', () => {
+  it("KHÔNG dò cột `name` nữa — nó là JSON, gõ 'vi' sẽ khớp cái khoá ở mọi dòng", () => {
     // Đây chính là lỗi ?search=vi trả về toàn bộ shop.
-    for (const kw of ["vi", "en", "v", "i", "e", "n"]) {
-      const dk = dieuKienTimSanPham(kw)!;
-      expect(coNhanhName(dk[0])).toBe(false);
+    for (const kw of ["vi", "en", "epsom", "ốp"]) {
+      expect(co(dieuKienTimSanPham(kw)![0], "name")).toBe(false);
     }
   });
 
-  it("VẪN dò cột name với token ngắn khác — chặn theo danh sách, không theo độ dài", () => {
+  it("dò searchText bằng token ĐÃ BỎ DẤU (cột đó Postgres tự tính, không dấu)", () => {
+    const nhanh = nhanhCua(dieuKienTimSanPham("Ốp Lưng")![0]);
+    const st = nhanh.find((n) => "searchText" in n) as any;
+    // Gửi "ốp" xuống thì không bao giờ khớp, vì trong DB nó là "op".
+    expect(st.searchText.contains).toBe("op");
+  });
+
+  it("mỗi token dò được cả searchText, slug, sku và slug danh mục", () => {
+    const dk = dieuKienTimSanPham("tui")![0];
+    for (const cot of ["searchText", "slug", "sku", "categoryLinks"]) {
+      expect(co(dk, cot)).toBe(true);
+    }
+  });
+
+  it("chỉ admin mới dò technicalSpecs, và không dò với token trùng khoá JSON", () => {
+    expect(co(dieuKienTimSanPham("epsom", true)![0], "technicalSpecs")).toBe(
+      true,
+    );
+    expect(co(dieuKienTimSanPham("epsom", false)![0], "technicalSpecs")).toBe(
+      false,
+    );
+    // "vi" trong technicalSpecs cũng là khoá JSON -> vẫn phải chặn.
+    expect(co(dieuKienTimSanPham("vi", true)![0], "technicalSpecs")).toBe(false);
+  });
+
+  it("token ngắn KHÁC vẫn dò technicalSpecs — chặn theo danh sách, không theo độ dài", () => {
     // Từng thử "token ≤2 ký tự thì bỏ": "ốp lưng" tụt từ 19 kết quả xuống 0.
-    const dk = dieuKienTimSanPham("ốp lưng")!;
-    expect(coNhanhName(dk[0])).toBe(true);
-    // Dạng còn dấu mới là thứ dò vào name (slug đã mất chữ Ố).
-    const nhanhName = (dk[0].OR as Prisma.KoiProductWhereInput[]).find(
-      (n) => "name" in n,
-    ) as any;
-    expect(nhanhName.name.contains).toBe("ốp");
-  });
-
-  it("mỗi token dò được cả slug, sku và slug danh mục", () => {
-    const dk = dieuKienTimSanPham("tui")!;
-    const nhanh = dk[0].OR as Prisma.KoiProductWhereInput[];
-    expect(nhanh.some((n) => "slug" in n)).toBe(true);
-    expect(nhanh.some((n) => "sku" in n)).toBe(true);
-    expect(nhanh.some((n) => "categoryLinks" in n)).toBe(true);
-  });
-
-  it("chỉ admin mới dò technicalSpecs", () => {
-    const co = (dk: Prisma.KoiProductWhereInput[]) =>
-      (dk[0].OR as Prisma.KoiProductWhereInput[]).some(
-        (n) => "technicalSpecs" in n,
-      );
-    expect(co(dieuKienTimSanPham("epsom", true)!)).toBe(true);
-    expect(co(dieuKienTimSanPham("epsom", false)!)).toBe(false);
+    expect(co(dieuKienTimSanPham("ốp lưng", true)![0], "technicalSpecs")).toBe(
+      true,
+    );
   });
 });
 
