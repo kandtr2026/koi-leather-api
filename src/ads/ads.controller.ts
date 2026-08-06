@@ -7,10 +7,13 @@ import {
   HttpStatus,
   Post,
   Query,
+  Req,
   Res,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import type { Response } from "express";
+import { createHash, timingSafeEqual } from "node:crypto";
+import type { Request, Response } from "express";
 import { AdsService } from "./ads.service";
 
 /**
@@ -73,6 +76,110 @@ export class AdsTrackController {
       // Nuốt lỗi: 204 dù có chuyện gì. Nút Zalo phải luôn chạy.
     }
   }
+
+  /**
+   * Tệp Google Ads TỰ TẢI mỗi ngày. Không ai phải bấm gì.
+   *
+   * VÌ SAO NẰM Ở /shop DÙ ĐÂY LÀ DỮ LIỆU RIÊNG. Không phải vì lười, mà vì
+   * AuthGuard không dùng được cho đường này: auth.guard.ts:83 chỉ đọc header
+   * dạng "Bearer <token>", còn Google Ads gửi HTTP Basic (user + mật khẩu) —
+   * đó là kiểu xác thực DUY NHẤT nó hỗ trợ cho nguồn HTTPS. Để endpoint này ở
+   * /analytics là guard chặn 401 trước khi mã trong hàm chạy, và không có cách
+   * nào bảo Google gửi Bearer.
+   *
+   * Nên /shop để đi qua được guard (auth.guard.ts:35 mở toàn bộ tiền tố này),
+   * rồi TỰ KIỂM Basic ngay dòng đầu hàm. Đường này bảo mật bằng chính nó, không
+   * dựa vào guard, và phải đọc như vậy khi sửa về sau.
+   *
+   * KHOÁ CHẶT KHI THIẾU BIẾN MÔI TRƯỜNG. Chưa đặt ADS_FEED_USER/ADS_FEED_PASS
+   * thì trả 401 hết. Mặc định phải là đóng: hớ chỗ này là toàn bộ gclid của
+   * khách — dữ liệu quảng cáo, gắn được với hành vi từng người — phơi ra cho ai
+   * gọi cũng đọc.
+   *
+   * ?ghi=1 MỚI ĐÓNG DẤU "đã gửi Google". Không có tham số đó thì chỉ đọc, không
+   * ghi gì. Xem doc feedCsv để biết vì sao mặc định phải như vậy; ngắn gọn: địa
+   * chỉ này bị mở ra xem bằng trình duyệt và bằng curl, mà mỗi lần xem lại đóng
+   * dấu thì con số trên admin thành số bịa. Chỉ URL nạp vào lịch Google Ads mang
+   * ghi=1 — trang admin dựng sẵn URL đó kèm nút chép.
+   */
+  @Get("ads-feed.csv")
+  @Header("Content-Type", "text/csv; charset=utf-8")
+  @Header("Cache-Control", "no-store")
+  @ApiOperation({
+    summary: "Google Ads tự tải theo lịch (HTTP Basic, không phải Bearer)",
+  })
+  async feed(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Query("name") name?: string,
+    @Query("ghi") ghi?: string,
+  ): Promise<string> {
+    this.kiemBasic(req, res);
+
+    // BOM để Excel bản Việt mở ra không thành ký tự rác — chủ tiệm sẽ mở địa
+    // chỉ này bằng mắt để kiểm. Google bỏ qua BOM nên vô hại với việc nó đọc.
+    //
+    // KHÔNG có nhánh "rỗng thì trả chuỗi rỗng" như bên xuat(): tệp trắng làm
+    // Google coi lịch là hỏng rồi gắn cảnh báo. feedCsv luôn trả ít nhất hai
+    // dòng tiêu đề, và đó là điều đúng.
+    return `﻿${await this.ads.feedCsv(name || "Zalo Sale", ghi === "1")}`;
+  }
+
+  /**
+   * Kiểm HTTP Basic. Ném 401 kèm WWW-Authenticate nếu không khớp.
+   *
+   * So sánh bằng timingSafeEqual trên bản băm SHA-256 chứ không phải `===`:
+   *
+   *  · `===` trên chuỗi thoát ra ngay ký tự đầu khác nhau, nên thời gian phản
+   *    hồi tiết lộ mình đã đoán đúng mấy ký tự đầu. Đây là đường công khai, ai
+   *    cũng gọi được bao nhiêu lần cũng được, nên đó là kênh rò rỉ thật.
+   *  · Băm trước rồi mới so vì timingSafeEqual đòi hai buffer DÀI BẰNG NHAU —
+   *    khác độ dài là nó ném lỗi, mà chính độ dài cũng là thứ không nên tiết lộ.
+   *    SHA-256 cho ra 32 byte cố định, hết cả hai vấn đề.
+   */
+  private kiemBasic(req: Request, res: Response): void {
+    const user = process.env.ADS_FEED_USER || "";
+    const pass = process.env.ADS_FEED_PASS || "";
+
+    const tuChoi = (): never => {
+      // WWW-Authenticate là bắt buộc theo chuẩn cho phản hồi 401 Basic. Google
+      // Ads không cần nó, nhưng trình duyệt thì có: nhờ header này chủ tiệm mở
+      // địa chỉ feed lên là được hỏi user/mật khẩu ngay để tự kiểm.
+      res.setHeader("WWW-Authenticate", 'Basic realm="KOI Ads Feed"');
+      throw new UnauthorizedException("Sai thông tin đăng nhập feed");
+    };
+
+    if (!user || !pass) tuChoi();
+
+    const h = req.headers.authorization || "";
+    if (!h.startsWith("Basic ")) tuChoi();
+
+    let giaiMa = "";
+    try {
+      giaiMa = Buffer.from(h.slice(6), "base64").toString("utf8");
+    } catch {
+      tuChoi();
+    }
+
+    // Chỉ tách ở dấu hai chấm ĐẦU TIÊN: mật khẩu được phép chứa dấu hai chấm,
+    // và mật khẩu sinh tự động rất hay có. split(":") rồi lấy [1] là cắt mất
+    // đuôi mật khẩu, thành ra mật khẩu đúng vẫn bị từ chối.
+    const v = giaiMa.indexOf(":");
+    if (v < 0) tuChoi();
+
+    const okUser = this.bangNhau(giaiMa.slice(0, v), user);
+    const okPass = this.bangNhau(giaiMa.slice(v + 1), pass);
+    // Kiểm CẢ HAI rồi mới quyết định, không && ngắn mạch: thoát sớm khi sai user
+    // là thời gian phản hồi lại nói cho người gọi biết họ sai ở ô nào.
+    if (!okUser || !okPass) tuChoi();
+  }
+
+  private bangNhau(a: string, b: string): boolean {
+    return timingSafeEqual(
+      createHash("sha256").update(a, "utf8").digest(),
+      createHash("sha256").update(b, "utf8").digest(),
+    );
+  }
 }
 
 /**
@@ -100,6 +207,79 @@ export class AdsAdminController {
     return this.ads.tra(token || "");
   }
 
+  /**
+   * Ba thông tin để nạp vào lịch tự tải của Google Ads: địa chỉ, tên đăng nhập,
+   * mật khẩu.
+   *
+   * CÓ, ĐƯỜNG NÀY TRẢ MẬT KHẨU RA. Cân nhắc kỹ rồi mới làm, và đây là lý do:
+   *
+   *  · Người gọi được đường này đã là admin đăng nhập — AuthGuard đòi Bearer
+   *    cho mọi thứ dưới /analytics. Mà admin thì đã đọc được TOÀN BỘ dữ liệu mà
+   *    mật khẩu này bảo vệ: từng gclid, từng cú bấm, từng lead. Nên trả nó ra
+   *    không mở thêm cửa nào — chỉ hiện lại chìa của căn phòng người ta đang
+   *    đứng trong.
+   *  · Chủ tiệm BẮT BUỘC phải có mật khẩu để gõ vào Google Ads, đúng một lần.
+   *    Không trả ở đây thì họ phải mở bảng điều khiển Vercel đi tìm — đúng cái
+   *    việc tay mà cả bản này sinh ra để bỏ.
+   *
+   * Đổi lại phải giữ đúng hai điều kiện, sửa về sau đừng phá: đường này KHÔNG
+   * BAO GIỜ được rời khỏi /analytics sang /shop, và trang admin không được ghi
+   * mật khẩu vào localStorage hay URL.
+   */
+  @Get("ads/feed-config")
+  @ApiOperation({ summary: "Thông tin nạp vào lịch tự tải của Google Ads" })
+  feedConfig(@Req() req: Request, @Query("name") name?: string) {
+    // TỰ ĐÒI ĐĂNG NHẬP, KHÔNG PHÓ CHO GUARD. Guard mặc định đã chặn mọi GET
+    // dưới /analytics, nhưng nó có công tắc PUBLIC_VIEW=1 (auth.guard.ts:65) —
+    // đặt biến đó là MỞ TOÀN BỘ PHẦN ĐỌC cho khách vãng lai. Biến ấy sinh ra để
+    // mở nội dung cửa hàng, và một ngày nào đó sẽ có người bật nó lên vì lý do
+    // hoàn toàn chính đáng; hôm đó mật khẩu feed phơi ra internet mà không ai
+    // nghĩ tới đường này. Nên chốt riêng ở đây: mật khẩu chỉ ra khi CÓ admin
+    // thật, bất kể guard đang mở hay khoá. Đúng một dòng, và nó đứng ngoài mọi
+    // lần đổi cấu hình về sau.
+    //
+    // Guard đã gắn sẵn request.user cho mọi GET đi qua nó: có Bearer hợp lệ thì
+    // là object, còn lại là null — kể cả khi PUBLIC_VIEW cho đi qua.
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+
+    const user = process.env.ADS_FEED_USER || "";
+    const pass = process.env.ADS_FEED_PASS || "";
+
+    // Địa chỉ tuyệt đối, vì Google gọi từ máy nó. Ưu tiên host của chính request
+    // đang chạy: admin mở bằng tên miền nào thì feed cũng ở tên miền đó, khỏi
+    // phải thêm biến môi trường và khỏi lệch khi đổi tên miền. x-forwarded-host
+    // là thứ Vercel đặt; req.headers.host sau proxy có thể là host nội bộ.
+    //
+    // Tên miền nào cũng chạy được vì koi-domain-router đẩy tiền tố /shop về API
+    // này — dù chủ tiệm mở admin ở koileather.com hay ở địa chỉ Vercel.
+    const host =
+      (req.headers["x-forwarded-host"] as string) || req.headers.host || "";
+    const scheme = host.startsWith("localhost") ? "http" : "https";
+
+    // URL mang sẵn ĐỦ hai tham số để chép-dán là chạy, không phải tự ghép:
+    //
+    //  · name — tên conversion action, phải khớp từng chữ với bên Google Ads.
+    //    Thiếu nó thì rơi về "Zalo Sale" mặc định, mà chủ tiệm đặt tên khác là
+    //    Google từ chối cả tệp và chỉ báo lỗi bên tài khoản của họ.
+    //  · ghi=1 — cho phép đóng dấu "đã gửi Google". CHỈ URL này có; ai mở feed
+    //    bằng trình duyệt để xem thử thì không, nên xem thử không làm bẩn số
+    //    liệu. Xem doc feed() và feedCsv().
+    const q = new URLSearchParams();
+    if (name) q.set("name", name);
+    q.set("ghi", "1");
+
+    return {
+      // Chưa đặt biến môi trường thì feed đang khoá chặt — trang admin phải nói
+      // thẳng điều đó thay vì hiện một bộ thông tin không dùng được.
+      daDatMatKhau: Boolean(user && pass),
+      url: host ? `${scheme}://${host}/shop/ads-feed.csv?${q.toString()}` : "",
+      user,
+      pass,
+    };
+  }
+
   @Post("ads/convert")
   @ApiOperation({ summary: "Đánh dấu một mã đã chốt đơn + giá trị VND" })
   chot(
@@ -115,7 +295,12 @@ export class AdsAdminController {
   }
 
   /**
-   * Tải file CSV để đưa lên Google Ads.
+   * Tải file CSV để đưa lên Google Ads BẰNG TAY.
+   *
+   * Kể từ khi có /shop/ads-feed.csv thì đây là đường DỰ PHÒNG, không còn là
+   * đường chính: Google Ads tự đi lấy tệp mỗi ngày, chủ tiệm không phải bấm gì.
+   * Giữ lại vì vẫn có lúc cần — kiểm bằng mắt xem tệp có gì, hoặc gửi gấp một
+   * đơn vừa chốt mà không đợi chuyến kế tiếp.
    *
    * GET chứ không POST dù có ghi (đánh dấu đã xuất): trình duyệt chỉ tải file
    * được bằng cách mở một địa chỉ, mà fetch rồi dựng blob thì mất header
@@ -124,9 +309,10 @@ export class AdsAdminController {
    * BOM ﻿ ở đầu: không có nó thì Excel bản Việt mở file ra tiếng Việt
    * thành ký tự rác. Google bỏ qua BOM nên vô hại với việc tải lên.
    *
-   * lai=1: xuất lại cả những đơn đã tải lên rồi. Chỉ dùng khi Google báo lỗi
-   * và file lần trước KHÔNG vào được — bình thường tải trùng là Google cộng dồn
-   * thành hai chuyển đổi.
+   * lai=1: xuất lại cả những đơn đã tải lên rồi. Việc này AN TOÀN — Google khử
+   * trùng lặp theo tên action + giờ + gclid nên dòng gửi hai lần chỉ tính một.
+   * Mặc định vẫn chỉ lấy dòng mới, để tệp nhỏ và chủ tiệm thấy được cái gì vừa
+   * thêm.
    */
   @Get("ads/export.csv")
   @Header("Content-Type", "text/csv; charset=utf-8")

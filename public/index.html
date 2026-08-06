@@ -468,9 +468,35 @@
         <div id="adsLookupResult" class="mt-3"></div>
       </div>
 
-      <!-- Xuất CSV. Ba điều kiện ghi ngay cạnh nút: thiếu một là Google từ chối
-           file mà không nói vì sao, chủ shop ngồi đoán cả buổi. -->
+      <!-- TỰ ĐỘNG GỬI GOOGLE. Đặt TRÊN khối tải tay, và khối tải tay bị hạ
+           xuống thành dự phòng gập lại — thứ tự này là cố ý: chủ tiệm mở tab ra
+           phải thấy ngay "máy tự làm", chứ không phải thấy cái nút mời họ làm
+           tay mỗi ngày. Bản trước bắt họ bấm nút đó hằng ngày, và một hôm quên
+           là hôm đó Google mù. -->
       <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              <i class="fas fa-robot text-amber-500"></i> Google Ads tự lấy số liệu mỗi ngày
+            </h3>
+            <p class="text-xs text-gray-500 mt-1">
+              Cài một lần rồi thôi — không phải tải file, không phải bấm gì nữa
+            </p>
+          </div>
+          <span id="adsFeedStatus" class="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Đang kiểm…</span>
+        </div>
+        <div id="adsFeedSetup" class="mt-4"></div>
+      </div>
+
+      <!-- Xuất CSV BẰNG TAY — đường dự phòng. Ba điều kiện ghi ngay cạnh nút:
+           thiếu một là Google từ chối file mà không nói vì sao, chủ shop ngồi
+           đoán cả buổi. -->
+      <details class="bg-white rounded-xl border border-gray-100 shadow-sm mb-5">
+        <summary class="p-4 cursor-pointer text-sm text-gray-600 hover:text-gray-800 select-none">
+          <i class="fas fa-file-arrow-down text-gray-400 mr-1.5"></i>
+          Tải file CSV bằng tay <span class="text-xs text-gray-400">— chỉ cần khi muốn kiểm bằng mắt hoặc gửi gấp một đơn</span>
+        </summary>
+        <div class="px-4 pb-4">
         <div class="flex flex-wrap items-end gap-3">
           <div class="flex-1 min-w-[200px]">
             <label class="block text-xs font-medium text-gray-600 mb-1">Tên conversion action bên Google Ads</label>
@@ -490,7 +516,8 @@
           <li>Mỗi cú bấm phải <strong>đủ 24 giờ</strong> mới gửi được — Google chưa ghi nhận nổi cú bấm mới hơn một ngày. Tải mỗi ngày một lần là đủ.</li>
           <li class="text-gray-600">Chuyển đổi ở đây tính theo <strong>cú bấm nút liên hệ</strong>, phần lớn không có số tiền. Nên bên Google Ads phải đấu giá theo <strong>“Maximise conversions”</strong> — chọn “Maximise conversion value” hay tROAS là sai, hai chiến lược đó cần số tiền thật mới chạy đúng.</li>
         </ul>
-      </div>
+        </div>
+      </details>
 
       <div id="adsBody">
         <div class="skeleton-loading p-6 space-y-3">
@@ -2794,6 +2821,11 @@ async function loadAds() {
   // mình gõ lần trước chứ không phải ô trống với placeholder trông như chưa lưu.
   getAdsExportName();
 
+  // Khối thiết lập lịch tự tải. Không await: nó độc lập với bảng số liệu, mà
+  // await thì một bên lỗi là bên kia không hiện — trong khi cả hai đều tự xử lý
+  // lỗi của mình rồi.
+  loadAdsFeedConfig();
+
   try {
     // noCache: chủ shop vừa chốt đơn ngay trên màn hình này rồi bảng nạp lại.
     // Đọc trúng bản cache 60 giây thì số tiền vừa gõ không hiện, tưởng mất.
@@ -3179,6 +3211,186 @@ async function unmarkAdsConvert(token) {
   }
 }
 
+// ----- Google Ads tự lấy số liệu (lịch tự tải) -----
+
+/**
+ * Ba thông tin nạp vào Google Ads, kèm hướng dẫn từng bước.
+ *
+ * VÌ SAO KHỐI NÀY TỒN TẠI. Bản trước bắt chủ tiệm mỗi ngày mở admin, bấm "Xuất
+ * CSV", rồi vào Google Ads tải file lên. Đúng như chủ tiệm nói: đó là việc của
+ * máy. Google Ads có sẵn mục Uploads › Schedules tự đi lấy file mỗi ngày, chỉ
+ * cần nạp ba thứ MỘT LẦN — nên khối này chỉ có nhiệm vụ đưa ba thứ đó ra cho dễ
+ * chép, và chỉ đường đến đúng cái menu.
+ *
+ * KHÔNG lưu mật khẩu vào localStorage. Nó tới từ biến môi trường trên máy chủ và
+ * chỉ sống trong bộ nhớ trang; đóng tab là hết. localStorage thì nằm lại trên
+ * đĩa vĩnh viễn, mà cái máy này còn dùng chung — đổi lấy tiện nghi bằng một mật
+ * khẩu nằm phơi trên đĩa là lỗ.
+ */
+let adsFeedCfg = null;
+
+async function loadAdsFeedConfig() {
+  const el = document.getElementById('adsFeedSetup');
+  const badge = document.getElementById('adsFeedStatus');
+  if (!el) return;
+
+  try {
+    // Gửi kèm tên action đang gõ ở ô dưới để URL trả về dùng được ngay, không
+    // phải tự ghép. Tên phải khớp từng chữ với bên Google Ads, sai là từ chối cả
+    // tệp — mà lỗi chỉ hiện bên tài khoản Google, ở đây không thấy gì.
+    const d = await api('/analytics/ads/feed-config?name=' + encodeURIComponent(getAdsExportName()), { noCache: true });
+    adsFeedCfg = d;
+    renderAdsFeedSetup(d);
+  } catch (e) {
+    if (badge) {
+      badge.className = 'text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-500';
+      badge.textContent = 'Không kiểm được';
+    }
+    el.innerHTML = `<p class="text-xs text-gray-500">Không đọc được thiết lập: ${esc(e.message || 'lỗi không rõ')}
+      <button onclick="loadAdsFeedConfig()" class="text-amber-600 hover:underline ml-1">Thử lại</button></p>`;
+  }
+}
+
+function renderAdsFeedSetup(d) {
+  const el = document.getElementById('adsFeedSetup');
+  const badge = document.getElementById('adsFeedStatus');
+
+  // Chưa đặt mật khẩu = feed đang khoá chặt, Google gọi vào chỉ nhận 401. Phải
+  // nói thẳng thay vì hiện một bộ thông tin không dùng được — chủ tiệm sẽ ngồi
+  // chép ba thứ đó vào Google Ads rồi đợi mãi không thấy số liệu, không hiểu vì
+  // sao.
+  if (!d.daDatMatKhau) {
+    if (badge) {
+      badge.className = 'text-xs px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-200';
+      badge.textContent = 'Chưa bật';
+    }
+    el.innerHTML = `<div class="text-xs leading-relaxed bg-red-50 border border-red-200 rounded-lg p-3 text-red-800">
+      <p class="font-semibold mb-1">Chưa đặt mật khẩu cho đường feed nên nó đang khoá.</p>
+      <p>Cần đặt hai biến môi trường <code class="bg-white/70 px-1 rounded">ADS_FEED_USER</code> và
+      <code class="bg-white/70 px-1 rounded">ADS_FEED_PASS</code> trên Vercel (project
+      <strong>koi-leather-api</strong>, môi trường Production) rồi deploy lại. Nhắn cho bên kỹ thuật câu này là đủ.</p>
+    </div>`;
+    return;
+  }
+
+  if (badge) {
+    badge.className = 'text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200';
+    badge.textContent = 'Sẵn sàng';
+  }
+
+  // Ba ô chép. Mật khẩu để type=password và có nút hiện: chủ tiệm hay mở admin
+  // lúc có người đứng cạnh, mà nút chép thì không cần nhìn thấy mới chép được.
+  el.innerHTML = `
+    <ol class="text-xs text-gray-600 space-y-3">
+      <li class="flex gap-2">
+        <span class="shrink-0 w-5 h-5 rounded-full bg-amber-100 text-amber-700 font-semibold grid place-items-center text-[10px]">1</span>
+        <div>
+          Vào Google Ads › bấm biểu tượng <strong>Goals</strong> › <strong>Conversions</strong> ›
+          <strong>Uploads</strong> › thẻ <strong>Schedules</strong> › bấm dấu <strong>+</strong>.
+          Chọn nguồn <strong>HTTPS</strong> (không phải “Upload a file” — cái đó chỉ chạy một lần, không hẹn lịch được).
+        </div>
+      </li>
+      <li class="flex gap-2">
+        <span class="shrink-0 w-5 h-5 rounded-full bg-amber-100 text-amber-700 font-semibold grid place-items-center text-[10px]">2</span>
+        <div class="flex-1 min-w-0">
+          <p class="mb-2">Dán ba thứ này vào:</p>
+          <div class="space-y-2">
+            ${oChep('Địa chỉ file (URL)', d.url, 'url')}
+            ${oChep('Tên đăng nhập (Username)', d.user, 'user')}
+            ${oChep('Mật khẩu (Password)', d.pass, 'pass', true)}
+          </div>
+        </div>
+      </li>
+      <li class="flex gap-2">
+        <span class="shrink-0 w-5 h-5 rounded-full bg-amber-100 text-amber-700 font-semibold grid place-items-center text-[10px]">3</span>
+        <div>
+          Chọn tần suất <strong>Daily</strong>, giờ nào cũng được — nên chọn <strong>quá trưa</strong>
+          (khoảng 13–15 giờ) để mọi cú bấm hôm trước đã đủ 24 tiếng. Bấm <strong>Save</strong> là xong,
+          từ đó không phải làm gì nữa.
+        </div>
+      </li>
+    </ol>
+
+    <ul class="mt-4 pt-3 border-t border-gray-100 text-[11px] text-gray-500 space-y-1.5 list-disc pl-4">
+      <li>Google Ads phải có sẵn conversion action nguồn <strong>“Import from clicks”</strong>, và tên nó
+        phải khớp <strong>từng chữ</strong> với ô “Tên conversion action” ở khối bên dưới
+        (đang là <strong>${esc(getAdsExportName())}</strong>). Đổi tên ở ô đó thì chép lại URL mới.</li>
+      <li>Chiến dịch phải đấu giá theo <strong>“Maximise conversions”</strong>. Chuyển đổi ở đây tính theo
+        cú bấm nút liên hệ nên phần lớn không có số tiền — chọn “Maximise conversion value” hay tROAS là sai.</li>
+      <li>Mỗi chuyến gửi <strong>30 ngày gần nhất</strong>, không chỉ đơn mới. Nghe như gửi trùng nhưng
+        Google tự nhận ra dòng cũ và chỉ tính một lần; nhờ vậy hôm nào lịch chạy hụt thì hôm sau tự bù,
+        không mất đơn nào.</li>
+      <li>Mật khẩu này chỉ dùng cho đường feed, không phải mật khẩu đăng nhập admin. Google Ads sẽ gửi
+        mail báo nếu có hôm nào nó lấy file không được.</li>
+    </ul>`;
+}
+
+/**
+ * Một ô chép. Nhận giá trị THÔ và tự escape — cả hai chiều:
+ * esc() cho phần hiện ra, escAttr() cho thuộc tính value.
+ *
+ * Giá trị đi vào đây tới từ biến môi trường, không phải khách gõ, nên rủi ro
+ * thấp. Vẫn escape đủ: quy tắc "mọi thứ nhúng vào HTML đều phải escape" chỉ có
+ * giá trị khi không có ngoại lệ nào, và ngày mai chuỗi này có thể tới từ chỗ
+ * khác mà không ai nhớ để kiểm lại.
+ */
+function oChep(nhan, giaTri, khoa, an) {
+  return `<div>
+    <label class="block text-[11px] font-medium text-gray-500 mb-1">${esc(nhan)}</label>
+    <div class="flex gap-1.5">
+      <input id="adsFeed_${esc(khoa)}" type="${an ? 'password' : 'text'}" value="${escAttr(giaTri || '')}" readonly
+        onclick="this.select()"
+        class="flex-1 min-w-0 border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 text-xs font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400">
+      ${an ? `<button onclick="hienAnFeed('${esc(khoa)}', this)" title="Hiện/ẩn"
+        class="shrink-0 px-2.5 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">
+        <i class="fas fa-eye"></i></button>` : ''}
+      <button onclick="chepFeed('${esc(khoa)}')" title="Chép"
+        class="shrink-0 px-2.5 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition">
+        <i class="fas fa-copy"></i></button>
+    </div>
+  </div>`;
+}
+
+function hienAnFeed(khoa, btn) {
+  const el = document.getElementById('adsFeed_' + khoa);
+  if (!el) return;
+  const an = el.type === 'password';
+  el.type = an ? 'text' : 'password';
+  btn.innerHTML = `<i class="fas fa-eye${an ? '-slash' : ''}"></i>`;
+}
+
+/**
+ * Chép vào clipboard.
+ *
+ * Có nhánh dự phòng execCommand vì navigator.clipboard chỉ chạy trên HTTPS hoặc
+ * localhost. Admin mở qua http://<ip-nội-bộ> — chuyện thường khi chủ tiệm xem
+ * bằng máy khác trong tiệm — là nhánh mới không tồn tại, và không có dự phòng
+ * thì nút bấm không làm gì cả mà cũng không báo gì.
+ */
+async function chepFeed(khoa) {
+  const el = document.getElementById('adsFeed_' + khoa);
+  if (!el) return;
+  const nhan = { url: 'Địa chỉ file', user: 'Tên đăng nhập', pass: 'Mật khẩu' }[khoa] || 'Nội dung';
+  try {
+    await navigator.clipboard.writeText(el.value);
+    toast('Đã chép ' + nhan.toLowerCase());
+  } catch {
+    try {
+      // select() không chạy trên input đang type=password ở vài trình duyệt, nên
+      // mở tạm rồi đóng lại.
+      const cu = el.type;
+      el.type = 'text';
+      el.select();
+      const ok = document.execCommand('copy');
+      el.type = cu;
+      el.setSelectionRange(0, 0);
+      toast(ok ? 'Đã chép ' + nhan.toLowerCase() : 'Không chép được — bấm vào ô rồi Ctrl+C');
+    } catch {
+      toast('Không chép được — bấm vào ô rồi Ctrl+C');
+    }
+  }
+}
+
 // ----- Xuất CSV cho Google Ads -----
 
 function getAdsExportName() {
@@ -3192,6 +3404,11 @@ function getAdsExportName() {
 
 function saveAdsExportName() {
   try { localStorage.setItem('ads_export_name', getAdsExportName()); } catch {}
+  // Tên action nằm TRONG url của feed (?name=…), nên đổi tên là URL cũ hết dùng
+  // được: Google sẽ gửi tên cũ và bị từ chối cả tệp. Dựng lại khối thiết lập
+  // ngay để chủ tiệm thấy URL mới mà chép lại — không nhắc thì họ không có cách
+  // nào biết mình vừa làm hỏng lịch đã cài.
+  if (adsFeedCfg) loadAdsFeedConfig();
 }
 
 /**

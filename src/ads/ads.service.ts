@@ -90,6 +90,29 @@ export const HAN_GOOGLE_NGAY = 90;
 const CHO_XUAT_GIO = 24;
 
 /**
+ * GOOGLE TỰ KHỬ TRÙNG LẶP — và điều này đổi hẳn cách thiết kế đường feed.
+ *
+ * Khoá nhận dạng một chuyển đổi bên Google là BA THỨ ghép lại: tên conversion
+ * action + GIỜ chuyển đổi + gclid. Gửi lại y nguyên một dòng đã gửi hôm qua thì
+ * Google chỉ tính MỘT LẦN. Tài liệu của họ còn khuyên gửi chồng lấn thêm ngày
+ * hôm trước để vớt những dòng lần đó còn đang xử lý.
+ *
+ * Hai chuyển đổi trên cùng một gclid chỉ xảy ra khi GIỜ khác nhau — đó là lý do
+ * điều kiện `contactedAt: null` ở ghiNhanLienHe vẫn phải giữ nguyên: nó chốt
+ * mốc giờ lại, không cho cú bấm thứ hai dịch giờ đi.
+ *
+ * Nhờ vậy đường feed gửi được CỬA SỔ TRƯỢT thay vì "chỉ dòng chưa gửi", và cách
+ * đó chắc chắn hơn hẳn: dòng nào hôm nay Google từ chối (cú bấm còn non, lỗi
+ * mạng, lịch chạy hụt một hôm) thì mai tự được gửi lại. Với cách cũ — đóng dấu
+ * exportedAt rồi loại khỏi lần sau — một lần từ chối là mất dòng đó vĩnh viễn.
+ *
+ * 30 ngày: dài hơn hẳn mọi sự cố tưởng tượng được (Vercel sập, Google đổi mật
+ * khẩu, chủ tiệm tắt lịch một tuần rồi bật lại), mà vẫn cách hạn 90 ngày rất
+ * xa nên không dòng nào bị Google gắn lỗi "click quá cũ".
+ */
+const CUA_SO_FEED_NGAY = 30;
+
+/**
  * Giữ dòng chưa chuyển đổi bao lâu rồi dọn.
  *
  * 120 ngày = 90 ngày hạn Google + 30 ngày đệm để còn xem lại báo cáo cũ. Quá
@@ -192,11 +215,14 @@ export class AdsService {
     // muốn cho một đường công khai ai gọi cũng được.
     //
     // contactedAt: null trong where — CHỈ ghi lần liên hệ ĐẦU. Đó là lúc quảng
-    // cáo thực sự đẻ ra hội thoại, và cũng là mốc giờ đã nằm trong tệp CSV đã
-    // tải lên. Khách bấm Zalo lần hai (chuyện rất thường: bấm ở đầu trang,
-    // cuộn xuống bấm tiếp) mà ta dịch convertedAt lên thì dòng đó lệch giờ so
-    // với thứ Google đã nhận, và nếu chủ tiệm bấm "xuất lại" thì thành hai
-    // chuyển đổi cùng một gclid — Google CỘNG DỒN, không thay thế.
+    // cáo thực sự đẻ ra hội thoại, và quan trọng hơn: nó CHỐT MỐC GIỜ lại.
+    //
+    // Mốc giờ là thứ phải bảo vệ, vì nó nằm trong khoá nhận dạng của Google
+    // (tên action + giờ + gclid — xem CUA_SO_FEED_NGAY). Gửi lại y nguyên một
+    // dòng thì Google khử trùng lặp, không sao cả; nhưng nếu khách bấm Zalo lần
+    // hai (chuyện rất thường: bấm ở đầu trang, cuộn xuống bấm tiếp) mà ta dịch
+    // convertedAt lên thì dòng đó thành một GIỜ KHÁC, và Google tính nó là
+    // chuyển đổi thứ hai — một cú bấm quảng cáo bị đếm thành hai đơn.
     await this.prisma.koiAdClick.updateMany({
       where: { token: input.token, contactedAt: null },
       data: {
@@ -376,12 +402,16 @@ export class AdsService {
             ? r.value
             : BigInt(String(input.value).replace(/\D/g, "") || "0"),
         note: input.note === undefined ? r.note : (input.note?.slice(0, 500) || null),
-        // Sửa lại thì coi như chưa xuất: số đã đổi, phải cho xuất lại.
+        // Sửa lại thì có phải cho xuất lại không? KHÔNG cần, và cũng không nên.
         //
-        // NHƯNG chỉ khi CHƯA xuất lần nào. Đã xuất rồi mà mở lại đường xuất thì
-        // Google nhận gclid đó lần thứ hai và CỘNG DỒN thành hai chuyển đổi —
-        // đúng cái bẫy exportedAt sinh ra để tránh. Đơn đã lên Google mà sau đó
-        // mới biết số tiền thì phải sửa bên Google Ads, không sửa ở đây.
+        // Từ khi có đường feed tự động (xem feedCsv), exportedAt gần như hết
+        // việc: feed gửi cửa sổ trượt 30 ngày bất kể dòng đã gửi hay chưa, nên
+        // số tiền vừa gõ vào đây sẽ tự đi theo chuyến kế tiếp — trong vài giờ.
+        // Google đọc dòng cùng gclid + cùng giờ + cùng tên action là dòng CŨ và
+        // cập nhật giá trị, không đẻ thêm chuyển đổi.
+        //
+        // Giữ nguyên exportedAt vì nó vẫn là bằng chứng "dòng này đã từng nằm
+        // trong một tệp gửi đi". Xoá đi là mất mốc đối chiếu mà chẳng được gì.
         exportedAt: r.exportedAt,
       },
     });
@@ -439,13 +469,19 @@ export class AdsService {
    * Cột Conversion Currency cũng bỏ trắng theo: khai tiền tệ mà không khai
    * tiền là vô nghĩa. Dòng nào chủ tiệm gõ tiền tay thì ghi đủ cả hai.
    *
-   * MẶC ĐỊNH CHỈ LẤY DÒNG CHƯA XUẤT. Google CỘNG DỒN chứ không thay thế: tải
-   * cùng một gclid hai lần là đếm thành hai chuyển đổi, mà Google lại tự tối ưu
-   * theo con số đó nên tiền quảng cáo sẽ đổ nhầm chỗ. Chủ tiệm bấm tải hai lần
-   * trong một buổi là chuyện thường, không thể trông vào việc họ nhớ.
+   * MẶC ĐỊNH CHỈ LẤY DÒNG CHƯA XUẤT. Không phải vì sợ Google đếm hai lần — nó
+   * khử trùng lặp, xem CUA_SO_FEED_NGAY — mà vì đây là đường TẢI TAY: chủ tiệm
+   * bấm nút là để xem "có gì mới", và cần một tệp nhỏ nhìn được bằng mắt. Dựng
+   * tệp 30 ngày mỗi lần bấm thì không đọc nổi, cũng không biết dòng nào vừa
+   * thêm. Đóng dấu exportedAt cũng là cách duy nhất trả lời được câu "Google đã
+   * biết những đơn nào rồi" trên trang admin.
    *
-   * Đặt lai = true khi Google báo lỗi và cần tải lại — lúc đó lần trước KHÔNG
-   * vào được nên xuất lại là đúng.
+   * Đường TỰ ĐỘNG (feedCsv) làm ngược hẳn: cửa sổ trượt, không nhìn exportedAt.
+   * Bên đó máy đọc nên tệp to không sao, và gửi lại được thì lần gửi hụt tự
+   * lành.
+   *
+   * Đặt lai = true khi cần dựng lại tệp đầy đủ: Google báo lỗi, hoặc muốn đối
+   * chiếu lại từ đầu.
    *
    * TRẢ VỀ { csv, dangCho }: csv rỗng thì dangCho cho biết còn bao nhiêu dòng
    * chưa đủ 24 giờ. Phân biệt "hết đơn thật" với "đơn còn non" — hai chuyện
@@ -499,20 +535,7 @@ export class AdsService {
     ];
 
     for (const r of rows) {
-      // Bỏ trắng CẢ HAI cột khi không có tiền — xem phần giải thích ở đầu hàm.
-      // Không dấu chấm phân cách nghìn: Excel bản tiếng Việt hay tự chèn
-      // "1.250.000" và Google đọc thành 1,25 — hụt một nghìn lần.
-      const tien = r.value === null ? "" : r.value.toString();
-      dong.push(
-        [
-          r.gclid ?? "",
-          this.boc(conversionName),
-          this.gioGoogle(r.convertedAt as Date),
-          tien,
-          tien === "" ? "" : "VND",
-          r.token,
-        ].join(","),
-      );
+      dong.push(this.dongCsv(r, conversionName));
     }
 
     // Đánh dấu đã xuất SAU khi dựng xong file: dựng lỗi thì không được phép
@@ -523,6 +546,111 @@ export class AdsService {
     });
 
     return { csv: dong.join("\r\n"), dangCho: 0 };
+  }
+
+  /**
+   * Tệp cho Google Ads TỰ TẢI theo lịch — không ai phải bấm gì.
+   *
+   * VÌ SAO CÓ HÀM NÀY. Bản đầu bắt chủ tiệm mỗi ngày mở admin, bấm "Xuất CSV",
+   * rồi vào Google Ads tải tệp lên. Đó là việc của máy: một hôm quên là hôm đó
+   * Google mù, mà đúng những hôm bận nhất — hôm nhiều khách nhất — mới là hôm
+   * dễ quên nhất. Google Ads có sẵn mục Uploads → Schedules, tự đi lấy tệp từ
+   * một địa chỉ HTTPS mỗi ngày. Hàm này là địa chỉ đó.
+   *
+   * KHÁC xuatCsv ở ĐÚNG MỘT ĐIỂM, nhưng là điểm quan trọng nhất: nó gửi CỬA SỔ
+   * TRƯỢT 30 ngày và KHÔNG đóng dấu exportedAt. Google khử trùng lặp theo tên
+   * action + giờ + gclid nên gửi lại là vô hại, và tài liệu của Google còn
+   * khuyên gửi chồng lấn. Đổi lại được ba thứ:
+   *
+   *  · dòng nào hôm nay bị từ chối vì cú bấm còn non thì mai tự vào lại;
+   *  · lịch chạy hụt một hôm (Vercel sập, mật khẩu sai) không mất dòng nào;
+   *  · số tiền chủ tiệm gõ vào admin sau khi dòng đã gửi vẫn tự đi theo chuyến
+   *    kế tiếp, thay vì phải sửa tay bên Google Ads.
+   *
+   * KHÔNG bao giờ trả tệp rỗng-hoàn-toàn. Google Ads coi tệp không đọc được là
+   * lịch hỏng, gắn cảnh báo trong tài khoản và gửi mail. Ngày nào chưa có khách
+   * nhắn tin thì vẫn phải trả hai dòng tiêu đề — với Google đó là "tệp hợp lệ,
+   * không có dòng mới", đúng sự thật. Đây là chỗ khác xuatCsv thứ hai: bên kia
+   * trả rỗng để trang admin biết mà báo "hết đơn mới", ở đây rỗng là báo động.
+   *
+   * ghiDau = false LÀ MẶC ĐỊNH, VÀ ĐÓ LÀ CHỦ Ý. Địa chỉ này sẽ bị MỞ RA XEM,
+   * không chỉ được Google gọi: chủ tiệm mở bằng trình duyệt để kiểm tệp có gì
+   * (đó là lý do có header WWW-Authenticate), lập trình viên gọi curl khi sửa
+   * lỗi, và máy local nối thẳng database production nên một lần thử là chạm vào
+   * số liệu thật — chuyện đã xảy ra đúng một lần khi làm hàm này.
+   *
+   * Nếu mặc định là ghi thì mỗi lần xem thử lại đóng dấu "đã gửi Google" lên
+   * những dòng Google chưa từng nhận. Con số trên admin thành số bịa, mà tệ hơn
+   * là đường tải tay sẽ báo "hết đơn mới" trong khi Google vẫn chưa có gì.
+   *
+   * Nên chỉ URL nạp vào lịch Google Ads mang thêm ghi=1, và trang admin dựng
+   * sẵn URL đó kèm nút chép để không ai phải gõ tay.
+   */
+  async feedCsv(conversionName: string, ghiDau = false): Promise<string> {
+    const rows = await this.prisma.koiAdClick.findMany({
+      where: {
+        convertedAt: { not: null },
+        gclid: { not: null },
+        clickedAt: {
+          // Cửa sổ trượt: 30 ngày gần nhất, và vẫn phải đủ già 24 giờ. Điều
+          // kiện 24 giờ ở đây KHÔNG làm mất dòng nào như bên xuatCsv — dòng non
+          // hôm nay chỉ là chưa tới lượt, mai chuyến sau nó nằm trong cửa sổ.
+          gte: new Date(Date.now() - CUA_SO_FEED_NGAY * 86_400_000),
+          lte: new Date(Date.now() - CHO_XUAT_GIO * 3_600_000),
+        },
+      },
+      orderBy: { convertedAt: "asc" },
+    });
+
+    const dong = [
+      `Parameters:TimeZone=${LECH_GIO}`,
+      "Google Click ID,Conversion Name,Conversion Time,Conversion Value,Conversion Currency,Order ID",
+    ];
+    for (const r of rows) {
+      dong.push(this.dongCsv(r, conversionName));
+    }
+
+    // Đóng dấu exportedAt cho dòng chưa có, nhưng KHÔNG dùng nó để lọc.
+    //
+    // Nghe ngược, mà cần: trang admin có ô "đã gửi Google" và chủ tiệm đọc con
+    // số đó để tin hệ thống đang chạy. Feed tự động mà không đóng dấu thì ô đó
+    // đứng ở 0 mãi trong khi Google vẫn nhận đủ — chủ tiệm sẽ tưởng hỏng rồi đi
+    // bấm tải tay, đúng việc ta vừa bỏ.
+    //
+    // Chỉ ghi dòng chưa có dấu (exportedAt: null) để mốc giữ nguyên là LẦN GỬI
+    // ĐẦU. Ghi đè mỗi chuyến thì mọi dòng luôn hiện "vừa gửi xong", không còn
+    // đối chiếu được với báo cáo bên Google.
+    if (ghiDau && rows.length) {
+      await this.prisma.koiAdClick.updateMany({
+        where: { token: { in: rows.map((r) => r.token) }, exportedAt: null },
+        data: { exportedAt: new Date() },
+      });
+    }
+
+    return dong.join("\r\n");
+  }
+
+  /**
+   * Một dòng dữ liệu CSV. Dùng chung cho cả tải tay và feed tự động — hai đường
+   * đó khác nhau ở chỗ CHỌN dòng nào, còn khuôn dòng thì bắt buộc phải giống
+   * hệt: lệch một cột là Google từ chối cả tệp.
+   */
+  private dongCsv(
+    r: { gclid: string | null; convertedAt: Date | null; value: bigint | null; token: string },
+    conversionName: string,
+  ): string {
+    // Bỏ trắng CẢ HAI cột khi không có tiền — xem phần giải thích ở doc xuatCsv.
+    // Không dấu chấm phân cách nghìn: Excel bản tiếng Việt hay tự chèn
+    // "1.250.000" và Google đọc thành 1,25 — hụt một nghìn lần.
+    const tien = r.value === null ? "" : r.value.toString();
+    return [
+      r.gclid ?? "",
+      this.boc(conversionName),
+      this.gioGoogle(r.convertedAt as Date),
+      tien,
+      tien === "" ? "" : "VND",
+      r.token,
+    ].join(",");
   }
 
   /** Bọc ô CSV nếu có dấu phẩy/nháy — tên action do người gõ, không tin được. */
