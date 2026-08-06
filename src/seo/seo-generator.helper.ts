@@ -26,7 +26,16 @@ export function generateCategorySeo(name: string): SeoOutput {
 
   return {
     metaTitle: `${safeName} - Đồ Da Thủ Công Koi Leather`,
-    metaDescription: `Khám phá bộ sưu tập ${safeName} thủ công cao cấp tại Koi Leather. Đa dạng mẫu mã, chất liệu da nhập khẩu, bảo hành trọn đời.`,
+    // "bảo hành 1 năm" chứ không phải "trọn đời". Chính sách thật là hai tầng:
+    // 1 năm miễn phí cho lỗi đường chỉ và kết cấu, hết hạn vẫn nhận sửa trọn
+    // đời nhưng CÓ PHÍ. Hàm này là KHUÔN SINH RA thẻ mô tả cho mọi danh mục —
+    // 13 danh mục đang mang đúng câu này, nên để nguyên chữ "trọn đời" ở đây
+    // thì mỗi lần sinh lại SEO là ghi đè con số đã dọn trong cơ sở dữ liệu.
+    // Sửa dữ liệu mà không sửa khuôn thì chỉ dọn được tới lần sinh kế tiếp.
+    // Thẻ mô tả đang 119–148 ký tự, câu này ngắn hơn câu cũ nên vẫn dưới
+    // ngưỡng Google cắt (~160). Đừng viết dài thêm ở đây; phần "sau đó sửa
+    // trọn đời có phí" được kể đủ ở trang chủ và trang dịch vụ.
+    metaDescription: `Khám phá bộ sưu tập ${safeName} thủ công cao cấp tại Koi Leather. Đa dạng mẫu mã, chất liệu da nhập khẩu, bảo hành 1 năm.`,
   };
 }
 
