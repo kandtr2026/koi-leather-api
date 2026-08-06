@@ -12,3 +12,6 @@ public/build-meta.json
 
 # Token JWT ky tay de goi API luc kiem thu — la bi mat, khong duoc commit.
 *token*.txt
+
+# tep do dac tam thoi (khong thuoc san pham)
+_scratch/

@@ -441,7 +441,7 @@
     <div class="panel" id="panel-ads">
       <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
         <p class="text-sm text-gray-500">
-          Nối cú bấm quảng cáo Google với đơn chốt trên Zalo — mã ngắn nằm sẵn trong tin nhắn khách gửi
+          Nối cú bấm quảng cáo Google với hội thoại Zalo — khách bấm nút liên hệ là tính chuyển đổi, mã ngắn nằm sẵn trong tin nhắn khách gửi
         </p>
         <div class="inline-flex rounded-lg border border-gray-200 overflow-hidden text-sm">
           <button onclick="setAdsRange(1)"  data-ads-range="1"  class="ads-range-btn px-3 py-1.5 hover:bg-gray-50">Hôm nay</button>
@@ -487,6 +487,8 @@
           <li>Trong Google Ads phải tạo sẵn conversion action nguồn <strong>“Import from clicks”</strong> (mục “Conversions offline”) — action của website dùng không được.</li>
           <li>Tên gõ ở ô trên phải khớp <strong>từng chữ</strong> với tên action đó.</li>
           <li>Tạo action xong phải chờ <strong>4–6 tiếng</strong> rồi mới tải lên lần đầu.</li>
+          <li>Mỗi cú bấm phải <strong>đủ 24 giờ</strong> mới gửi được — Google chưa ghi nhận nổi cú bấm mới hơn một ngày. Tải mỗi ngày một lần là đủ.</li>
+          <li class="text-gray-600">Chuyển đổi ở đây tính theo <strong>cú bấm nút liên hệ</strong>, phần lớn không có số tiền. Nên bên Google Ads phải đấu giá theo <strong>“Maximise conversions”</strong> — chọn “Maximise conversion value” hay tROAS là sai, hai chiến lược đó cần số tiền thật mới chạy đúng.</li>
         </ul>
       </div>
 
@@ -936,8 +938,9 @@
         Mã <span id="adsConvertTokenText" class="font-mono font-semibold text-gray-800">—</span>
         <span id="adsConvertProduct"></span>
       </div>
+      <p id="adsConvertHint" class="text-[11px] leading-relaxed text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></p>
       <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Số tiền đơn hàng (VNĐ)</label>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Số tiền đơn hàng (VNĐ) <span class="font-normal text-gray-400">— không bắt buộc</span></label>
         <input id="adsConvertValue" type="text" inputmode="numeric" autocomplete="off" placeholder="1.250.000"
           oninput="onPriceInput(this)"
           onkeydown="if (event.key === 'Enter') saveAdsConvert();"
@@ -947,7 +950,7 @@
         <label class="block text-xs font-medium text-gray-600 mb-1">Ngày chốt</label>
         <input id="adsConvertDate" type="datetime-local"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-        <p class="text-[11px] text-gray-400 mt-1">Đơn chốt từ hôm trước thì sửa lại ngày cho đúng.</p>
+        <p class="text-[11px] text-gray-400 mt-1">Mặc định là lúc khách bấm nút. Đơn chốt hôm sau thì sửa lại cho đúng.</p>
       </div>
       <div>
         <label class="block text-xs font-medium text-gray-600 mb-1">Ghi chú</label>
@@ -2808,10 +2811,27 @@ async function loadAds() {
 
 const ADS_CHANNEL_LABELS = { zalo: 'Zalo', phone: 'Gọi điện', messenger: 'Messenger', form: 'Điền form' };
 
-/** Ba mức: mới vào xem → đã nhắn tin → đã chốt đơn. */
+/**
+ * Trạng thái một dòng.
+ *
+ * Từ khi cú bấm nút Zalo TỰ TÍNH là chuyển đổi, contactedAt và convertedAt gần
+ * như luôn đi cùng nhau — nên không thể xếp "đã nhắn tin" và "đã chốt đơn"
+ * thành hai bậc nối tiếp như trước: nhánh "đã nhắn tin" sẽ chết hẳn và mọi
+ * dòng đều hiện "Đã chốt đơn", sai hoàn toàn với thực tế.
+ *
+ * Ba bậc mới đo đúng ba câu hỏi chủ tiệm thật sự cần biết:
+ *   Mới vào xem  — quảng cáo kéo được người vào, chưa ra hội thoại
+ *   Đã nhắn tin  — CÓ chuyển đổi, chưa biết bán được bao nhiêu
+ *   Có tiền      — đã gõ số tiền thật, dòng này Google học được cả giá trị
+ *
+ * Bậc "Có tiền" đứng riêng chứ không phải bậc cao hơn "Đã nhắn tin": nó là
+ * thông tin THÊM vào cùng một chuyển đổi, không phải sự kiện xảy ra sau.
+ */
 function adsTrangThai(it) {
-  if (it.convertedAt) return '<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 border border-emerald-200 text-emerald-700">Đã chốt đơn</span>';
-  if (it.contactedAt) return '<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-50 border border-blue-200 text-blue-700">Đã nhắn tin</span>';
+  if (it.value !== null && it.value !== undefined) {
+    return '<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 border border-emerald-200 text-emerald-700">Có tiền</span>';
+  }
+  if (it.convertedAt) return '<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-50 border border-blue-200 text-blue-700">Đã nhắn tin</span>';
   return '<span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-gray-100 border border-gray-200 text-gray-500">Mới vào xem</span>';
 }
 
@@ -2827,23 +2847,36 @@ function adsHanBadge(it) {
  * Token do backend sinh (6 ký tự chữ-số) nhưng vẫn escAttr trước khi nhét vào
  * onclick: một dấu nháy lọt vào là thoát ra khỏi thuộc tính, mà trang admin có
  * sẵn Bearer token trong sessionStorage. Xem ghi chú ở escAttr().
+ *
+ * Rẽ nhánh theo CÓ TIỀN CHƯA, không theo convertedAt. convertedAt giờ tự có
+ * ngay lúc khách bấm nút nên gần như dòng nào cũng có — rẽ theo nó là nút
+ * "Ghi tiền" biến mất khỏi đúng những dòng cần nó nhất.
  */
 function adsHanhDong(it) {
   const t = escAttr(it.token);
   const quaHan = Number(it.conLaiNgay) <= 0;
+  const coTien = it.value !== null && it.value !== undefined;
 
-  if (it.convertedAt) {
+  if (coTien) {
     return `<div class="inline-flex items-center justify-end gap-1 whitespace-nowrap">
       <button onclick="openAdsConvert('${t}')" class="w-8 h-8 items-center justify-center text-amber-500 hover:text-amber-600 requires-auth" title="Sửa số tiền"><i class="fas fa-edit"></i></button>
-      <button onclick="unmarkAdsConvert('${t}')" class="w-8 h-8 items-center justify-center text-gray-400 hover:text-red-500 requires-auth" title="Bỏ đánh dấu chốt (ghi nhầm mã)"><i class="fas fa-rotate-left"></i></button>
+      <button onclick="unmarkAdsConvert('${t}')" class="w-8 h-8 items-center justify-center text-gray-400 hover:text-red-500 requires-auth" title="Xoá số tiền đã ghi"><i class="fas fa-rotate-left"></i></button>
     </div>`;
   }
-  // Quá hạn thì không cho chốt nữa: có gửi lên Google cũng bị bỏ qua, để nút ở
-  // đó chỉ tổ làm chủ shop tưởng đã cứu được đơn.
+  // Quá hạn thì không cho ghi nữa: có gửi lên Google cũng bị bỏ qua, để nút ở
+  // đó chỉ tổ làm chủ tiệm tưởng đã cứu được đơn.
   if (quaHan) return '<span class="text-xs text-gray-400">hết hạn ghi</span>';
 
-  return `<button onclick="openAdsConvert('${t}')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white transition requires-auth" title="Đánh dấu đã chốt đơn">
-    <i class="fas fa-check mr-1"></i>Chốt đơn</button>`;
+  // Chữ trên nút đổi theo việc khách đã bấm nút chưa. Dòng đã có chuyển đổi thì
+  // việc còn lại chỉ là GHI TIỀN; dòng chưa có (khách gọi trực tiếp không qua
+  // nút nào) thì bấm vào là tạo chuyển đổi mới.
+  const nhan = it.convertedAt ? 'Ghi tiền' : 'Đánh dấu chốt';
+  const moTa = it.convertedAt
+    ? 'Ghi số tiền thật cho chuyển đổi này'
+    : 'Khách gọi trực tiếp không qua nút — đánh dấu tay';
+
+  return `<button onclick="openAdsConvert('${t}')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white transition requires-auth" title="${escAttr(moTa)}">
+    <i class="fas fa-check mr-1"></i>${nhan}</button>`;
 }
 
 function renderAds(d) {
@@ -2861,6 +2894,33 @@ function renderAds(d) {
 
   const nf = n => new Intl.NumberFormat('vi-VN').format(Number(n) || 0);
 
+  /**
+   * Tỷ lệ chuyển đổi, dạng "3,2%".
+   *
+   * Con số này là thứ duy nhất nói được quảng cáo hiệu quả hay không: 134 cú bấm
+   * mà 4 hội thoại là chuyện rất khác 134 cú bấm ra 40 hội thoại, nhưng đọc hai
+   * số rời thì phải tự chia. Một chữ số thập phân là đủ — ở cỡ vài trăm cú bấm
+   * thì chữ số thứ hai chỉ là nhiễu.
+   */
+  const tyLe = (a, b) => {
+    const t = Number(b) || 0;
+    if (!t) return '—';
+    return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format((Number(a) || 0) * 100 / t) + '%';
+  };
+
+  /**
+   * Chú thích cho thẻ "Đã gửi Google".
+   *
+   * Chuyển đổi nằm trong bảng mà chưa xuất thì với Google là CHƯA TỒN TẠI — nó
+   * không học được gì, không đấu giá theo được. Đây là chỗ dễ tưởng đã xong
+   * nhất, nên phải nói thẳng còn bao nhiêu dòng đang nằm chờ.
+   */
+  const chuaGuiText = d => {
+    const chua = (Number(d.daChot) || 0) - (Number(d.daXuat) || 0);
+    if (chua <= 0) return 'đã gửi hết';
+    return `còn ${nf(chua)} chưa gửi`;
+  };
+
   // "Hôm nay" chứ không phải "1 ngày qua": khoảng cắt là từ 00:00 giờ Việt Nam,
   // không phải 24 giờ trượt — xem ads.service.ts::danhSach.
   const nhanKy = d.days === 1 ? 'hôm nay, từ 00:00' : `${d.days} ngày qua`;
@@ -2868,9 +2928,9 @@ function renderAds(d) {
   const theSoLieu = `
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
       ${card('Cú bấm quảng cáo', nf(d.tongCong), 'fa-hand-pointer', nhanKy)}
-      ${card('Đã nhắn tin', nf(d.daLienHe), 'fa-comments', 'khách bấm sang Zalo')}
-      ${card('Đã chốt đơn', nf(d.daChot), 'fa-handshake', 'có ghi số tiền')}
-      ${card('Doanh thu', adsTien(d.doanhThu), 'fa-sack-dollar', 'từ đơn đã chốt')}
+      ${card('Chuyển đổi', nf(d.daChot), 'fa-comments', tyLe(d.daChot, d.tongCong) + ' bấm nút liên hệ')}
+      ${card('Đã gửi Google', nf(d.daXuat), 'fa-cloud-arrow-up', chuaGuiText(d))}
+      ${card('Doanh thu ghi tay', adsTien(d.doanhThu), 'fa-sack-dollar', `${nf(d.soDonCoTien || 0)} đơn có số tiền`)}
     </div>`;
 
   if (!items.length) {
@@ -2907,7 +2967,7 @@ function renderAds(d) {
       <td class="px-4 py-3 whitespace-nowrap text-gray-600">${esc(ADS_CHANNEL_LABELS[it.channel] || it.channel || '—')}</td>
       <td class="px-4 py-3 whitespace-nowrap text-gray-600">${fmDate(it.clickedAt)}</td>
       <td class="px-4 py-3 whitespace-nowrap">${adsTrangThai(it)}${daXuat}</td>
-      <td class="px-4 py-3 whitespace-nowrap text-right font-medium">${it.convertedAt ? adsTien(it.value) : '<span class="text-gray-300">—</span>'}</td>
+      <td class="px-4 py-3 whitespace-nowrap text-right font-medium">${it.value !== null && it.value !== undefined ? adsTien(it.value) : '<span class="text-gray-300">—</span>'}</td>
       <td class="px-4 py-3 whitespace-nowrap text-center">${adsHanBadge(it)}</td>
       <td class="px-4 py-3 text-right whitespace-nowrap w-px">${adsHanhDong(it)}</td>
     </tr>`;
@@ -2977,7 +3037,8 @@ function renderAdsLookup(r, token) {
           <div class="text-sm text-gray-700 mt-1">${esc(sanPham)}</div>
           <div class="text-xs text-gray-500 mt-0.5">
             Bấm lúc ${esc(r.clickedAt ? new Date(r.clickedAt).toLocaleString('vi-VN') : '—')}
-            ${r.convertedAt ? ` · đã ghi ${esc(adsTien(r.value))}` : ''}
+            ${r.value !== null && r.value !== undefined ? ` · đã ghi ${esc(adsTien(r.value))}` : ''}
+            ${r.exportedAt ? ' · đã gửi Google' : ''}
           </div>
         </div>
         <div>${adsHanhDong(r)}</div>
@@ -3000,15 +3061,28 @@ function adsToLocalInput(d) {
  */
 function openAdsConvert(token) {
   const it = (adsGoogleData?.items || []).find(x => x.token === token);
+  const coTien = it && it.value !== null && it.value !== undefined;
 
   document.getElementById('adsConvertToken').value = token;
   document.getElementById('adsConvertTokenText').textContent = token;
   document.getElementById('adsConvertProduct').textContent =
     it ? ' · ' + (it.productName || it.landingPath || '') : '';
   document.getElementById('adsConvertTitle').textContent =
-    it && it.convertedAt ? 'Sửa đơn đã chốt' : 'Chốt đơn';
+    coTien ? 'Sửa số tiền' : 'Ghi số tiền đơn hàng';
+
+  // Dòng nhắc ngay dưới tiêu đề: chuyển đổi đã được tính rồi, việc gõ tiền ở
+  // đây là THÊM thông tin chứ không phải điều kiện để dòng đó được ghi nhận.
+  // Không nói rõ thì chủ tiệm tưởng không gõ là mất đơn, mà 4/134 dòng có tiền
+  // đã chứng minh việc gõ tay không bao giờ được làm đều.
+  const nhac = document.getElementById('adsConvertHint');
+  if (nhac) {
+    nhac.textContent = it && it.convertedAt
+      ? 'Chuyển đổi của mã này đã được tính từ lúc khách bấm nút. Ghi tiền vào đây chỉ để Google biết đơn lớn hay nhỏ — bỏ trống vẫn không mất gì.'
+      : 'Mã này chưa có chuyển đổi (khách gọi trực tiếp, không qua nút nào). Lưu ở đây là đánh dấu chuyển đổi tay.';
+  }
+
   document.getElementById('adsConvertValue').value =
-    it && it.value !== null && it.value !== undefined ? formatPriceForInput(it.value) : '';
+    coTien ? formatPriceForInput(it.value) : '';
   document.getElementById('adsConvertNote').value = (it && it.note) || '';
   document.getElementById('adsConvertDate').value =
     adsToLocalInput(it && it.convertedAt ? new Date(it.convertedAt) : new Date());
@@ -3024,14 +3098,33 @@ async function saveAdsConvert() {
   const note = document.getElementById('adsConvertNote').value.trim();
   const ngay = document.getElementById('adsConvertDate').value;
 
-  if (value === '' || Number.isNaN(value) || value <= 0) { toast('Nhập số tiền đơn hàng'); return; }
+  // Tiền KHÔNG còn bắt buộc: chuyển đổi đã được tính từ lúc khách bấm nút, ô
+  // này chỉ làm giàu thêm. Trước đây chặn cứng ở đây là đúng — không có tiền
+  // thì dòng vô nghĩa. Giờ chặn là ép chủ tiệm bịa một con số, còn tệ hơn để
+  // trống, vì Google sẽ đấu giá theo con số bịa đó.
+  //
+  // Vẫn chặn số âm và số 0: gõ vào rồi để 0 là gõ nhầm, không phải bỏ trống.
+  const coGo = document.getElementById('adsConvertValue').value.trim() !== '';
+  if (coGo && (value === '' || Number.isNaN(value) || value <= 0)) {
+    toast('Số tiền không hợp lệ — để trống nếu chưa biết');
+    return;
+  }
 
   // Chuỗi từ datetime-local không có múi giờ; new Date() đọc theo giờ máy rồi
   // toISOString đổi sang UTC — đúng thứ backend chờ.
+  //
+  // BẮT BUỘC phải có giá trị. Backend hiểu "value null VÀ convertedAt null" là
+  // lệnh BỎ ĐÁNH DẤU — nên chủ tiệm xoá ô ngày rồi lưu mà không gõ tiền là vô
+  // tình xoá luôn chuyển đổi, trong khi họ tưởng mình chỉ đang sửa ghi chú.
+  // Ô trống thì lấy lại giờ đang có của dòng, không có nữa thì lấy bây giờ.
   let convertedAt = null;
   if (ngay) {
     const d = new Date(ngay);
     if (!isNaN(d)) convertedAt = d.toISOString();
+  }
+  if (!convertedAt) {
+    const it = (adsGoogleData?.items || []).find(x => x.token === token);
+    convertedAt = (it && it.convertedAt) || new Date().toISOString();
   }
 
   btn.disabled = true;
@@ -3039,11 +3132,13 @@ async function saveAdsConvert() {
   try {
     const r = await api('/analytics/ads/convert', {
       method: 'POST',
-      body: JSON.stringify({ token, value, note: note || null, convertedAt }),
+      // value: null khi bỏ trống. An toàn vì convertedAt phía trên chắc chắn
+      // có giá trị — cả hai cùng null mới là lệnh "bỏ đánh dấu" của backend.
+      body: JSON.stringify({ token, value: coGo ? value : null, note: note || null, convertedAt }),
     });
     if (r && r.ok === false) throw new Error('Mã không tồn tại hoặc đã quá hạn');
     closeModal('adsConvertModal');
-    toast('Đã ghi đơn chốt ' + fm(value));
+    toast(coGo ? 'Đã ghi ' + fm(value) : 'Đã lưu');
     await loadAds();
     if (document.getElementById('adsLookupInput').value.trim()) lookupAdsToken();
   } catch (e) {
@@ -3054,12 +3149,19 @@ async function saveAdsConvert() {
   }
 }
 
-/** Gỡ đánh dấu chốt — dùng khi chủ shop gõ nhầm mã của khách khác. */
+/**
+ * Xoá số tiền đã ghi — dùng khi chủ tiệm gõ nhầm mã của khách khác.
+ *
+ * KHÔNG xoá chuyển đổi: cú bấm nút của khách là sự kiện thật, và nếu dòng đó đã
+ * lên Google thì bên đó vẫn còn — xoá ở đây chỉ làm hai bên lệch nhau. Backend
+ * giữ nguyên convertedAt cho dòng có contactedAt; xem danhDauChot().
+ */
 async function unmarkAdsConvert(token) {
   const ok = await showConfirm({
-    title: 'Bỏ đánh dấu chốt?',
-    message: `Mã <span class="font-mono font-semibold">${esc(token)}</span> sẽ quay về trạng thái chưa chốt, số tiền đã ghi bị xoá.`,
-    confirmText: 'Bỏ đánh dấu',
+    title: 'Xoá số tiền đã ghi?',
+    message: `Số tiền của mã <span class="font-mono font-semibold">${esc(token)}</span> sẽ bị xoá.
+      Chuyển đổi vẫn giữ — khách có bấm nút thật, và nếu đã gửi sang Google thì bên đó cũng đã nhận.`,
+    confirmText: 'Xoá số tiền',
     danger: true,
   });
   if (!ok) return;
@@ -3069,7 +3171,7 @@ async function unmarkAdsConvert(token) {
       method: 'POST',
       body: JSON.stringify({ token, value: null, convertedAt: null }),
     });
-    toast('Đã bỏ đánh dấu chốt');
+    toast('Đã xoá số tiền');
     await loadAds();
     if (document.getElementById('adsLookupInput').value.trim()) lookupAdsToken();
   } catch (e) {
@@ -3112,11 +3214,20 @@ async function exportAdsCsv() {
     if (!res.ok) throw new Error('máy chủ trả về ' + res.status);
 
     const blob = await res.blob();
-    // Rỗng = không còn đơn nào CHƯA tải lên, không phải hỏng. Backend chỉ xuất
-    // dòng mới để Google khỏi cộng dồn doanh số hai lần, nên bấm tải lần thứ
-    // hai trong ngày là gặp ngay trường hợp này — phải nói rõ, không báo lỗi.
+
+    // Rỗng có HAI nguyên nhân, và chúng khác nhau hoàn toàn với người đang ngồi
+    // chờ số liệu. Backend gửi số dòng đang chờ qua header X-Koi-Dang-Cho:
+    //   · dangCho > 0 — có chuyển đổi nhưng cú bấm chưa đủ 24 giờ. Google chưa
+    //     ghi nhận được cú bấm mới hơn một ngày; xuất bây giờ là mất dòng đó
+    //     vĩnh viễn vì exportedAt đã đóng dấu. Chờ, không phải lỗi.
+    //   · dangCho = 0 — hết đơn mới thật, đã gửi hết.
+    // Gộp hai trường hợp thành một câu "hết đơn mới" là chủ tiệm tưởng quảng cáo
+    // không ra khách nào, trong khi thực tế là khách vừa nhắn cách đây hai tiếng.
     if (!blob.size) {
-      toast('Không có đơn mới nào để tải lên — các đơn đã chốt đều tải rồi');
+      const dangCho = Number(res.headers.get('X-Koi-Dang-Cho')) || 0;
+      toast(dangCho > 0
+        ? `Còn ${dangCho} chuyển đổi chờ đủ 24 giờ mới gửi được — Google chưa nhận cú bấm mới hơn một ngày. Mai tải lại.`
+        : 'Đã gửi hết — không còn chuyển đổi mới nào');
       return;
     }
 

@@ -7,8 +7,10 @@ import {
   HttpStatus,
   Post,
   Query,
+  Res,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import type { Response } from "express";
 import { AdsService } from "./ads.service";
 
 /**
@@ -54,7 +56,9 @@ export class AdsTrackController {
 
   @Post("ad-contact")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: "Khách vừa bấm nút Zalo/Messenger" })
+  @ApiOperation({
+    summary: "Khách vừa bấm nút Zalo/Messenger/Gọi — tính luôn là chuyển đổi",
+  })
   async adContact(
     @Body() body: { token?: string; channel?: string; productName?: string },
   ): Promise<void> {
@@ -121,18 +125,27 @@ export class AdsAdminController {
    * thành ký tự rác. Google bỏ qua BOM nên vô hại với việc tải lên.
    *
    * lai=1: xuất lại cả những đơn đã tải lên rồi. Chỉ dùng khi Google báo lỗi
-   * và file lần trước KHÔNG vào được — bình thường tải trùng là doanh số bị
-   * cộng dồn gấp đôi.
+   * và file lần trước KHÔNG vào được — bình thường tải trùng là Google cộng dồn
+   * thành hai chuyển đổi.
    */
   @Get("ads/export.csv")
   @Header("Content-Type", "text/csv; charset=utf-8")
   @Header("Content-Disposition", 'attachment; filename="koi-google-ads.csv"')
-  @ApiOperation({ summary: "Xuất CSV doanh số thật cho Google Ads" })
+  @ApiOperation({ summary: "Xuất CSV chuyển đổi cho Google Ads" })
   async xuat(
+    @Res({ passthrough: true }) res: Response,
     @Query("name") name?: string,
     @Query("lai") lai?: string,
   ): Promise<string> {
-    const csv = await this.ads.xuatCsv(name || "Zalo Sale", lai === "1");
+    const { csv, dangCho } = await this.ads.xuatCsv(name || "Zalo Sale", lai === "1");
+
+    // Số dòng đang chờ đủ 24 giờ, gửi qua header vì thân phản hồi là tệp CSV
+    // chứ không phải JSON. Không có con số này thì phía admin chỉ biết "rỗng"
+    // và buộc phải báo "hết đơn mới" — sai, và làm chủ tiệm tưởng quảng cáo
+    // không ra khách nào. Expose-Headers vì admin gọi khác tên miền.
+    res.setHeader("X-Koi-Dang-Cho", String(dangCho));
+    res.setHeader("Access-Control-Expose-Headers", "X-Koi-Dang-Cho");
+
     // Không đơn nào mới: trả rỗng hẳn. Dán BOM vào là thành file 3 byte, phía
     // admin thấy blob.size > 0 nên tưởng tải được và báo thành công.
     if (!csv) return "";

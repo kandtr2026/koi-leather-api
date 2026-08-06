@@ -4,17 +4,34 @@ import { PrismaService } from "../prisma/prisma.service";
 import { dauNgayVN } from "../common/ngay-vn";
 
 /**
- * Nối cú bấm quảng cáo Google với đơn hàng chốt trên Zalo.
+ * Nối cú bấm quảng cáo Google với hội thoại Zalo.
  *
- * BÀI TOÁN. Google Ads chỉ tối ưu giỏi khi biết cú bấm nào ra tiền thật. Site
+ * BÀI TOÁN. Google Ads chỉ tối ưu giỏi khi có tín hiệu chuyển đổi gửi về. Site
  * này không bán online — mọi đơn chốt trong hộp thoại Zalo, không có trang
- * "cảm ơn" để tự nối. Nếu chỉ đếm "khách bấm nút Zalo" rồi bảo Google tối ưu
- * theo đó, Google sẽ đi tìm NGƯỜI THÍCH BẤM NÚT, không phải người mua hàng.
+ * "cảm ơn" để tự nối. Không gửi gì về thì Google đấu giá mù: nó biết cú bấm
+ * nào rẻ, không biết cú bấm nào ra khách.
  *
  * CÁCH NỐI. Khách vào từ quảng cáo mang theo ?gclid= trên URL. Ta lưu lại,
- * sinh một mã ngắn, nhét mã vào tin nhắn Zalo soạn sẵn. Chủ shop thấy mã ngay
- * trong hộp thoại. Chốt đơn thì gõ mã vào admin + điền số tiền, rồi xuất CSV
- * tải lên Google Ads. Từ đó Google học theo DOANH SỐ chứ không theo cú bấm.
+ * sinh một mã ngắn, nhét mã vào tin nhắn Zalo soạn sẵn. Khách bấm nút liên hệ
+ * là dòng đó được TÍNH LUÔN LÀ CHUYỂN ĐỔI, rồi xuất CSV tải lên Google Ads.
+ *
+ * VÌ SAO TÍNH THEO CÚ BẤM LIÊN HỆ, KHÔNG ĐỢI SỐ TIỀN. Đây là quyết định của
+ * chủ tiệm, và nó đúng với thực tế bán hàng ở đây:
+ *
+ *  · Đơn chốt qua Zalo rồi giao tận tay, KHÔNG có hoá đơn điện tử để đối
+ *    chiếu. Muốn có số tiền thì chủ tiệm phải ngồi gõ tay từng đơn — việc đó
+ *    không bao giờ được làm đều, và bằng chứng nằm ngay trong bảng: 4 dòng đã
+ *    nhắn tin, 0 dòng có tiền.
+ *  · Tín hiệu KHÔNG BAO GIỜ GỬI thì tệ hơn hẳn tín hiệu gửi thiếu tiền. Với
+ *    tệp rỗng, Google học được đúng con số không.
+ *  · Bù lại phải hiểu rõ giới hạn: Google sẽ tối ưu để tìm NGƯỜI CHỊU BẤM
+ *    NHẮN TIN, không phải người mua nhiều. Nên phải đấu giá theo số lượt
+ *    chuyển đổi (Maximise conversions), KHÔNG dùng tROAS hay Maximise
+ *    conversion value — hai chiến lược đó cần số tiền thật mới chạy đúng.
+ *
+ * Vẫn giữ nguyên đường nhập tiền tay ở admin: chủ tiệm rảnh mà gõ vào thì cột
+ * giá trị có số thật thay vì bỏ trắng, báo cáo càng sát. Chỉ là không CHỜ nó
+ * nữa.
  *
  * XEM THÊM: ads.controller.ts (đường công khai vs đường admin) và
  * src/lib/gclid.ts bên koi-storefront (phần bắt gclid trên trình duyệt).
@@ -54,11 +71,34 @@ const DAI_MA = 6;
 export const HAN_GOOGLE_NGAY = 90;
 
 /**
- * Giữ dòng chưa chốt bao lâu rồi dọn.
+ * Cú bấm phải già bao nhiêu tiếng mới được xuất lên Google.
+ *
+ * ĐÂY LÀ CÁI BẪY LỚN NHẤT của việc tính chuyển đổi ngay lúc bấm nút. Tài liệu
+ * Google ghi: "If any of the conversions you import are within one day of the
+ * click, Google Ads may not be able to record them yet." Trước đây chủ tiệm gõ
+ * số tiền vài ngày sau khi khách nhắn nên không bao giờ đụng phải; giờ chuyển
+ * đổi sinh ra sau cú bấm ĐÚNG VÀI GIÂY, nên MỌI dòng đều rơi vào vùng đó.
+ *
+ * Hậu quả nếu không chặn: chủ tiệm bấm "Xuất CSV" buổi chiều, Google im lặng
+ * bỏ qua nửa tệp — không báo lỗi — mà exportedAt thì đã đóng dấu, nên những
+ * dòng đó KHÔNG BAO GIỜ được xuất lại. Mất vĩnh viễn, và không có cách nào
+ * biết mình vừa mất.
+ *
+ * 24 giờ chứ không phải 6: mốc 6 tiếng là điều kiện cho conversion action vừa
+ * tạo, không phải cho cú bấm. Với cú bấm thì Google nói hẳn "một ngày".
+ */
+const CHO_XUAT_GIO = 24;
+
+/**
+ * Giữ dòng chưa chuyển đổi bao lâu rồi dọn.
  *
  * 120 ngày = 90 ngày hạn Google + 30 ngày đệm để còn xem lại báo cáo cũ. Quá
- * mốc đó thì dòng chưa chốt vĩnh viễn vô dụng, giữ chỉ tổ phình bảng.
- * Dòng ĐÃ CHỐT thì giữ luôn: đó là lịch sử doanh thu, không phải rác.
+ * mốc đó thì dòng chưa chuyển đổi vĩnh viễn vô dụng, giữ chỉ tổ phình bảng.
+ *
+ * Dòng ĐÃ CHUYỂN ĐỔI thì giữ luôn — kể cả khi không có đồng tiền nào. Từ khi
+ * cú bấm nút tự tính là chuyển đổi, phần lớn dòng giữ lại sẽ trắng tiền, và
+ * chúng vẫn phải giữ: đó là bằng chứng đối chiếu với con số Google báo, thứ
+ * duy nhất kiểm được là mình đã gửi đúng hay chưa.
  */
 const HAN_DON_RAC_NGAY = 120;
 
@@ -132,11 +172,15 @@ export class AdsService {
   }
 
   /**
-   * Khách vừa bấm nút Zalo/Messenger — đánh dấu vào dòng đã có.
+   * Khách vừa bấm nút Zalo/Messenger/Gọi — ĐÂY LÀ CHUYỂN ĐỔI.
    *
    * Tách khỏi ghiNhanBam vì hai việc cách nhau về thời gian: khách vào xem
    * mười phút rồi mới nhắn. Dòng nào không bao giờ tới bước này = quảng cáo
    * kéo được người vào nhưng không ra hội thoại.
+   *
+   * Đặt LUÔN convertedAt ở đây, không đợi chủ tiệm gõ số tiền. Lý do đầy đủ ở
+   * doc comment đầu tệp; ngắn gọn: không đợi thì Google có tín hiệu để học,
+   * đợi thì tệp CSV rỗng vĩnh viễn.
    */
   async ghiNhanLienHe(input: {
     token: string;
@@ -146,11 +190,20 @@ export class AdsService {
     // updateMany chứ không update: khách có thể gửi mã cũ đã bị dọn rác, hoặc
     // mã bịa. update sẽ ném lỗi, updateMany lặng lẽ khớp 0 dòng — đúng thứ ta
     // muốn cho một đường công khai ai gọi cũng được.
+    //
+    // contactedAt: null trong where — CHỈ ghi lần liên hệ ĐẦU. Đó là lúc quảng
+    // cáo thực sự đẻ ra hội thoại, và cũng là mốc giờ đã nằm trong tệp CSV đã
+    // tải lên. Khách bấm Zalo lần hai (chuyện rất thường: bấm ở đầu trang,
+    // cuộn xuống bấm tiếp) mà ta dịch convertedAt lên thì dòng đó lệch giờ so
+    // với thứ Google đã nhận, và nếu chủ tiệm bấm "xuất lại" thì thành hai
+    // chuyển đổi cùng một gclid — Google CỘNG DỒN, không thay thế.
     await this.prisma.koiAdClick.updateMany({
-      where: { token: input.token },
+      where: { token: input.token, contactedAt: null },
       data: {
-        // Giữ lần liên hệ ĐẦU: đó là lúc quảng cáo thực sự đẻ ra hội thoại.
         contactedAt: new Date(),
+        // Cùng một mốc giờ với contactedAt là đúng bản chất: cú bấm nút CHÍNH
+        // LÀ chuyển đổi, không phải một sự kiện xảy ra sau nó.
+        convertedAt: new Date(),
         channel: input.channel?.slice(0, 32) || null,
         productName: input.productName?.slice(0, 255) || null,
       },
@@ -195,10 +248,21 @@ export class AdsService {
       days: soNgay,
       from: tu.toISOString(),
       tongCong: rows.length,
-      // Đếm sẵn cho admin khỏi phải tự cộng: ba con số này là toàn bộ câu
-      // chuyện — bao nhiêu cú bấm, bao nhiêu ra hội thoại, bao nhiêu ra tiền.
+      // Đếm sẵn cho admin khỏi phải tự cộng. Bốn con số là toàn bộ câu chuyện:
+      // bao nhiêu cú bấm vào, bao nhiêu ra hội thoại (= bao nhiêu chuyển đổi,
+      // vì cú bấm nút CHÍNH LÀ chuyển đổi), bao nhiêu đã gửi được sang Google,
+      // và bao nhiêu trong số đó có số tiền thật.
       daLienHe: rows.filter((r) => r.contactedAt).length,
       daChot: rows.filter((r) => r.convertedAt).length,
+      // daXuat tách riêng vì đây là con số DUY NHẤT cho biết Google đã học được
+      // gì. Chuyển đổi nằm trong bảng mà chưa xuất thì với Google là chưa tồn
+      // tại — mà đó đúng là chỗ dễ tưởng đã xong nhất.
+      daXuat: rows.filter((r) => r.exportedAt).length,
+      // Chỉ đếm dòng CÓ tiền, không đếm dòng tiền null: từ khi cú bấm tự tính
+      // là chuyển đổi, phần lớn dòng có convertedAt mà không có value. Lấy
+      // daChot làm mẫu số cho doanh thu là ra giá trị đơn trung bình gần bằng
+      // không, và đó là con số bịa.
+      soDonCoTien: rows.filter((r) => r.value !== null).length,
       doanhThu: rows
         .reduce((s, r) => s + (r.value ?? 0n), 0n)
         .toString(),
@@ -260,10 +324,14 @@ export class AdsService {
   }
 
   /**
-   * Chủ shop đánh dấu một mã đã chốt đơn.
+   * Chủ tiệm ghi số tiền thật cho một mã.
    *
-   * convertedAt mặc định là BÂY GIỜ, nhưng cho phép truyền vào: đơn thường
-   * chốt trước lúc chủ shop ngồi nhập liệu, mà Google tính theo giờ chốt thật.
+   * KHÔNG còn là nơi tạo ra chuyển đổi — cú bấm nút Zalo đã làm việc đó rồi.
+   * Hàm này giờ chỉ để LÀM GIÀU dòng đã có: thay số 0 bằng số tiền thật, thêm
+   * ghi chú, sửa lại giờ chốt nếu đơn chốt lệch ngày với lúc khách bấm.
+   *
+   * Vẫn cho phép đánh dấu một dòng chưa có convertedAt: khách gọi điện thoại
+   * trực tiếp không qua nút nào, hoặc dòng cũ có từ trước bản này.
    */
   async danhDauChot(input: {
     token: string;
@@ -275,16 +343,30 @@ export class AdsService {
     const r = await this.prisma.koiAdClick.findUnique({ where: { token } });
     if (!r) return { ok: false };
 
-    // Cho phép xoá đánh dấu bằng cách gửi value rỗng và convertedAt rỗng —
-    // chủ shop ghi nhầm mã thì phải sửa được, không thì dòng sai nằm đó vĩnh
-    // viễn và bơm số ảo cho Google.
+    // "Bỏ đánh dấu" = gửi value rỗng VÀ convertedAt rỗng.
+    //
+    // Ý nghĩa của nó đổi hẳn kể từ khi cú bấm nút tự tính là chuyển đổi. Trước
+    // đây bỏ đánh dấu là xoá cả dòng khỏi báo cáo — hợp lý, vì dòng đó do người
+    // gõ tay tạo ra nên gõ nhầm thì xoá. Giờ thì convertedAt sinh ra từ MỘT SỰ
+    // KIỆN THẬT: khách có bấm nút, không ai bịa được.
+    //
+    // Nên bỏ đánh dấu chỉ XOÁ SỐ TIỀN, giữ nguyên convertedAt của lần bấm. Nếu
+    // xoá cả convertedAt thì:
+    //   · dòng đó biến mất khỏi báo cáo dù cú bấm vẫn có thật, và
+    //   · nếu đã xuất lên Google rồi thì bên đó vẫn còn chuyển đổi ấy — hai
+    //     bên lệch nhau vĩnh viễn mà không cách nào đối chiếu ra.
+    // Dòng nào KHÔNG có contactedAt (khách gọi trực tiếp, chủ tiệm tự đánh dấu)
+    // thì mới xoá được cả convertedAt, vì đó đúng là dòng do người tạo.
     const bo = input.convertedAt === null && input.value === null;
+    const doKhachBam = Boolean(r.contactedAt);
 
     await this.prisma.koiAdClick.update({
       where: { token },
       data: {
         convertedAt: bo
-          ? null
+          ? doKhachBam
+            ? r.convertedAt // giữ: khách bấm nút thật, không xoá được
+            : null
           : input.convertedAt
             ? new Date(input.convertedAt)
             : (r.convertedAt ?? new Date()),
@@ -295,7 +377,12 @@ export class AdsService {
             : BigInt(String(input.value).replace(/\D/g, "") || "0"),
         note: input.note === undefined ? r.note : (input.note?.slice(0, 500) || null),
         // Sửa lại thì coi như chưa xuất: số đã đổi, phải cho xuất lại.
-        exportedAt: bo ? null : r.exportedAt,
+        //
+        // NHƯNG chỉ khi CHƯA xuất lần nào. Đã xuất rồi mà mở lại đường xuất thì
+        // Google nhận gclid đó lần thứ hai và CỘNG DỒN thành hai chuyển đổi —
+        // đúng cái bẫy exportedAt sinh ra để tránh. Đơn đã lên Google mà sau đó
+        // mới biết số tiền thì phải sửa bên Google Ads, không sửa ở đây.
+        exportedAt: r.exportedAt,
       },
     });
     return { ok: true };
@@ -330,34 +417,81 @@ export class AdsService {
    *     clicks" (KHÔNG dùng được action của website). Tạo ở phần
    *     "Conversions offline".
    *  2. Tên trong cột Conversion Name phải khớp từng chữ với tên action đó.
-   *  3. Chờ 4-6 tiếng sau khi tạo action rồi mới tải lên lần đầu, và cú bấm
-   *     phải cũ hơn 6 tiếng.
+   *  3. Chờ 4-6 tiếng sau khi TẠO ACTION rồi mới tải lên lần đầu. Mốc này là
+   *     của action, khác với mốc chờ của từng cú bấm — xem CHO_XUAT_GIO.
+   *
+   * KHÔNG CÓ TIỀN THÌ BỎ TRẮNG CỘT, KHÔNG GHI SỐ 0. Hai cách này nhìn giống
+   * nhau mà Google hiểu khác hẳn: bỏ trắng là "tôi không khai", Google lấy giá
+   * trị mặc định đã đặt ở conversion action; ghi 0 là "đơn này trị giá không
+   * đồng", và con số đó ĐÈ luôn giá trị mặc định.
+   *
+   * Hồi mọi dòng đều có tiền gõ tay thì ghi 0 không bao giờ xảy ra nên không
+   * hại gì. Giờ gần như dòng nào cũng trắng tiền, mà ghi 0 thì:
+   *
+   *  · cột doanh thu trong Google Ads đứng ở 0 vĩnh viễn, chủ tiệm mở báo cáo
+   *    ra thấy quảng cáo không sinh ra đồng nào;
+   *  · giá trị mặc định đặt ở action thành vô nghĩa — mà đặt một con số trung
+   *    bình cho mỗi lượt nhắn tin là việc NÊN làm;
+   *  · vài dòng có tiền thật lẫn với một rừng số 0, giá trị trung bình sai
+   *    hoàn toàn, và nếu sau này đổi sang đấu giá theo giá trị thì những số 0
+   *    đó dạy Google đúng điều ngược lại.
+   *
+   * Cột Conversion Currency cũng bỏ trắng theo: khai tiền tệ mà không khai
+   * tiền là vô nghĩa. Dòng nào chủ tiệm gõ tiền tay thì ghi đủ cả hai.
    *
    * MẶC ĐỊNH CHỈ LẤY DÒNG CHƯA XUẤT. Google CỘNG DỒN chứ không thay thế: tải
-   * cùng một gclid hai lần là doanh số nhân đôi, mà Google lại tự tối ưu theo
-   * con số đó nên tiền quảng cáo sẽ đổ nhầm chỗ. Chủ shop bấm tải hai lần
+   * cùng một gclid hai lần là đếm thành hai chuyển đổi, mà Google lại tự tối ưu
+   * theo con số đó nên tiền quảng cáo sẽ đổ nhầm chỗ. Chủ tiệm bấm tải hai lần
    * trong một buổi là chuyện thường, không thể trông vào việc họ nhớ.
    *
    * Đặt lai = true khi Google báo lỗi và cần tải lại — lúc đó lần trước KHÔNG
    * vào được nên xuất lại là đúng.
+   *
+   * TRẢ VỀ { csv, dangCho }: csv rỗng thì dangCho cho biết còn bao nhiêu dòng
+   * chưa đủ 24 giờ. Phân biệt "hết đơn thật" với "đơn còn non" — hai chuyện
+   * khác nhau hoàn toàn với người đang ngồi chờ số liệu.
    */
-  async xuatCsv(conversionName: string, lai = false): Promise<string> {
+  async xuatCsv(
+    conversionName: string,
+    lai = false,
+  ): Promise<{ csv: string; dangCho: number }> {
     const rows = await this.prisma.koiAdClick.findMany({
       where: {
         convertedAt: { not: null },
         gclid: { not: null },
         // Quá 90 ngày thì Google lặng lẽ bỏ qua — lọc sẵn ở đây để file không
         // chứa dòng vô dụng và con số đối chiếu sau này khỏi lệch.
-        clickedAt: { gte: new Date(Date.now() - HAN_GOOGLE_NGAY * 86_400_000) },
+        clickedAt: {
+          gte: new Date(Date.now() - HAN_GOOGLE_NGAY * 86_400_000),
+          // Và phải ĐỦ GIÀ: cú bấm mới dưới 24 giờ thì Google chưa ghi nhận
+          // được, xuất ra là mất dòng đó vĩnh viễn. Xem CHO_XUAT_GIO.
+          lte: new Date(Date.now() - CHO_XUAT_GIO * 3_600_000),
+        },
         ...(lai ? {} : { exportedAt: null }),
       },
       orderBy: { convertedAt: "asc" },
     });
 
-    // Không còn đơn mới nào: trả chuỗi rỗng để nơi gọi phân biệt được với file
-    // có dữ liệu. Đưa file chỉ có hai dòng tiêu đề lên Google là báo lỗi vô
-    // nghĩa, mà chủ shop lại tưởng đã tải xong.
-    if (!rows.length) return "";
+    // Không có dòng nào xuất được. Trả rỗng để nơi gọi phân biệt với file có
+    // dữ liệu (đưa file chỉ có hai dòng tiêu đề lên Google là báo lỗi vô nghĩa,
+    // mà chủ tiệm lại tưởng đã tải xong).
+    //
+    // NHƯNG rỗng giờ có HAI nguyên nhân khác nhau, và chủ tiệm phải biết mình
+    // đang gặp cái nào: (a) hết đơn mới thật, (b) có đơn nhưng cú bấm chưa đủ
+    // 24 giờ. Trường hợp (b) mà báo "hết đơn mới" là chủ tiệm tưởng hệ thống
+    // hỏng — hoặc tệ hơn, tưởng quảng cáo không ra khách nào. Nên đếm luôn số
+    // dòng đang chờ để nơi gọi nói đúng chuyện.
+    if (!rows.length) {
+      const dangCho = await this.prisma.koiAdClick.count({
+        where: {
+          convertedAt: { not: null },
+          gclid: { not: null },
+          clickedAt: { gt: new Date(Date.now() - CHO_XUAT_GIO * 3_600_000) },
+          ...(lai ? {} : { exportedAt: null }),
+        },
+      });
+      return { csv: "", dangCho };
+    }
 
     const dong = [
       `Parameters:TimeZone=${LECH_GIO}`,
@@ -365,15 +499,17 @@ export class AdsService {
     ];
 
     for (const r of rows) {
+      // Bỏ trắng CẢ HAI cột khi không có tiền — xem phần giải thích ở đầu hàm.
+      // Không dấu chấm phân cách nghìn: Excel bản tiếng Việt hay tự chèn
+      // "1.250.000" và Google đọc thành 1,25 — hụt một nghìn lần.
+      const tien = r.value === null ? "" : r.value.toString();
       dong.push(
         [
           r.gclid ?? "",
           this.boc(conversionName),
           this.gioGoogle(r.convertedAt as Date),
-          // Không dấu chấm phân cách nghìn: Excel bản tiếng Việt hay tự chèn
-          // "1.250.000" và Google đọc thành 1,25 — hụt một nghìn lần.
-          (r.value ?? 0n).toString(),
-          "VND",
+          tien,
+          tien === "" ? "" : "VND",
           r.token,
         ].join(","),
       );
@@ -386,7 +522,7 @@ export class AdsService {
       data: { exportedAt: new Date() },
     });
 
-    return dong.join("\r\n");
+    return { csv: dong.join("\r\n"), dangCho: 0 };
   }
 
   /** Bọc ô CSV nếu có dấu phẩy/nháy — tên action do người gõ, không tin được. */
