@@ -749,7 +749,10 @@
         <div id="pMaterialCategories" class="w-full border border-gray-300 rounded-lg p-2 max-h-44 overflow-y-auto grid grid-cols-2 gap-x-4 gap-y-0.5"></div>
       </div>
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="text" inputmode="numeric" autocomplete="off" oninput="onPriceInput(this)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2.500.000"></div>
+        <!-- capNhatPhanQuyet(): ô này là đường lui giá cho biến thể chưa định giá,
+             nên sửa nó là đổi phán quyết bán/không bán ở thẻ Biến thể. Cập nhật
+             ngay để không phải bấm Lưu mới biết mình vừa làm gì. -->
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Giá (VNĐ)</label><input id="pPrice" type="text" inputmode="numeric" autocomplete="off" oninput="onPriceInput(this); capNhatPhanQuyet()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="2.500.000"></div>
 
       </div>
 
@@ -797,6 +800,86 @@
           <button type="button" onclick="addDescBlock('list')" class="blk-add"><i class="fas fa-list-ul"></i> Gạch đầu dòng</button>
           <button type="button" onclick="addDescBlock('quote')" class="blk-add"><i class="fas fa-quote-left"></i> Trích dẫn</button>
           <button type="button" onclick="addDescBlock('image')" class="blk-add"><i class="fas fa-image"></i> Ảnh</button>
+        </div>
+      </div>
+
+      <!-- ================= THẺ: BIẾN THỂ =================
+           Vì sao thẻ này phải có: đo trên dữ liệu thật ngày 2026-08-07, 106/106
+           biến thể trong cơ sở dữ liệu có price = null, và KHÔNG có chỗ nào nhập
+           được — modal này trước đây chỉ có hai thẻ, và saveProduct() không bao
+           giờ gửi `variants` lên. Bảng WooCommerce cũ (public.product_variants)
+           cũng 0/106 có giá, nên không suy ra từ đâu được.
+
+           Giỏ hàng thì buộc phải tính ra một con số cho từng biến thể khách
+           chọn. Chừng nào ô này còn trống thì 59 biến thể của 13 sản phẩm không
+           bán online được — xem cảnh báo đỏ bên dưới. -->
+      <div class="pmodal-panel" id="ppanel-variants">
+        <!-- Cảnh báo hiện KHI VÀ CHỈ KHI sản phẩm khai dải giá mà biến thể chưa
+             có giá. Đó đúng là trường hợp giỏ hàng sẽ bán rẻ nếu code lấy giá
+             sản phẩm làm đường lui — xem mapVariants() ở shop.service.ts. -->
+        <div id="pVarWarn" class="hidden mb-3 rounded-xl border border-red-200 bg-red-50 p-3">
+          <div class="flex items-start gap-2">
+            <i class="fas fa-triangle-exclamation text-red-500 mt-0.5"></i>
+            <div class="grow text-xs text-red-900 leading-relaxed">
+              <!-- Tiêu đề đổi theo loại cảnh báo: "chưa bán được" và "sắp bán rẻ"
+                   là hai chuyện khác nhau. Xem renderVariantWarn(). -->
+              <div id="pVarWarnTitle" class="font-semibold mb-0.5">Chưa bán online được</div>
+              <div id="pVarWarnDetail"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="pVarEmpty" class="hidden py-8 text-center text-sm text-gray-400">
+          Sản phẩm này không có biến thể. Giá bán lấy từ ô <strong>Giá</strong> ở thẻ Thông tin.
+        </div>
+
+        <div id="pVarBody" class="hidden">
+          <!-- Điền một lượt: da-ca-sau-phap-alligator có 28 biến thể cùng một
+               giá, gõ tay 28 lần là 28 cơ hội gõ sai một chữ số. -->
+          <div class="mb-3 flex flex-wrap items-end gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Điền giá cho tất cả biến thể</label>
+              <input id="pVarBulkPrice" type="text" inputmode="numeric" autocomplete="off"
+                oninput="onPriceInput(this)" placeholder="2.500.000"
+                class="w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <button type="button" onclick="applyBulkVariantPrice()"
+              class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium">
+              Áp dụng
+            </button>
+            <p class="text-[11px] text-gray-400 grow">Ghi đè giá của mọi biến thể bên dưới. Vẫn phải bấm <strong>Lưu</strong> mới ghi vào cơ sở dữ liệu.</p>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase">
+                  <th class="px-3 py-2">Tên biến thể</th>
+                  <th class="px-3 py-2">Mã hàng</th>
+                  <th class="px-3 py-2 w-40">Giá (VNĐ)</th>
+                  <th class="px-3 py-2 w-36">Tồn kho</th>
+                  <!-- Cột phán quyết: dòng này khách bấm "Thêm vào giỏ" được hay
+                       không. Nó là lý do cả thẻ này tồn tại, nên phải thấy ngay
+                       trên từng dòng chứ không chỉ trong cảnh báo tổng ở trên. -->
+                  <th class="px-3 py-2 w-32">Bán online</th>
+                </tr>
+              </thead>
+              <tbody id="pVarRows"></tbody>
+            </table>
+          </div>
+
+          <!-- Ba câu này là ba cái bẫy đã đo được trên dữ liệu thật, không phải
+               lời nhắc chung. Xem ghi chú "ĐƯỜNG LUI GIÁ SẢN PHẨM" ở phần JS. -->
+          <p class="mt-3 text-[11px] text-gray-400 leading-relaxed">
+            Ô giá trống mà sản phẩm chưa khai dải giá thì biến thể tạm bán theo ô
+            <strong>Giá</strong> ở thẻ Thông tin — tức mọi biến thể cùng một giá.
+            Điền giá thật vào đây nếu chúng khác nhau.<br>
+            Điền giá cho <em>một phần</em> biến thể là trường hợp cần để ý: ngay khi có
+            biến thể đầu tiên mang giá, sản phẩm thành có dải giá, và những dòng còn
+            trống sẽ <strong>ngừng bán online</strong> cho tới khi được điền. Cột
+            <strong>Bán online</strong> cho thấy trước điều đó.<br>
+            Thêm hoặc xoá biến thể chưa làm được ở đây.
+          </p>
         </div>
       </div>
     </div>
@@ -4394,6 +4477,187 @@ let descDirty = false;
 /** Thẻ đang mở trong modal sản phẩm. */
 let productTab = 'info';
 
+/**
+ * ══ THẺ BIẾN THỂ ══
+ *
+ * VÌ SAO PHẦN NÀY PHẢI CÓ. Đo ngày 2026-08-07: 106/106 biến thể trong cơ sở dữ
+ * liệu có price = null, và không có chỗ nào nhập được — modal sản phẩm chỉ có
+ * hai thẻ, và saveProduct() không bao giờ gửi `variants`. Bảng WooCommerce cũ
+ * (public.product_variants) cũng 0/106 có giá.
+ *
+ * Chuyện đó không sao khi mặt tiền còn là brochure: người bán tự báo giá trong
+ * cuộc gọi. Nhưng giỏ hàng phải tự tính ra một con số cho biến thể khách chọn,
+ * và 12 sản phẩm đang khai DẢI GIÁ (hal-bag 3,8tr–6,8tr) — nếu code lấy giá sản
+ * phẩm làm đường lui thì mọi biến thể được tính theo mức thấp nhất của dải, tức
+ * bán rẻ tới 3 triệu một đơn. Backend đã chặn bằng cách trả price = null kèm
+ * can_add_to_cart = false (xem mapVariants ở shop.service.ts), nên hàng đó
+ * KHÔNG bán online được cho tới khi có giá thật. Ô nhập này là chỗ điền.
+ *
+ * ══ VÌ SAO DÙNG PATCH BATCH RIÊNG, KHÔNG GỬI CẢ MẢNG QUA PATCH SẢN PHẨM ══
+ *
+ * PATCH /products/:id có nhận `variants[]`, nhưng đường đó KHÔNG dùng được ở
+ * đây, vì hai lẽ:
+ *
+ *  1. `VariantDto.price` là bắt buộc (@IsNumber, không @IsOptional). Gửi mảng mà
+ *     một biến thể chưa có giá thì ValidationPipe trả 400 cho cả lượt lưu — tức
+ *     không thể lưu dở dang, phải điền đủ 28 ô của da-ca-sau mới lưu được lần
+ *     đầu.
+ *  2. `upsertVariantsTx` XOÁ mọi biến thể có id không nằm trong mảng gửi lên.
+ *     Một cú gửi thiếu là mất sạch biến thể, kéo theo mất cả lệnh sản xuất đang
+ *     trỏ vào chúng (KoiProductionOrder.variantId).
+ *
+ * Endpoint batch `/products/:id/variants` nhận các dòng đã đổi, cho phép `price`
+ * bằng null và ghi toàn bộ trong MỘT transaction. Dải giá chỉ được tính lại sau
+ * khi tất cả giá mới đã có, nên không có khoảng trống bán nhầm theo giá đáy.
+ * Chỉ gửi những dòng THẬT SỰ đổi (so với `variantsGoc`).
+ */
+
+/** Biến thể đang sửa trong modal. Mảng phẳng theo đúng thứ tự hiện trên bảng. */
+let variantRows = [];
+/** Bản chụp lúc mở modal, để biết dòng nào thật sự đổi mà chỉ gửi dòng đó. */
+let variantsGoc = [];
+/** Có sửa gì chưa — quyết định việc gọi API lúc Lưu. */
+let variantsDirty = false;
+
+/**
+ * Dải giá ĐANG GHI trong DB của sản phẩm đang mở: { priceMin, priceMax }.
+ *
+ * VÌ SAO PHẢI GIỮ RIÊNG, KHÔNG TÍNH LẠI TỪ BẢNG. Đo được ngày 2026-08-07:
+ * hal-bag-da-bo-swift-white có priceMin = 3.800.000 và priceMax = 6.800.000 trong
+ * khi CẢ HAI biến thể của nó price = null. computePriceRange() không bao giờ tạo ra
+ * được cặp số đó từ hai giá null — nó sẽ trả basePrice cho cả min và max. Nghĩa là
+ * dải giá đó tới từ nơi khác: nhập về từ WooCommerce cũ.
+ *
+ * Cặp số đó là BẰNG CHỨNG, không phải rác: nó nói "món này thật sự bán từ 3,8 tới
+ * 6,8 triệu tuỳ biến thể". Và đó là thứ đang chặn không cho bán online — server
+ * thấy có dải giá thì không đoán giá cho biến thể trống (mapVariants).
+ *
+ * ══ VÌ SAO ĐIỀU NÀY NGUY HIỂM, ĐO ĐƯỢC ══
+ *
+ * update() (PATCH sản phẩm) KHÔNG gọi recomputePriceRange — đã kiểm: nó chỉ dùng
+ * basePrice để sinh thẻ SEO. Nên lưu tên hay giá sản phẩm thì dải giá nhập về vẫn
+ * còn nguyên.
+ *
+ * Nhưng updateVariant() CÓ gọi. Nên với hal-bag: điền giá cho MỘT biến thể (3,8tr)
+ * rồi Lưu là recomputePriceRange chạy trên hai biến thể, chỉ một cái có giá →
+ * min = max = 3.800.000 → hết dải giá → biến thể thứ hai lùi về basePrice và bắt
+ * đầu bán ở 3.800.000đ. Trong khi dải giá vừa bị xoá nói nó đáng tới 6.800.000đ.
+ * Bán rẻ 3 triệu một đơn, âm thầm, do một lần điền thiếu.
+ *
+ * Vì vậy phán quyết phải đọc dải giá này, và phải có cảnh báo riêng cho đúng nước
+ * đi đó — xem renderVariantWarn().
+ */
+let variantsDaiGiaGoc = { priceMin: null, priceMax: null };
+
+/**
+ * ══ ĐƯỜNG LUI GIÁ SẢN PHẨM, VÀ CÁI BẪY NÓ DỰNG RA ══
+ *
+ * Đo trên dữ liệu thật ngày 2026-08-07: 23 sản phẩm có biến thể, 106/106 biến thể
+ * price = null. Trong đó 12 sản phẩm khai dải giá (priceMax > priceMin) và 11 sản
+ * phẩm KHÔNG.
+ *
+ * 11 sản phẩm không khai dải giá thì mặt tiền vẫn bán được: mapVariants() ở
+ * shop.service.ts lấy basePrice làm giá cho mọi biến thể, vì khi không có dải giá
+ * thì "một giá cho tất cả" là suy luận đúng. Ví dụ vi-zipper 16 biến thể đang bán
+ * ở 2.850.000đ mỗi biến thể.
+ *
+ * CÁI BẪY: đường lui đó tắt ngay khi có dải giá. Điền giá cho MỘT biến thể của
+ * vi-zipper là recomputePriceRange() đặt priceMin = priceMax = giá đó → chưa thành
+ * dải, 15 dòng còn lại vẫn bán theo basePrice. Nhưng điền giá THỨ HAI khác giá thứ
+ * nhất là thành dải thật → 14 dòng còn trống LẬP TỨC ngừng bán online.
+ *
+ * Đó là kiểu hỏng tệ nhất: người bán sửa giá cho hai biến thể, rồi 14 biến thể âm
+ * thầm biến mất khỏi giỏ hàng mà không có gì báo. Nên hàm dưới đây tính lại đúng
+ * phán quyết của server NGAY TRONG TRÌNH DUYỆT, theo những con số đang có trên
+ * bảng — trước khi bấm Lưu. Cột "Bán online" đọc từ nó.
+ *
+ * Phải khớp từng nhánh với mapVariants() ở backend. Lệch một nhánh là bảng nói dối.
+ */
+function tinhPhanQuyetBienThe() {
+  // basePrice đọc từ ô đang gõ, không đọc từ bản đã lưu: sửa giá sản phẩm ở thẻ
+  // Thông tin rồi sang thẻ này phải thấy hệ quả ngay.
+  const baseRaw = parsePriceInput(document.getElementById('pPrice')?.value);
+  const basePrice = (baseRaw === '' || Number.isNaN(baseRaw)) ? null : baseRaw;
+
+  // Dải giá SAU KHI LƯU: đúng computePriceRange() ở server — bỏ qua ô trống, chỉ
+  // còn ô trống thì lùi về basePrice.
+  const giaCo = variantRows
+    .map(v => v.price)
+    .filter(x => x != null && !Number.isNaN(x));
+  const sauMin = giaCo.length ? Math.min(...giaCo) : basePrice;
+  const sauMax = giaCo.length ? Math.max(...giaCo) : basePrice;
+
+  // ── Dùng dải giá NÀO ──
+  //
+  // Chưa sửa biến thể nào (`!variantsDirty`) → không có lượt PATCH biến thể nào
+  // được gửi → recomputePriceRange KHÔNG chạy → dải giá trong DB còn nguyên. Nên
+  // phán quyết đúng là phán quyết HIỆN TẠI, tính theo dải giá đã ghi. Đó cũng là
+  // thứ khách đang thấy ngoài mặt tiền lúc này.
+  //
+  // Có sửa → recompute sẽ chạy → dải giá đã ghi sẽ bị thay. Phán quyết đúng là
+  // phán quyết SAU KHI LƯU.
+  //
+  // Không gộp hai đường thành một được: với hal-bag, đường trên nói "đang bị chặn"
+  // (đúng), đường dưới nói "sắp bán ở 3,8tr" (cũng đúng) — hai câu trả lời khác
+  // nhau cho hai câu hỏi khác nhau, và cả hai đều phải nói được.
+  const dbMin = variantsDaiGiaGoc.priceMin;
+  const dbMax = variantsDaiGiaGoc.priceMax;
+  const coDaiGiaDB = dbMin != null && dbMax != null && dbMax > dbMin;
+  const coDaiGiaSau = sauMin != null && sauMax != null && sauMax > sauMin;
+  const coDaiGia = variantsDirty ? coDaiGiaSau : coDaiGiaDB;
+
+  return variantRows.map(v => {
+    // Đúng ba dòng này ở mapVariants(): giá riêng → giá sản phẩm (chỉ khi KHÔNG
+    // có dải) → không có gì. Rồi 0 cũng coi như không có (0 nghĩa là "liên hệ",
+    // không phải "miễn phí").
+    const tho = v.price ?? (coDaiGia ? null : basePrice);
+    const giaThuc = (tho != null && tho > 0) ? tho : null;
+    const banDuoc = giaThuc != null && v.stockStatus === 'IN_STOCK';
+    return {
+      giaThuc,
+      banDuoc,
+      // Vì sao không bán được — để nói đúng câu, không nói câu chung.
+      lyDo: banDuoc ? null
+        : v.stockStatus !== 'IN_STOCK' ? 'het-hang'
+        : coDaiGia ? 'thieu-gia-co-dai'
+        : 'thieu-gia',
+      /** Giá này là giá vay từ sản phẩm, không phải giá của riêng biến thể. */
+      giaVay: v.price == null && giaThuc != null,
+    };
+  });
+}
+
+/**
+ * Nước đi "lưu bây giờ là bán rẻ": dải giá đã ghi trong DB RỘNG HƠN dải sẽ có sau
+ * khi lưu, và vẫn còn biến thể trống giá.
+ *
+ * Đó đúng là trường hợp hal-bag đã đo: DB nói 3,8tr–6,8tr, điền một ô 3,8tr rồi Lưu
+ * là dải co lại còn 3,8tr–3,8tr, và ô còn trống bắt đầu bán ở 3,8tr thay vì 6,8tr.
+ *
+ * Chỉ báo khi CÒN ô trống. Điền đủ mọi ô thì dải mới là dải thật do người bán khai,
+ * hẹp hơn dải nhập về cũng không sao — đó là quyết định có ý thức, không phải tai nạn.
+ */
+function kiemTraCoDaiGia() {
+  const dbMin = variantsDaiGiaGoc.priceMin;
+  const dbMax = variantsDaiGiaGoc.priceMax;
+  if (dbMin == null || dbMax == null || dbMax <= dbMin) return null;
+
+  const conTrong = variantRows.filter(v => v.price == null).length;
+  if (!conTrong) return null;
+
+  const baseRaw = parsePriceInput(document.getElementById('pPrice')?.value);
+  const basePrice = (baseRaw === '' || Number.isNaN(baseRaw)) ? null : baseRaw;
+  const giaCo = variantRows.map(v => v.price).filter(x => x != null && !Number.isNaN(x));
+  const sauMin = giaCo.length ? Math.min(...giaCo) : basePrice;
+  const sauMax = giaCo.length ? Math.max(...giaCo) : basePrice;
+
+  // Dải sau khi lưu hẹp hơn dải đã ghi → đang mất thông tin giá.
+  if (sauMin == null || sauMax == null) return null;
+  if (sauMax >= dbMax) return null;
+
+  return { dbMin, dbMax, sauMin, sauMax, conTrong, giaVay: sauMax <= sauMin };
+}
+
 const BLOCK_META = {
   paragraph: { label: 'Đoạn văn', icon: 'fa-paragraph' },
   heading: { label: 'Tiêu đề', icon: 'fa-heading' },
@@ -4414,8 +4678,13 @@ function switchProductTab(tab) {
   if (hint) {
     hint.innerHTML = tab === 'desc'
       ? 'Mô tả và thông tin dùng chung một nút <strong>Lưu</strong>.'
-      : '';
+      : tab === 'variants'
+        ? 'Giá biến thể lưu cùng nút <strong>Lưu</strong>, tất cả dòng đổi ghi cùng một lượt.'
+        : '';
   }
+  // Cột "Bán online" tính theo ô Giá ở thẻ Thông tin. Sửa giá đó rồi sang thẻ này
+  // thì phán quyết đã cũ — tính lại lúc mở thẻ, chỗ rẻ nhất và chắc nhất.
+  if (tab === 'variants') capNhatPhanQuyet();
 }
 
 function markDescDirty() {
@@ -5007,6 +5276,10 @@ function openCreateProduct() {
   currentGalleryImages = [];
   switchProductTab('info');
   resetDescEditor([], null);
+  // Sản phẩm mới chưa có biến thể nào. Vẫn phải gọi để xoá bảng của sản phẩm mở
+  // trước đó — không gọi thì bấm Sửa một sản phẩm rồi Thêm mới sẽ thấy bảng cũ,
+  // và bấm Lưu là PATCH đúng vào biến thể của sản phẩm kia.
+  resetVariantEditor([], null, null);
   openModal('productModal');
 }
 
@@ -5054,6 +5327,289 @@ async function editProduct(id) {
   openModal('productModal');
   await loadGallery(id);
   resetDescEditor(p.descriptionBlocks, p.descriptionAudit);
+  // Biến thể: /products/:id đã include variants sẵn (xem findById), không phải
+  // gọi thêm lượt nào. Vẽ SAU khi pPrice đã có giá trị — cột "Bán online" tính
+  // theo basePrice, vẽ trước thì mọi dòng hiện "Thiếu giá" rồi tự sửa lại.
+  // priceMin/priceMax là dải giá ĐANG GHI, không suy lại từ biến thể — với 12 sản
+  // phẩm nhập từ WooCommerce nó là cặp số duy nhất còn giữ được giá thật của biến
+  // thể. Xem ghi chú ở `variantsDaiGiaGoc`.
+  resetVariantEditor(p.variants, p.priceMin, p.priceMax);
+}
+
+// ========== THẺ BIẾN THỂ ==========
+
+/**
+ * Đặt lại thẻ Biến thể — gọi mỗi lần mở modal, giống resetDescEditor().
+ *
+ * `variantsGoc` là bản chụp sâu: lúc Lưu phải so từng dòng để chỉ gửi dòng thật sự
+ * đổi. Chụp nông (slice) là hai mảng trỏ cùng object, sửa một cái là "gốc" cũng
+ * đổi theo và không dòng nào bị coi là đã sửa.
+ */
+function resetVariantEditor(variants, priceMin, priceMax) {
+  // Dải giá đã ghi trong DB — xem ghi chú ở `variantsDaiGiaGoc`. Ép về số hoặc
+  // null: Prisma trả Float? nên có thể là null, và chuỗi rỗng lọt vào đây sẽ làm
+  // mọi phép so sánh bên dưới ra kết quả vô nghĩa.
+  variantsDaiGiaGoc = {
+    priceMin: (priceMin === null || priceMin === undefined || priceMin === '') ? null : Number(priceMin),
+    priceMax: (priceMax === null || priceMax === undefined || priceMax === '') ? null : Number(priceMax),
+  };
+  variantRows = (Array.isArray(variants) ? variants : []).map(v => ({
+    id: v.id,
+    sku: v.sku || '',
+    title: v.title || '',
+    // price từ Prisma là Float? → có thể null. Giữ null, đừng đổi thành 0:
+    // null = "chưa định giá", 0 = "giá bằng không". Hai chuyện khác nhau.
+    price: (v.price === null || v.price === undefined) ? null : Number(v.price),
+    stockStatus: v.stockStatus || 'IN_STOCK',
+    options: v.options,
+  }));
+  variantsGoc = JSON.parse(JSON.stringify(variantRows));
+  variantsDirty = false;
+  const dot = document.getElementById('pVarDirtyDot');
+  if (dot) dot.classList.add('hidden');
+  const bulk = document.getElementById('pVarBulkPrice');
+  if (bulk) bulk.value = '';
+  renderVariants();
+}
+
+function markVariantsDirty() {
+  variantsDirty = true;
+  const dot = document.getElementById('pVarDirtyDot');
+  if (dot) dot.classList.remove('hidden');
+}
+
+/** Chuỗi options ('{"Loại da":"Da Swift"}') → 'Loại da: Da Swift'. */
+function moTaOptions(raw) {
+  if (!raw) return '';
+  let o = raw;
+  if (typeof o === 'string') { try { o = JSON.parse(o); } catch { return ''; } }
+  if (!o || typeof o !== 'object') return '';
+  return Object.entries(o).map(([k, v]) => `${k}: ${v}`).join(' · ');
+}
+
+/** Vẽ lại toàn bộ thẻ: bảng, cảnh báo, số trên tab. */
+function renderVariants() {
+  const empty = document.getElementById('pVarEmpty');
+  const body = document.getElementById('pVarBody');
+  const rows = document.getElementById('pVarRows');
+  if (!rows) return;
+
+  if (!variantRows.length) {
+    empty.classList.remove('hidden');
+    body.classList.add('hidden');
+    renderVariantWarn([]);
+    renderVariantCount([]);
+    return;
+  }
+  empty.classList.add('hidden');
+  body.classList.remove('hidden');
+
+  const pq = tinhPhanQuyetBienThe();
+
+  rows.innerHTML = variantRows.map((v, i) => {
+    const q = pq[i];
+    const nhan = q.banDuoc
+      ? (q.giaVay
+        ? '<span class="text-amber-600" title="Đang bán theo ô Giá ở thẻ Thông tin, không phải giá riêng của biến thể"><i class="fas fa-circle-check mr-1"></i>Theo giá SP</span>'
+        : '<span class="text-emerald-600"><i class="fas fa-circle-check mr-1"></i>Có</span>')
+      : q.lyDo === 'het-hang'
+        ? '<span class="text-gray-400"><i class="fas fa-circle-minus mr-1"></i>Hết hàng</span>'
+        : '<span class="text-red-600" title="Thiếu giá nên khách không thêm vào giỏ được"><i class="fas fa-circle-xmark mr-1"></i>Thiếu giá</span>';
+
+    const opt = moTaOptions(v.options);
+    return `<tr class="border-t border-gray-100 align-top">
+      <td class="px-3 py-2">
+        <input type="text" value="${escAttr(v.title)}"
+          oninput="onVariantTitleInput(${i}, this.value)"
+          class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
+        ${opt ? `<div class="mt-1 text-[11px] text-gray-400">${esc(opt)}</div>` : ''}
+      </td>
+      <td class="px-3 py-2 text-xs text-gray-500 font-mono">${esc(v.sku)}</td>
+      <td class="px-3 py-2">
+        <input type="text" inputmode="numeric" autocomplete="off"
+          value="${escAttr(formatPriceForInput(v.price))}" placeholder="Trống = chưa định giá"
+          oninput="onPriceInput(this); onVariantPriceInput(${i}, this.value)"
+          class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-right">
+      </td>
+      <td class="px-3 py-2">
+        <select onchange="onVariantStockChange(${i}, this.value)"
+          class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white">
+          <option value="IN_STOCK"${v.stockStatus === 'IN_STOCK' ? ' selected' : ''}>Còn hàng</option>
+          <option value="OUT_OF_STOCK"${v.stockStatus === 'OUT_OF_STOCK' ? ' selected' : ''}>Hết hàng</option>
+        </select>
+      </td>
+      <td class="px-3 py-2 text-xs whitespace-nowrap">${nhan}</td>
+    </tr>`;
+  }).join('');
+
+  renderVariantWarn(pq);
+  renderVariantCount(pq);
+}
+
+/**
+ * Số cạnh tên tab. Chỉ đếm cái KHÔNG bán được — số "3 biến thể" không nói gì, số
+ * "3 chưa bán được" là thứ khiến người bán mở thẻ này ra.
+ */
+function renderVariantCount(pq) {
+  const el = document.getElementById('pVarCount');
+  if (!el) return;
+  if (!variantRows.length) { el.textContent = ''; return; }
+  const hong = pq.filter(q => !q.banDuoc).length;
+  el.innerHTML = hong
+    ? `<span class="text-red-500 font-medium">${hong}/${variantRows.length} chưa bán được</span>`
+    : `<span class="text-gray-400">${variantRows.length}</span>`;
+}
+
+/**
+ * Cảnh báo đỏ. Chỉ hiện khi CÓ biến thể không bán được, và nói đúng nguyên nhân —
+ * thiếu giá hẳn, hay thiếu giá vì đã có dải giá (cái bẫy ở ghi chú đầu tệp).
+ */
+function renderVariantWarn(pq) {
+  const box = document.getElementById('pVarWarn');
+  const detail = document.getElementById('pVarWarnDetail');
+  const title = document.getElementById('pVarWarnTitle');
+  if (!box || !detail) return;
+  const datTieuDe = t => { if (title) title.textContent = t; };
+  datTieuDe('Chưa bán online được');
+
+  // Ưu tiên cảnh báo BÁN RẺ trước cảnh báo THIẾU GIÁ. Thiếu giá là không bán được
+  // — mất đơn, biết ngay. Bán rẻ là vẫn bán, mất 3 triệu mỗi đơn, không ai biết.
+  // Cái thứ hai tệ hơn nên nó phải chiếm chỗ.
+  const co = kiemTraCoDaiGia();
+  if (co) {
+    datTieuDe(co.giaVay ? 'Lưu bây giờ là bán rẻ' : 'Lưu bây giờ là mất phần giá cao');
+    const d = n => Number(n).toLocaleString('vi-VN');
+    detail.innerHTML =
+      `Sản phẩm này đang khai dải giá <strong>${d(co.dbMin)}đ – ${d(co.dbMax)}đ</strong>,
+       nghĩa là các biến thể của nó KHÔNG cùng một giá. Còn
+       <strong>${co.conTrong}</strong> biến thể chưa điền giá.<br>
+       Lưu ngay bây giờ thì dải giá bị tính lại thành
+       <strong>${d(co.sauMin)}đ – ${d(co.sauMax)}đ</strong>${co.giaVay
+        ? `, và ${co.conTrong} biến thể còn trống sẽ bán ở <strong>${d(co.sauMin)}đ</strong>
+           — thấp hơn tới ${d(co.dbMax - co.sauMin)}đ so với mức cao của dải giá đang khai.`
+        : `, hẹp hơn dải đang khai — phần giá cao trong dải sẽ mất.`}<br>
+       <span class="font-semibold">Điền giá cho hết các biến thể trước khi lưu.</span>`;
+    box.classList.remove('hidden');
+    return;
+  }
+
+  const thieuGia = pq.filter(q => q.lyDo === 'thieu-gia' || q.lyDo === 'thieu-gia-co-dai');
+  if (!thieuGia.length) { box.classList.add('hidden'); return; }
+
+  const coDai = thieuGia.some(q => q.lyDo === 'thieu-gia-co-dai');
+  const n = thieuGia.length;
+  detail.innerHTML = coDai
+    ? `<strong>${n}/${variantRows.length}</strong> biến thể chưa có giá, và sản phẩm này
+       đã có <strong>dải giá</strong> (các biến thể không cùng một giá). Khi đã có dải giá thì
+       không thể đoán giá cho ô trống, nên ${n} biến thể đó khách <strong>không thêm vào giỏ
+       hàng được</strong>. Điền giá cho từng dòng bên dưới.`
+    : `<strong>${n}/${variantRows.length}</strong> biến thể chưa có giá, và ô <strong>Giá</strong>
+       ở thẻ Thông tin cũng trống hoặc bằng 0. Không có con số nào để tính tiền, nên khách
+       <strong>không thêm vào giỏ hàng được</strong>. Điền giá bên dưới, hoặc điền ô Giá ở thẻ
+       Thông tin nếu mọi biến thể cùng một giá.`;
+  box.classList.remove('hidden');
+}
+
+// ===== Sửa từng ô =====
+
+function onVariantTitleInput(i, val) {
+  if (!variantRows[i]) return;
+  variantRows[i].title = val;
+  markVariantsDirty();
+  // Không vẽ lại: vẽ lại là dựng lại <input> và con trỏ nhảy về đầu. Tên không
+  // ảnh hưởng tới phán quyết bán/không bán nên không có gì cần cập nhật.
+}
+
+function onVariantPriceInput(i, val) {
+  if (!variantRows[i]) return;
+  const n = parsePriceInput(val);
+  // NaN = gõ toàn ký tự lạ. Giữ giá cũ, đừng ghi NaN vào (JSON.stringify biến NaN
+  // thành null và âm thầm xoá giá).
+  if (Number.isNaN(n)) return;
+  variantRows[i].price = (n === '' ? null : n);
+  markVariantsDirty();
+  // Vẽ lại CỘT PHÁN QUYẾT thôi, không vẽ lại cả bảng — vẽ cả bảng là mất con trỏ
+  // giữa lúc đang gõ. Nhưng một ô giá đổi có thể đổi phán quyết của MỌI dòng
+  // (dải giá là thuộc tính của cả sản phẩm), nên phải cập nhật hết.
+  capNhatPhanQuyet();
+}
+
+function onVariantStockChange(i, val) {
+  if (!variantRows[i]) return;
+  variantRows[i].stockStatus = val;
+  markVariantsDirty();
+  capNhatPhanQuyet();
+}
+
+/**
+ * Cập nhật cột "Bán online" + cảnh báo + số trên tab, KHÔNG dựng lại ô nhập.
+ * Tách khỏi renderVariants() vì hàm đó thay innerHTML của cả <tbody>, làm ô đang
+ * gõ bị dựng lại và con trỏ nhảy về đầu sau mỗi chữ số.
+ */
+function capNhatPhanQuyet() {
+  const rows = document.getElementById('pVarRows');
+  if (!rows) return;
+  const pq = tinhPhanQuyetBienThe();
+  const tds = rows.querySelectorAll('tr > td:last-child');
+  pq.forEach((q, i) => {
+    if (!tds[i]) return;
+    tds[i].innerHTML = q.banDuoc
+      ? (q.giaVay
+        ? '<span class="text-amber-600" title="Đang bán theo ô Giá ở thẻ Thông tin, không phải giá riêng của biến thể"><i class="fas fa-circle-check mr-1"></i>Theo giá SP</span>'
+        : '<span class="text-emerald-600"><i class="fas fa-circle-check mr-1"></i>Có</span>')
+      : q.lyDo === 'het-hang'
+        ? '<span class="text-gray-400"><i class="fas fa-circle-minus mr-1"></i>Hết hàng</span>'
+        : '<span class="text-red-600" title="Thiếu giá nên khách không thêm vào giỏ được"><i class="fas fa-circle-xmark mr-1"></i>Thiếu giá</span>';
+  });
+  renderVariantWarn(pq);
+  renderVariantCount(pq);
+}
+
+/** Điền một giá cho tất cả biến thể. da-ca-sau có 28 dòng cùng giá. */
+function applyBulkVariantPrice() {
+  const el = document.getElementById('pVarBulkPrice');
+  const n = parsePriceInput(el.value);
+  if (n === '' || Number.isNaN(n)) { toast('Nhập giá muốn điền'); return; }
+  if (n <= 0) { toast('Giá phải lớn hơn 0'); return; }
+  variantRows.forEach(v => { v.price = n; });
+  markVariantsDirty();
+  el.value = '';
+  // Ở đây vẽ lại CẢ bảng là đúng: mọi ô giá đều phải hiện số mới, và không có ô
+  // nào đang được gõ (người dùng vừa bấm nút).
+  renderVariants();
+  toast(`Đã điền ${n.toLocaleString('vi-VN')}đ cho ${variantRows.length} biến thể`);
+}
+
+/**
+ * Gửi các biến thể đã sửa trong MỘT transaction.
+ *
+ * Bản đầu định gọi PATCH từng dòng. Sai: endpoint từng dòng tự tính lại dải giá,
+ * nên với hal-bag nhập dòng 3,8tr trước rồi dòng 6,8tr sau sẽ có một khoảng mà
+ * biến thể Swift bán nhầm 3,8tr. Nếu request thứ hai lỗi, khoảng đó thành vĩnh
+ * viễn. Endpoint /products/:id/variants ghi cả mảng hoặc rollback cả mảng; khách
+ * chỉ nhìn thấy trạng thái trước hoặc sau khi bảng giá hoàn chỉnh.
+ */
+async function syncVariants(productId) {
+  const doiThay = [];
+  variantRows.forEach((v, i) => {
+    const g = variantsGoc[i];
+    if (!g || g.id !== v.id) return;
+    const dto = {};
+    if (v.price !== g.price) dto.price = v.price;          // null = xoá giá
+    if (v.stockStatus !== g.stockStatus) dto.stockStatus = v.stockStatus;
+    if (v.title !== g.title) dto.title = v.title || null;
+    if (Object.keys(dto).length) doiThay.push({ i, id: v.id, ...dto });
+  });
+  if (!doiThay.length) return { daLuu: 0, tong: 0 };
+
+  await api('/products/' + productId + '/variants', {
+    method: 'PATCH',
+    body: JSON.stringify({ variants: doiThay.map(({ id, ...dto }) => ({ id, ...dto })) }),
+  });
+  doiThay.forEach(({ i }) => {
+    variantsGoc[i] = JSON.parse(JSON.stringify(variantRows[i]));
+  });
+  return { daLuu: doiThay.length, tong: doiThay.length };
 }
 
 // ========== PROCESSING STATE HELPERS ==========
@@ -5192,6 +5748,19 @@ async function saveProduct() {
     if (descBlocks.length) body.descriptionBlocks = descBlocks;
   }
 
+  // Không chỉ cảnh báo: nếu dải giá cũ rộng hơn dải sẽ có sau khi lưu mà vẫn
+  // còn ô giá trống, cập nhật một phần sẽ làm những biến thể trống lùi về giá
+  // thấp. Chặn TRƯỚC product PATCH để không ghi nửa thông tin sản phẩm rồi mới
+  // báo lỗi. Chủ shop phải điền đủ giá từng biến thể trước khi lượt ghi bắt đầu.
+  if (id && variantsDirty) {
+    const nguyCo = kiemTraCoDaiGia();
+    if (nguyCo) {
+      switchProductTab('variants');
+      toast('Điền giá cho hết biến thể trước khi lưu — tránh bán nhầm theo giá thấp');
+      return;
+    }
+  }
+
   isSaving = true;
   showProcessing(id ? 'save' : 'upload');
   setProgress(0, 'Đang chuẩn bị...');
@@ -5209,9 +5778,24 @@ async function saveProduct() {
       swrCache.remove('GET /products/' + id + '/images');
       setProgress(15, 'Đã cập nhật thông tin');
 
+      // Biến thể lưu SAU sản phẩm, không phải trước. updateVariant() gọi
+      // recomputePriceRange(), hàm đó đọc basePrice từ DB để lùi về khi mọi biến
+      // thể còn trống giá. Gửi biến thể trước là nó đọc basePrice CŨ, và dải giá
+      // vừa tính xong lại sai — phải sửa rồi lưu lần hai mới đúng.
+      if (variantsDirty) {
+        setProgress(16, 'Đang lưu giá biến thể...');
+        const kq = await syncVariants(id);
+        // Lưu cả lô đã thành công thì mới tắt dấu chấm vàng. Lỗi sẽ ném vào catch
+        // và transaction rollback toàn bộ, nên không có trạng thái "lưu được vài
+        // dòng" để người bán phải đoán.
+        variantsDirty = false;
+        document.getElementById('pVarDirtyDot').classList.add('hidden');
+        setProgress(25, `Đã lưu ${kq.daLuu} biến thể`);
+      }
+
       showProcessing('upload');
       await uploadPendingFiles(id, function(uploadOverall) {
-        const pct = mapUploadToPhase(uploadOverall, 15, 60);
+        const pct = mapUploadToPhase(uploadOverall, 25, 60);
         setProgress(pct, 'Đang tải ảnh lên CDN...');
       });
     } else {

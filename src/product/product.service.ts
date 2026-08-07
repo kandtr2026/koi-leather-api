@@ -10,7 +10,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { SpecsValidatorService } from "../common/specs-validator.service";
 import { dieuKienTimSanPham, gopVaoAnd } from "../common/tim-san-pham";
 import { CreateProductDto, VariantDto } from "./dto/create-product.dto";
-import { UpdateProductDto } from "./dto/update-product.dto";
+import { UpdateProductDto, VariantPatchDto } from "./dto/update-product.dto";
 import { Prisma } from "@prisma/client";
 import {
   generateSlug,
@@ -1451,6 +1451,65 @@ export class ProductService {
 
     await this.recomputePriceRange(variant.productId);
     return updated;
+  }
+
+  /**
+   * Ghi một nhóm biến thể trong CÙNG transaction.
+   *
+   * Đây là đường admin dùng để nhập giá lần đầu. Không thay bằng Promise.all của
+   * updateVariant(): mỗi updateVariant tự recomputePriceRange(), nên 28 request
+   * có 28 trạng thái trung gian có thể lộ ra storefront. Một transaction cho DB
+   * chỉ thấy hai trạng thái: trước khi nhập, hoặc sau khi cả bảng đã đúng.
+   */
+  async updateVariants(productId: string, patches: VariantPatchDto[]) {
+    if (!patches.length) return { variants: [], changed: 0 };
+
+    const ids = patches.map((v) => v.id);
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException("Một biến thể xuất hiện hai lần trong lượt lưu");
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.koiProductVariant.findMany({
+        where: { productId, id: { in: ids } },
+      });
+      if (existing.length !== patches.length) {
+        throw new BadRequestException(
+          "Có biến thể không thuộc sản phẩm này hoặc không còn tồn tại",
+        );
+      }
+
+      const byId = new Map(existing.map((v: any) => [v.id, v]));
+      const updated: any[] = [];
+      for (const patch of patches) {
+        const old = byId.get(patch.id)!;
+        const data: any = {};
+        if (patch.title !== undefined) data.title = patch.title;
+        if (patch.price !== undefined) data.price = patch.price;
+        if (patch.stockStatus !== undefined) data.stockStatus = patch.stockStatus;
+
+        // Không gọi update rỗng: đỡ chạm updatedAt và đỡ làm người bán tưởng có gì đổi.
+        if (Object.keys(data).length) {
+          updated.push(await tx.koiProductVariant.update({ where: { id: old.id }, data }));
+        } else {
+          updated.push(old);
+        }
+      }
+
+      const variants = await tx.koiProductVariant.findMany({ where: { productId } });
+      const product = await tx.koiProduct.findUnique({ where: { id: productId } });
+      const computed = this.computePriceRange(variants, product?.basePrice);
+      await tx.koiProduct.update({
+        where: { id: productId },
+        data: {
+          priceMin: computed.priceMin,
+          priceMax: computed.priceMax,
+          hasVariants: computed.hasVariants,
+        },
+      });
+
+      return { variants: updated, changed: patches.length };
+    });
   }
 
   async removeVariant(variantId: string) {

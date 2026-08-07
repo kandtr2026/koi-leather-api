@@ -22,7 +22,7 @@ import {
 } from "@nestjs/swagger";
 import { ProductService } from "./product.service";
 import { CreateProductDto, VariantDto } from "./dto/create-product.dto";
-import { UpdateProductDto } from "./dto/update-product.dto";
+import { BatchVariantPatchDto, UpdateProductDto } from "./dto/update-product.dto";
 import { CleanDescriptionsDto } from "./dto/clean-descriptions.dto";
 
 @ApiTags("Products")
@@ -266,6 +266,23 @@ export class ProductController {
     @Body() dto: Partial<VariantDto>,
   ) {
     return this.productService.updateVariant(variantId, dto);
+  }
+
+  /**
+   * Sửa giá/tồn kho/names nhiều biến thể như MỘT lượt ghi.
+   *
+   * Không gọi PATCH từng biến thể từ admin: updateVariant() tính lại dải giá sau
+   * mỗi dòng, nên khi một sản phẩm cũ có dải 3,8–6,8tr mà mới nhập dòng 3,8tr,
+   * khoảng giữa hai request dòng 6,8tr sẽ bị bán theo giá thấp. Transaction này
+   * chỉ cho mặt tiền thấy trạng thái trước HOẶC trạng thái đủ sau, không có giữa.
+   */
+  @Patch(":productId/variants")
+  @ApiOperation({ summary: "Atomically update multiple existing variants" })
+  updateVariants(
+    @Param("productId", ParseUUIDPipe) productId: string,
+    @Body() dto: BatchVariantPatchDto,
+  ) {
+    return this.productService.updateVariants(productId, dto.variants);
   }
 
   @Delete("variants/:variantId")
