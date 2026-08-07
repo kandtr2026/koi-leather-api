@@ -19,6 +19,7 @@ import { KhongDemLoiFilter } from "./common/filters/khong-dem-loi.filter";
 import { ShopModule } from "./shop/shop.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { AdsModule } from "./ads/ads.module";
+import { AiEditModule } from "./ai-edit/ai-edit.module";
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { AdsModule } from "./ads/ads.module";
     ShopModule,
     AnalyticsModule,
     AdsModule,
+    AiEditModule,
   ],
   controllers: [HealthController],
   providers: [

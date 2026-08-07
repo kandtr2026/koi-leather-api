@@ -288,6 +288,7 @@
     <button class="tab-btn" data-tab="traffic"><i class="fas fa-chart-line mr-2 text-amber-500"></i>Lưu lượng</button>
     <button class="tab-btn" data-tab="ads"><i class="fas fa-bullhorn mr-2 text-amber-500"></i>Quảng cáo</button>
     <button class="tab-btn" data-tab="leads"><i class="fas fa-address-book mr-2 text-amber-500"></i>Khách để lại số<span id="leadBadge" class="hidden ml-2 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold align-middle"></span></button>
+    <button class="tab-btn" data-tab="aiedit"><i class="fas fa-wand-magic-sparkles mr-2 text-amber-500"></i>Sửa bằng AI</button>
 
   </div>
 
@@ -556,6 +557,90 @@
       </div>
     </div>
 
+    <!-- ================= SỬA BẰNG AI ================= -->
+    <div class="panel" id="panel-aiedit">
+
+      <!-- Cảnh báo khi máy chủ chưa có key. Hiện ngay đầu, vì không có key thì
+           mọi nút bên dưới đều vô dụng và chủ shop cần biết phải làm gì. -->
+      <div id="aiKeyWarn" class="hidden mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"></div>
+
+      <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
+        <b>Cách dùng:</b> dán link trang cần sửa &rarr; viết yêu cầu &rarr; bấm <b>Xem trước</b> để AI đề nghị chữ mới
+        &rarr; đọc kỹ rồi bấm <b>Áp dụng</b>. Chữ cũ luôn được lưu lại, sai thì bấm <b>Hoàn tác</b>.
+        Công cụ không sửa đường dẫn, giá, hay trạng thái xuất bản.
+        <br>
+        <span class="text-[12px]">Sau khi áp dụng, trang bán hàng cần khoảng <b>1 phút</b> (bài viết và trang tĩnh: <b>2 phút</b>)
+        mới hiện chữ mới — đó là thời gian đệm của trang, không phải lỗi.</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Cột trái: nhập -->
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Link trang cần sửa</label>
+            <div class="flex gap-2">
+              <input id="aiLink" type="text" placeholder="https://koileather.com/ten-bai-viet/"
+                     class="flex-1 px-3 py-2 border rounded-lg text-sm" onkeydown="if(event.key==='Enter')aiTraLink()">
+              <button onclick="aiTraLink()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 whitespace-nowrap">
+                <i class="fas fa-magnifying-glass mr-1"></i>Tra
+              </button>
+            </div>
+            <p class="mt-1 text-[11px] text-gray-400">
+              Bài viết <code>/ten-bai/</code> &middot; sản phẩm <code>/cua-hang/ten-sp/</code> &middot;
+              danh mục <code>/san-pham/ten-dm/</code> &middot; chuyên mục <code>/category/...</code>
+            </p>
+          </div>
+
+          <div id="aiBanGhi" class="hidden rounded-lg border bg-gray-50 px-3 py-2.5 text-sm"></div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Yêu cầu sửa</label>
+            <textarea id="aiPrompt" rows="4" placeholder="Ví dụ: viết lại phần mở đầu cho gọn hơn, giữ nguyên thông tin chất liệu và kích thước."
+                      class="w-full px-3 py-2 border rounded-lg text-sm"></textarea>
+          </div>
+
+          <div id="aiChonTruongBox" class="hidden">
+            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Chọn phần cần sửa</label>
+            <div id="aiChonTruong" class="space-y-1.5"></div>
+          </div>
+
+          <button id="aiBtnXemTruoc" onclick="aiXemTruoc()" disabled
+                  class="w-full px-4 py-2.5 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            <i class="fas fa-wand-magic-sparkles mr-1.5"></i>Xem trước chữ mới
+          </button>
+        </div>
+
+        <!-- Cột phải: lịch sử -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-semibold text-gray-500 uppercase">Đã sửa gần đây</label>
+            <button onclick="aiLichSu()" title="Tải lại" class="px-2 py-1 rounded border border-gray-200 text-xs hover:bg-gray-50">
+              <i class="fas fa-rotate-right"></i>
+            </button>
+          </div>
+          <div id="aiLichSuBody" class="rounded-lg border divide-y max-h-[420px] overflow-y-auto text-sm">
+            <div class="p-4 text-center text-gray-400 text-xs">Chưa tải</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Khung so sánh cũ / mới -->
+      <div id="aiKetQua" class="hidden mt-5 border-t pt-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="text-sm text-gray-600" id="aiKetQuaTom"></div>
+          <div class="flex gap-2">
+            <button onclick="aiHuyKetQua()" class="px-3 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50">Bỏ</button>
+            <button id="aiBtnApDung" onclick="aiApDung()"
+                    class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
+              <i class="fas fa-check mr-1.5"></i>Áp dụng phần đã tick
+            </button>
+          </div>
+        </div>
+        <div id="aiSoSanh" class="space-y-4"></div>
+      </div>
+
+    </div>
+
 
   </div>
 </div>
@@ -577,6 +662,11 @@
         <button type="button" class="pmodal-tab" data-ptab="desc" onclick="switchProductTab('desc')">
           <i class="fas fa-align-left mr-1.5"></i>Mô tả
           <span id="pDescDirtyDot" class="hidden ml-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 inline-block align-middle" title="Có thay đổi chưa lưu"></span>
+        </button>
+        <button type="button" class="pmodal-tab" data-ptab="variants" onclick="switchProductTab('variants')">
+          <i class="fas fa-layer-group mr-1.5"></i>Biến thể
+          <span id="pVarCount" class="text-gray-400 font-normal normal-case"></span>
+          <span id="pVarDirtyDot" class="hidden ml-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 inline-block align-middle" title="Có thay đổi chưa lưu"></span>
         </button>
       </div>
     </div>
@@ -1118,6 +1208,13 @@ let leadsLoaded = false;
 let leadFilter = '';
 let leadsData = null;
 
+// Cùng lý do: applyRoute đọc aiEditLoaded nên phải khai ở trên.
+let aiEditLoaded = false;
+// Bản ghi đang tra được, và kết quả AI vừa đề nghị. Giữ ở đây để nút Áp dụng
+// biết ghi vào đâu mà không phải tra lại link.
+let aiBanGhi = null;
+let aiDeNghi = null;
+
 const ROUTE_MAP = {
   '/admin/products':    { panel: 'products', label: 'Sản phẩm' },
   '/admin/categories':  { panel: 'prodcats', label: 'Loại sản phẩm' },
@@ -1126,6 +1223,7 @@ const ROUTE_MAP = {
   '/admin/traffic':     { panel: 'traffic',  label: 'Lưu lượng' },
   '/admin/ads':         { panel: 'ads',      label: 'Quảng cáo' },
   '/admin/leads':       { panel: 'leads',    label: 'Khách để lại số' },
+  '/admin/ai-edit':     { panel: 'aiedit',   label: 'Sửa bằng AI' },
 
 };
 const ROUTES = Object.keys(ROUTE_MAP);
@@ -1154,6 +1252,10 @@ function applyRoute(route) {
 
   // Lead cũng nạp lười, cùng lý do.
   if (entry.panel === 'leads' && !leadsLoaded) loadLeads();
+
+  // Sửa bằng AI: nạp lười. Lần đầu vào mới hỏi máy chủ đã có key chưa và lấy
+  // lịch sử — người chỉ vào sửa giá không phải trả tiền cho hai lượt gọi đó.
+  if (entry.panel === 'aiedit' && !aiEditLoaded) aiKhoiTao();
 
   // Lưu lượng cũng nạp lười: truy vấn gom nhóm cả bảng lượt xem, không nên
   // chạy cho người chỉ vào sửa một cái giá.
@@ -1272,7 +1374,12 @@ async function api(path, options = {}) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), method === 'GET' ? 12000 : 25000);
+  // timeoutMs: cho phép một lượt gọi tự đặt hạn riêng. Cần cho /ai-edit/generate:
+  // máy chủ tự bỏ cuộc với OpenAI ở 25 giây rồi mới dựng câu báo lỗi, nên nếu
+  // trình duyệt cũng cắt ở 25 giây thì nó bỏ ngang ĐÚNG LÚC câu đó đang đi ra, và
+  // chủ shop thấy "Failed to fetch" thay vì lời giải thích.
+  const hanCho = options.timeoutMs || (method === 'GET' ? 12000 : 25000);
+  const timeout = setTimeout(() => controller.abort(), hanCho);
 
   // Attach auth token if available
   const token = sessionStorage.getItem('auth_token');
@@ -6268,6 +6375,266 @@ async function loadDeployInfo() {
 function showDeployDetail() {
   const el = document.getElementById('deployDetail');
   el.classList.toggle('hidden');
+}
+
+// ========== SỬA BẰNG AI ==========
+//
+// Luồng ba bước, tách rời có chủ ý: TRA link → XEM TRƯỚC (gọi AI, chưa ghi gì)
+// → ÁP DỤNG (mới ghi). Gộp lại thành một nút thì mỗi lần bấm là một lần đánh
+// cược lên nội dung đang có khách đọc, và chữ cũ thì đã mất.
+//
+// Key OpenAI KHÔNG có ở đây và không được đưa vào đây. Trang này chạy trong
+// trình duyệt nên mọi thứ nó biết là mọi thứ người mở trang biết. Key nằm trong
+// biến môi trường của máy chủ; endpoint /analytics/ai-edit/status chỉ trả về
+// CÓ/KHÔNG và tên model.
+
+async function aiKhoiTao() {
+  aiEditLoaded = true;
+  try {
+    const st = await api('/analytics/ai-edit/status');
+    const warn = document.getElementById('aiKeyWarn');
+    if (!st.daCoKey) {
+      warn.classList.remove('hidden');
+      warn.innerHTML = '<b><i class="fas fa-triangle-exclamation mr-1"></i>Máy chủ chưa có key OpenAI.</b> '
+        + 'Vào Vercel &rarr; project <code>koi-leather-api</code> &rarr; Settings &rarr; Environment Variables, '
+        + 'thêm biến <code>OPENAI_API_KEY</code> rồi deploy lại. Chưa có key thì nút Xem trước sẽ báo lỗi.';
+    } else {
+      warn.classList.add('hidden');
+    }
+  } catch (e) {
+    // Không chặn cả màn hình vì một lượt gọi phụ bị lỗi: tra link và lịch sử
+    // vẫn dùng được, và lỗi thật sẽ hiện lúc bấm Xem trước.
+    console.warn('ai-edit status:', e.message);
+  }
+  aiLichSu();
+}
+
+async function aiTraLink() {
+  const link = document.getElementById('aiLink').value.trim();
+  if (!link) { toast('Dán link trang cần sửa'); return; }
+
+  const box = document.getElementById('aiBanGhi');
+  box.classList.remove('hidden');
+  box.innerHTML = '<span class="text-gray-400 text-xs"><i class="fas fa-spinner fa-spin mr-1"></i>Đang tra...</span>';
+  aiHuyKetQua();
+
+  try {
+    const b = await api('/analytics/ai-edit/resolve', { method: 'POST', body: JSON.stringify({ link }) });
+    aiBanGhi = b;
+
+    const TEN_LOAI = { post: 'Bài viết', page: 'Trang', product: 'Sản phẩm',
+                       category: 'Danh mục', product_tag: 'Từ khoá sản phẩm', blog_term: 'Chuyên mục blog' };
+
+    let h = '<div class="flex items-start justify-between gap-3">'
+      + '<div><div class="font-semibold">' + esc(b.tieuDe || b.slug) + '</div>'
+      + '<div class="text-xs text-gray-500 mt-0.5">'
+      + '<span class="inline-block px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 mr-1.5">' + esc(TEN_LOAI[b.kind] || b.kind) + '</span>'
+      + '<code>' + esc(b.path) + '</code> &middot; bảng <code>' + esc(b.bang) + '</code></div></div>';
+    if (b.soLanDaSua > 0) {
+      h += '<span class="shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">AI đã sửa '
+         + b.soLanDaSua + ' lần</span>';
+    }
+    h += '</div>';
+
+    (b.canhBao || []).forEach(function (c) {
+      h += '<div class="mt-2 rounded border border-amber-300 bg-amber-50 px-2.5 py-2 text-[12px] text-amber-900">'
+         + '<i class="fas fa-triangle-exclamation mr-1"></i>' + esc(c) + '</div>';
+    });
+    box.innerHTML = h;
+
+    // Danh sách trường, tick sẵn những trường ĐANG CÓ CHỮ. Trường trống không
+    // tick: "viết lại" một trường rỗng thực chất là bịa mới.
+    const ds = document.getElementById('aiChonTruong');
+    ds.innerHTML = b.truong.map(function (t) {
+      const coChu = t.giaTri != null && String(t.giaTri).trim() !== '';
+      const doDai = coChu ? String(t.giaTri).length + ' ký tự' : 'đang trống';
+      return '<label class="flex items-center gap-2 text-sm cursor-pointer">'
+        + '<input type="checkbox" class="ai-truong" value="' + escAttr(t.ten) + '"' + (coChu ? ' checked' : '') + '>'
+        + '<span>' + esc(t.nhan) + '</span>'
+        + '<span class="text-[11px] text-gray-400">' + doDai + (t.html ? ' &middot; HTML' : '') + '</span>'
+        + '</label>';
+    }).join('');
+    document.getElementById('aiChonTruongBox').classList.remove('hidden');
+    document.getElementById('aiBtnXemTruoc').disabled = false;
+  } catch (e) {
+    aiBanGhi = null;
+    document.getElementById('aiChonTruongBox').classList.add('hidden');
+    document.getElementById('aiBtnXemTruoc').disabled = true;
+    box.innerHTML = '<span class="text-red-700 text-[13px]"><i class="fas fa-circle-xmark mr-1"></i>' + esc(e.message) + '</span>';
+  }
+}
+
+async function aiXemTruoc() {
+  if (!aiBanGhi) { toast('Tra link trước'); return; }
+  const yeuCau = document.getElementById('aiPrompt').value.trim();
+  if (yeuCau.length < 3) { toast('Viết yêu cầu sửa gì'); return; }
+
+  const chon = Array.from(document.querySelectorAll('.ai-truong:checked')).map(function (c) { return c.value; });
+  if (!chon.length) { toast('Chọn ít nhất một phần cần sửa'); return; }
+
+  const btn = document.getElementById('aiBtnXemTruoc');
+  const cu = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>AI đang viết... (tối đa 25 giây)';
+
+  try {
+    const kq = await api('/analytics/ai-edit/generate', {
+      method: 'POST',
+      // 40 giây: dài hơn cả hạn 25 giây của máy chủ với OpenAI VÀ hạn 30 giây
+      // Vercel cắt hàm, để lỗi thật từ máy chủ luôn tới được đây.
+      timeoutMs: 40000,
+      body: JSON.stringify({ link: document.getElementById('aiLink').value.trim(), yeuCau: yeuCau, truongChon: chon }),
+    });
+    aiDeNghi = kq;
+    aiVeSoSanh(kq);
+  } catch (e) {
+    toast('Lỗi: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = cu;
+  }
+}
+
+function aiVeSoSanh(kq) {
+  const coDoi = kq.thayDoi.filter(function (t) { return !t.khongDoi; });
+  document.getElementById('aiKetQuaTom').innerHTML =
+    '<b>' + coDoi.length + '</b> phần có chữ mới &middot; model <code>' + esc(kq.model) + '</code>'
+    + (kq.soToken ? ' &middot; ' + kq.soToken + ' token' : '');
+
+  document.getElementById('aiSoSanh').innerHTML = kq.thayDoi.map(function (t, i) {
+    const id = 'aiap' + i;
+    let h = '<div class="rounded-lg border overflow-hidden">'
+      + '<div class="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border-b">'
+      + '<label class="flex items-center gap-2 text-sm font-medium cursor-pointer">'
+      + '<input type="checkbox" id="' + id + '" class="ai-apdung" data-truong="' + escAttr(t.truong) + '"'
+      + (t.khongDoi ? ' disabled' : ' checked') + '>'
+      + esc(t.nhan) + '</label>';
+    if (t.khongDoi) h += '<span class="text-[11px] text-gray-400">AI trả lại y nguyên</span>';
+    else h += '<span class="text-[11px] text-gray-500">'
+            + (t.truoc == null ? 0 : String(t.truoc).length) + ' &rarr; '
+            + (t.sau == null ? 0 : String(t.sau).length) + ' ký tự</span>';
+    h += '</div>';
+
+    (t.luuY || []).forEach(function (l) {
+      h += '<div class="px-3 py-1.5 bg-amber-50 border-b text-[12px] text-amber-900">'
+         + '<i class="fas fa-circle-exclamation mr-1"></i>' + esc(l) + '</div>';
+    });
+
+    if (!t.khongDoi) {
+      // Hiện chữ THẬT, kể cả HTML, dưới dạng văn bản trong khung cuộn. Không
+      // render HTML ra: nội dung này do AI sinh, render là mở đường cho thẻ lạ
+      // chạy ngay trong trang admin.
+      h += '<div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">'
+        + '<div class="p-3"><div class="text-[11px] uppercase text-gray-400 mb-1">Chữ cũ</div>'
+        + '<pre class="whitespace-pre-wrap break-words text-[12px] leading-relaxed max-h-64 overflow-y-auto text-gray-500">'
+        + esc(t.truoc == null ? '(trống)' : t.truoc) + '</pre></div>'
+        + '<div class="p-3 bg-emerald-50/40"><div class="text-[11px] uppercase text-emerald-700 mb-1">Chữ mới</div>'
+        + '<pre class="whitespace-pre-wrap break-words text-[12px] leading-relaxed max-h-64 overflow-y-auto">'
+        + esc(t.sau == null ? '(trống)' : t.sau) + '</pre></div></div>';
+    }
+    return h + '</div>';
+  }).join('');
+
+  document.getElementById('aiKetQua').classList.remove('hidden');
+}
+
+function aiHuyKetQua() {
+  aiDeNghi = null;
+  document.getElementById('aiKetQua').classList.add('hidden');
+  document.getElementById('aiSoSanh').innerHTML = '';
+}
+
+async function aiApDung() {
+  if (!aiDeNghi) return;
+  const tick = Array.from(document.querySelectorAll('.ai-apdung:checked')).map(function (c) { return c.dataset.truong; });
+  if (!tick.length) { toast('Chưa tick phần nào để áp dụng'); return; }
+
+  const thayDoi = aiDeNghi.thayDoi
+    .filter(function (t) { return tick.indexOf(t.truong) >= 0; })
+    .map(function (t) { return { truong: t.truong, truoc: t.truoc, sau: t.sau }; });
+
+  if (!confirm('Ghi ' + thayDoi.length + ' phần vào trang ' + aiDeNghi.path + '?\n\nChữ cũ được lưu lại, sai thì hoàn tác được.')) return;
+
+  const btn = document.getElementById('aiBtnApDung');
+  const cu = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>Đang ghi...';
+
+  try {
+    const r = await api('/analytics/ai-edit/apply', {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: aiDeNghi.kind, id: aiDeNghi.id, path: aiDeNghi.path,
+        prompt: document.getElementById('aiPrompt').value.trim(),
+        model: aiDeNghi.model, thayDoi: thayDoi,
+      }),
+    });
+    toast('Đã ghi ' + r.soTruong + ' phần');
+    if (r.boQua && r.boQua.length) alert('Có phần bị bỏ qua:\n\n' + r.boQua.join('\n'));
+    aiHuyKetQua();
+    aiTraLink();   // đọc lại để thấy chữ mới và số lần đã sửa
+    aiLichSu();
+  } catch (e) {
+    toast('Lỗi: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = cu;
+  }
+}
+
+async function aiLichSu() {
+  const el = document.getElementById('aiLichSuBody');
+  el.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs"><i class="fas fa-spinner fa-spin"></i></div>';
+  try {
+    // noCache: vừa áp dụng hay hoàn tác xong là phải thấy ngay. Đọc từ cache 60
+    // giây thì danh sách đứng hình và chủ shop tưởng nút không ăn.
+    const ds = await api('/analytics/ai-edit/history?gioiHan=25', { noCache: true });
+    if (!ds.length) {
+      el.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs">Chưa có lần sửa nào</div>';
+      return;
+    }
+    el.innerHTML = ds.map(function (n) {
+      const luc = new Date(n.createdAt).toLocaleString('vi-VN');
+      return '<div class="p-3">'
+        + '<div class="flex items-start justify-between gap-2">'
+        + '<div class="min-w-0">'
+        + '<div class="text-[13px] truncate"><code>' + esc(n.path || n.kind + '/' + n.recordId) + '</code></div>'
+        + '<div class="text-[11px] text-gray-500 mt-0.5">' + esc(luc)
+        + ' &middot; ' + n.truong.map(function (t) { return esc(t.field); }).join(', ')
+        + (n.actor ? ' &middot; ' + esc(n.actor) : '') + '</div>'
+        + (n.prompt ? '<div class="text-[11px] text-gray-400 mt-1 line-clamp-2">&ldquo;' + esc(n.prompt) + '&rdquo;</div>' : '')
+        + '</div>'
+        + (n.daHoanTac
+            ? '<span class="shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">đã hoàn tác</span>'
+            : '<button onclick="aiHoanTac(\'' + escAttr(n.batch) + '\')" class="shrink-0 px-2 py-1 rounded border border-gray-300 text-[11px] hover:bg-gray-50">'
+              + '<i class="fas fa-rotate-left mr-1"></i>Hoàn tác</button>')
+        + '</div></div>';
+    }).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="p-4 text-center text-red-600 text-xs">' + esc(e.message) + '</div>';
+  }
+}
+
+async function aiHoanTac(batch) {
+  if (!confirm('Trả nội dung về chữ gốc trước khi AI sửa?')) return;
+  try {
+    const r = await api('/analytics/ai-edit/revert', { method: 'POST', body: JSON.stringify({ batch: batch }) });
+    toast('Đã hoàn tác ' + r.soTruong + ' phần');
+    if (r.boQua && r.boQua.length) alert('Có phần bị bỏ qua:\n\n' + r.boQua.join('\n'));
+    aiLichSu();
+  } catch (e) {
+    // Trường đã bị sửa tay sau lần AI ghi: máy chủ từ chối và nói rõ. Cho chủ
+    // shop chọn ghi đè, nhưng phải hỏi lại vì việc đó xoá công sửa tay đó.
+    if (/sửa tay/.test(e.message) && confirm(e.message + '\n\nVẫn trả về chữ gốc?')) {
+      try {
+        const r2 = await api('/analytics/ai-edit/revert', { method: 'POST', body: JSON.stringify({ batch: batch, buoc: true }) });
+        toast('Đã hoàn tác ' + r2.soTruong + ' phần');
+        aiLichSu();
+        return;
+      } catch (e2) { toast('Lỗi: ' + e2.message); return; }
+    }
+    toast('Lỗi: ' + e.message);
+  }
 }
 
 // ========== PROGRESSIVE LOADING ==========

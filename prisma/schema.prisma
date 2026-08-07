@@ -686,3 +686,64 @@ model KoiAdClick {
   @@map("koi_ad_clicks")
   @@schema("koi_free_style")
 }
+
+/// Bản chữ GỐC của một trường, chụp lại NGAY TRƯỚC khi AI ghi đè lên.
+///
+/// VÌ SAO BẢNG NÀY LÀ BẮT BUỘC, KHÔNG PHẢI TÍNH NĂNG THÊM:
+/// Công cụ sửa bằng AI ghi thẳng vào nội dung đang chạy trên site — bài viết có
+/// organic traffic, mô tả sản phẩm khách đang đọc. Mô hình ngôn ngữ thì không
+/// đảm bảo gì về đầu ra: nó có thể bỏ mất đoạn, đổi số đo, viết lại thành giọng
+/// khác, hoặc cắt ngắn một bài 2000 chữ thành 300. Không có bảng này thì chữ gốc
+/// mất VĨNH VIỄN ngay lần bấm đầu tiên — cột cũ đã bị UPDATE ghi đè, Postgres
+/// không giữ bản trước, và site không có bản sao lưu theo từng bản ghi.
+///
+/// Mỗi dòng là MỘT TRƯỜNG của MỘT bản ghi. Sửa một bài đụng 3 trường thì sinh 3
+/// dòng cùng `batch` — hoàn tác là trả lại cả nhóm, không lẻ từng trường.
+model KoiContentRevision {
+  id        String   @id @default(uuid())
+  /// Nhóm các trường được sửa trong cùng một lần bấm Áp dụng. Hoàn tác đi theo
+  /// nhóm: sửa tiêu đề + mô tả rồi chỉ trả lại một cái là ra bản ghi nửa vời.
+  batch     String
+  /// Loại nội dung: post | page | product | category | product_tag | blog_term.
+  /// Quyết định bảng nào được ghi khi hoàn tác — xem BAN_DO_LOAI ở ai-edit.service.ts.
+  kind      String
+  /// Khoá chính của bản ghi, LUÔN là chuỗi. Bảng public dùng BigInt, bảng
+  /// koi_free_style dùng UUID; nhét cả hai vào một cột thì chuỗi là kiểu duy
+  /// nhất chứa được cả hai mà không mất mát.
+  recordId  String
+  /// Đường dẫn công khai lúc sửa. Chỉ để chủ shop nhận ra mình đã sửa trang nào
+  /// khi xem lại danh sách — KHÔNG dùng để tra bản ghi lúc hoàn tác, vì slug có
+  /// thể đã đổi từ lúc đó.
+  path      String?
+  /// Tên trường trong DB (title, content, meta_description, description...).
+  field     String
+  /// Chữ TRƯỚC khi sửa. null nghĩa là trường đó đang trống — phải phân biệt với
+  /// chuỗi rỗng, vì hoàn tác cần trả lại đúng null chứ không phải "".
+  before    String?
+  /// Chữ SAU khi sửa. Giữ lại để đối chiếu: nếu trường hiện tại không còn khớp
+  /// `after` thì đã có người sửa tay sau AI, và hoàn tác sẽ đè mất công đó —
+  /// ai-edit.service.ts cảnh báo thay vì âm thầm ghi.
+  after     String?
+  /// Nguyên văn câu lệnh chủ shop đã viết. Để biết vì sao chữ ra như vậy, và để
+  /// dùng lại câu lệnh đã cho kết quả tốt cho bài khác.
+  prompt    String?
+  /// Model đã dùng (ví dụ gpt-4.1-mini). Đổi model là đổi giọng văn — không ghi
+  /// lại thì về sau không biết bài nào do model nào viết.
+  model     String?
+  /// Email admin đã bấm. Lấy từ JWT, không phải do phía trình duyệt khai.
+  actor     String?
+  /// Đã bấm hoàn tác chưa. Giữ dòng lại chứ không xoá: cần biết bản ghi này từng
+  /// bị sửa rồi trả lại, nếu không thì lịch sử mất một mắt.
+  revertedAt DateTime?
+  createdAt DateTime @default(now())
+
+  /// Danh sách "sửa gần đây" ở admin xếp theo cột này.
+  @@index([createdAt])
+  /// Tra nhanh mọi lần sửa của một bản ghi — dùng khi hiện cảnh báo "trang này
+  /// đã bị AI sửa 3 lần trước đó".
+  @@index([kind, recordId])
+  /// Hoàn tác lấy trọn một nhóm.
+  @@index([batch])
+  @@map("koi_content_revisions")
+  @@schema("koi_free_style")
+}
