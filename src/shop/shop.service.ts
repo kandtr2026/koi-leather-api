@@ -59,6 +59,116 @@ export class ShopService {
       }));
   }
 
+  /**
+   * Biến thể cho mặt tiền — CÓ GIÁ, mã hàng và tình trạng còn hàng.
+   *
+   * VÌ SAO PHẢI SỬA. Bản cũ chỉ trả `{ id, name, attributes }`. Ba cột quan
+   * trọng nhất của bảng koi_product_variants — `price`, `sku`, `stockStatus` —
+   * nằm lại trong cơ sở dữ liệu. Chừng nào mặt tiền còn là brochure ("Nhắn Zalo
+   * hỏi mẫu này") thì không sao: người bán tự báo giá trong cuộc gọi. Nhưng giỏ
+   * hàng thì phải tự tính tiền, và không có giá biến thể thì không tính được.
+   *
+   * ══ MỘT LỖ TIỀN CÓ THẬT, ĐO ĐƯỢC — ĐỌC TRƯỚC KHI SỬA HÀM NÀY ══
+   *
+   * Đo trên dữ liệu thật ngày 2026-08-07: 106/106 biến thể có `price = null`.
+   * Không một biến thể nào trong toàn bộ cơ sở dữ liệu có giá riêng.
+   *
+   * Trong khi đó 12 sản phẩm đang bán khai DẢI GIÁ trên chính sản phẩm
+   * (priceMin ≠ priceMax), tức trang đang in cho khách "3.800.000 ₫ –
+   * 6.800.000 ₫". Dải đó là di sản nhập từ WooCommerce; giá từng biến thể làm
+   * nên dải KHÔNG theo sang.
+   *
+   * Nên nếu hàm này lấy `v.price ?? p.basePrice` cho gọn, giỏ hàng sẽ tính
+   * MỌI biến thể theo giá thấp nhất của dải:
+   *   · hal-bag-da-bo-swift-white  : chọn "Da Swift" (6,8tr) → tính 3,8tr, hụt 3.000.000đ
+   *   · kep-tien-inh-nametag…      : dải 1,2tr–2,8tr        → hụt tới 1.600.000đ
+   *   · 9 bản rập PDF              : dải 100k–350k          → hụt 250.000đ mỗi đơn
+   * Khách không làm gì sai, code tự bán rẻ, và không ai biết cho tới lúc đối
+   * chiếu sổ. Đúng loại lỗi phải chặn ở tầng dữ liệu chứ không nhắc trong tài
+   * liệu.
+   *
+   * ══ QUY TẮC GIÁ, KHAI MỘT LẦN Ở ĐÂY ══
+   *
+   *   1. Biến thể có `price` riêng     → dùng số đó. (Hôm nay: 0 biến thể.)
+   *   2. Sản phẩm KHÔNG có dải giá     → dùng `basePrice`. An toàn: mọi biến thể
+   *      cùng một giá, đó chính là điều "không có dải" nghĩa là.
+   *   3. Sản phẩm CÓ dải giá mà biến thể không có giá → trả `null`.
+   *
+   * Đo sau khi áp quy tắc: 47 biến thể (10 sản phẩm) đủ điều kiện vào giỏ, 59
+   * biến thể (13 sản phẩm) bị chặn. 13 chứ không phải 12 vì có thêm
+   * `da-ca-sau-phap-alligator`: `basePrice = 0` với 28 biến thể. Đó là hàng
+   * "Liên hệ" — backend trả SỐ 0 chứ không phải null cho 8 sản phẩm chưa nhập
+   * giá, đúng cái bẫy `giaThuc()` ở storefront (lib/format.ts) đã ghi lại. Điều
+   * kiện `price > 0` khi chuẩn hoá chặn nó, nên "0đ" không bao giờ thành "miễn
+   * phí" ở giỏ hàng — và `price` trả ra là `null`, không phải `0`.
+   *
+   * `null` KHÔNG phải "miễn phí" mà là "chưa định giá được món này" — giỏ hàng
+   * phải từ chối thêm vào và đẩy khách sang gọi hotline. Thà mất một đơn tự phục
+   * vụ còn hơn bán rẻ 3 triệu. Cờ `can_add_to_cart` nói thẳng điều đó ra để mặt
+   * tiền không phải tự suy luận từ `price === null`.
+   *
+   * Cách bịt hẳn nhánh 3: nhập giá cho từng biến thể của 12 sản phẩm đó trong
+   * admin. Sau đó nhánh 1 nhận hết và `can_add_to_cart` tự thành true, không cần
+   * sửa dòng nào ở đây.
+   *
+   * QUY TẮC NÀY CHỈ ĐƯỢC KHAI Ở ĐÂY. Khi dựng bảng `orders`, tầng tạo đơn phải
+   * gọi lại chính hàm này để tính lại tiền phía máy chủ — không bao giờ tin số
+   * tiền trình duyệt gửi lên. Hai chỗ tự tính giá là hai chỗ sẽ lệch nhau.
+   */
+  private mapVariants(p: any) {
+    // Dải giá khai trên sản phẩm: có nghĩa là các biến thể KHÔNG cùng giá.
+    const coDaiGia =
+      p.priceMin != null && p.priceMax != null && p.priceMax > p.priceMin;
+
+    return (p.variants || []).map((v: any) => {
+      let attributes: Record<string, string> = {};
+      try {
+        attributes =
+          typeof v.options === "string" ? JSON.parse(v.options) : v.options || {};
+      } catch {
+        attributes = {};
+      }
+
+      // Xem "QUY TẮC GIÁ" ở trên. Thứ tự ba nhánh là phần quan trọng nhất của
+      // hàm này — đảo nhánh 2 lên trước nhánh 3 là mở lại lỗ bán rẻ.
+      const thoGia = v.price ?? (coDaiGia ? null : (p.basePrice ?? null));
+
+      // MỘT cách khai "chưa có giá", không phải hai.
+      //
+      // `basePrice` là 0 chứ không phải null ở 8 sản phẩm chưa nhập giá (hàng
+      // "Liên hệ"), nên nhánh 2 trả ra số 0. Nếu để nguyên thì "chưa định giá"
+      // có hai hình: `null` và `0` — và mọi nơi đọc field này phải nhớ kiểm cả
+      // hai. Chỗ nào quên là in ra "0 ₫" cho khách, đúng lỗi đã xảy ra một lần ở
+      // JSON-LD storefront (xem `giaThuc` trong lib/format.ts).
+      //
+      // Chuẩn hoá tại đây: `price` chỉ là số khi đó là số tiền dùng được.
+      const price = thoGia != null && thoGia > 0 ? thoGia : null;
+
+      return {
+        id: v.id,
+        name: v.title ?? null,
+        attributes,
+        // sku là cột NOT NULL @unique, nhưng vẫn để đường lui: mặt tiền không
+        // được sập vì một hàng dữ liệu lệch.
+        sku: v.sku ?? null,
+        price,
+        stock_status: v.stockStatus ?? "IN_STOCK",
+        // Biến thể chọn sẵn khi khách mở trang. Đo thật: mỗi sản phẩm có đúng
+        // một hàng isDefault = true.
+        is_default: !!v.isDefault,
+        /**
+         * Đủ điều kiện thêm vào giỏ hay chưa.
+         *
+         * Cả hai điều kiện đều bắt buộc: có giá tin được VÀ còn hàng. Tính ở
+         * máy chủ chứ không để trình duyệt tự suy từ `price === null` — cùng
+         * một câu trả lời cho mọi nơi hỏi, và sau này siết thêm điều kiện thì
+         * chỉ sửa một dòng.
+         */
+        can_add_to_cart: price != null && v.stockStatus === "IN_STOCK",
+      };
+    });
+  }
+
   /** Sản phẩm rút gọn cho card (danh sách, trang chủ, liên quan). */
   private card(p: any) {
     return {
@@ -669,16 +779,7 @@ export class ShopService {
       .filter((c: any) => c && c.isActive !== false)
       .map((c: any) => this.mapCategory(c));
 
-    const variants = (p.variants || []).map((v: any) => {
-      let attributes: Record<string, string> = {};
-      try {
-        attributes =
-          typeof v.options === "string" ? JSON.parse(v.options) : v.options || {};
-      } catch {
-        attributes = {};
-      }
-      return { id: v.id, name: v.title ?? null, attributes };
-    });
+    const variants = this.mapVariants(p);
 
     // Sản phẩm liên quan: cùng danh mục chính, khác chính nó.
     let related: any[] = [];
