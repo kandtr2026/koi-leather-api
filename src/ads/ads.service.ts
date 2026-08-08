@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { randomInt } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { dauNgayVN } from "../common/ngay-vn";
+import { GoogleAdsClient } from "./google-ads.client";
 
 /**
  * Nối cú bấm quảng cáo Google với hội thoại Zalo.
@@ -138,7 +139,10 @@ const LECH_GIO_PHUT = 7 * 60;
 
 @Injectable()
 export class AdsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private ads: GoogleAdsClient,
+  ) {}
 
   /**
    * Sinh mã ngắn chưa ai dùng.
@@ -805,5 +809,93 @@ export class AdsService {
     if (!ton) throw new NotFoundException("Không tìm thấy từ khoá");
     await this.prisma.koiAdKeyword.delete({ where: { id } });
     return { ok: true };
+  }
+
+  /**
+   * Kéo từ khoá THẬT đang chạy trên Google Ads về, kèm số liệu 30 ngày.
+   *
+   * Khác `danhSachTuKhoa()`: hàm kia đọc sổ tay trong DB của mình, hàm này đọc
+   * tài khoản Ads thật. Cái nào cũng cần: sổ tay giữ ghi chú của chủ shop (từ
+   * này đắt, từ kia ra đơn) — thứ Google không có chỗ nào để lưu.
+   *
+   * TRẢ VỀ CẢ TRẠNG THÁI CẤU HÌNH CHỨ KHÔNG NÉM LỖI khi thiếu env: màn hình
+   * admin cần phân biệt "chưa nối Google Ads" với "nối rồi mà tài khoản không
+   * có từ khoá nào". Hai cái đó nhìn giống nhau nếu chỉ trả về mảng rỗng, mà
+   * cách xử lý thì khác hẳn.
+   */
+  async tuKhoaThat(): Promise<{
+    daNoi: boolean;
+    thieuBien: string[];
+    dsTuKhoa: Array<{
+      tuKhoa: string;
+      loaiKhop: string;
+      trangThai: string;
+      chienDich: string;
+      nhomQuangCao: string;
+      hienThi: number;
+      cuBam: number;
+      chiPhi: number;
+      ghiChuCuaToi: string | null;
+    }>;
+  }> {
+    if (!this.ads.daCauHinh()) {
+      return { daNoi: false, thieuBien: this.ads.bienConThieu(), dsTuKhoa: [] };
+    }
+
+    // LAST_30_DAYS thay vì ALL_TIME: từ khoá tắt từ năm ngoái kéo về chỉ làm
+    // rối bảng. Ai cần lịch sử xa hơn thì xem trong giao diện Google Ads.
+    //
+    // metrics.cost_micros là micro đơn vị tiền — chia 1.000.000 mới ra đồng.
+    // Quên chia là bảng hiện chi phí gấp một triệu lần, con số vô lý tới mức dễ
+    // phát hiện, nhưng vẫn nên nói rõ ở đây.
+    const rows = await this.ads.truyVan(`
+      SELECT
+        ad_group_criterion.keyword.text,
+        ad_group_criterion.keyword.match_type,
+        ad_group_criterion.status,
+        ad_group_criterion.negative,
+        campaign.name,
+        ad_group.name,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros
+      FROM keyword_view
+      WHERE segments.date DURING LAST_30_DAYS
+        AND ad_group_criterion.status != 'REMOVED'
+      ORDER BY metrics.cost_micros DESC
+    `);
+
+    // Ghép ghi chú của sổ tay vào từ khoá thật, so theo tuKhoa không phân biệt
+    // hoa thường — chủ shop gõ "Ví Da" trong sổ tay còn Google trả "ví da".
+    const soTay = await this.prisma.koiAdKeyword.findMany();
+    const ghiChuTheoTu = new Map<string, string>();
+    for (const d of soTay) {
+      if (d.ghiChu) ghiChuTheoTu.set(d.tuKhoa.trim().toLowerCase(), d.ghiChu);
+    }
+
+    return {
+      daNoi: true,
+      thieuBien: [],
+      dsTuKhoa: rows.map((r) => {
+        const kw = r.adGroupCriterion?.keyword ?? {};
+        const text = kw.text ?? "";
+        return {
+          tuKhoa: text,
+          // negative=true là từ khoá loại trừ. Google không xếp nó thành một
+          // match_type riêng, nên phải tự gộp lại để bảng admin hiển thị đúng
+          // bốn loại như sổ tay: broad/phrase/exact/negative.
+          loaiKhop: r.adGroupCriterion?.negative
+            ? "negative"
+            : String(kw.matchType ?? "").toLowerCase(),
+          trangThai: String(r.adGroupCriterion?.status ?? "").toLowerCase(),
+          chienDich: r.campaign?.name ?? "",
+          nhomQuangCao: r.adGroup?.name ?? "",
+          hienThi: Number(r.metrics?.impressions ?? 0),
+          cuBam: Number(r.metrics?.clicks ?? 0),
+          chiPhi: Number(r.metrics?.costMicros ?? 0) / 1_000_000,
+          ghiChuCuaToi: ghiChuTheoTu.get(text.trim().toLowerCase()) ?? null,
+        };
+      }),
+    };
   }
 }

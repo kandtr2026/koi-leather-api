@@ -364,6 +364,22 @@ export class AdsAdminController {
     return this.ads.danhSachTuKhoa();
   }
 
+  /**
+   * Từ khoá THẬT đang chạy trên Google Ads, kèm số liệu 30 ngày.
+   *
+   * Route riêng chứ không gộp vào GET ads/keywords ở trên: cái kia đọc DB, chỉ
+   * mất vài mili giây và không bao giờ hỏng. Cái này gọi ra ngoài Internet, có
+   * thể chậm hoặc lỗi. Gộp lại thì Google Ads sập là sổ tay cũng không xem được.
+   */
+  @Get("ads/keywords/live")
+  @ApiOperation({ summary: "Từ khoá thật trên Google Ads + số liệu 30 ngày" })
+  async tuKhoaThat(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.ads.tuKhoaThat();
+  }
+
   @Post("ads/keywords")
   @ApiOperation({ summary: "Thêm từ khoá vào sổ tay" })
   async themTuKhoa(

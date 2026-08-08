@@ -552,6 +552,27 @@
         </div>
       </details>
 
+      <!-- Từ khoá THẬT kéo từ Google Ads về. Tách khỏi sổ tay ở trên thành hai
+           <details> riêng vì hai thứ khác nhau về bản chất: sổ tay là chữ chủ
+           tiệm ghi, cái này là số Google trả. Gộp một bảng thì không biết dòng
+           nào sửa được dòng nào không.
+
+           Đóng sẵn và chỉ tải khi mở: mỗi lần mở là một cuộc gọi ra Google, mất
+           một hai giây. Tải sẵn lúc vào trang thì trang nào cũng chậm dù không ai
+           xem tới. -->
+      <details id="kwLiveWrap" class="bg-white rounded-xl border border-gray-100 shadow-sm mb-5">
+        <summary class="p-4 cursor-pointer text-sm text-gray-600 hover:text-gray-800 select-none flex items-center gap-1.5">
+          <i class="fab fa-google text-gray-400"></i>
+          Từ khoá thật trên Google Ads
+          <span id="kwLiveCount" class="text-xs text-gray-400"></span>
+        </summary>
+        <div class="px-4 pb-4">
+          <div id="kwLiveBody">
+            <p class="text-sm text-gray-500 p-4">Mở mục này để tải số liệu 30 ngày.</p>
+          </div>
+        </div>
+      </details>
+
       <div id="adsBody">
         <div class="skeleton-loading p-6 space-y-3">
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
@@ -3201,6 +3222,17 @@ async function loadAds() {
   // liệu vài trăm mili giây không ai thấy, mà await là chặn phần quan trọng.
   loadKwList();
 
+  // Từ khoá thật thì KHÔNG tải sẵn: nó gọi ra Google, mất một hai giây và tính
+  // vào hạn mức API. Chỉ tải khi chủ tiệm thật sự mở mục đó ra xem.
+  const kwLiveWrap = document.getElementById('kwLiveWrap');
+  if (kwLiveWrap && !kwLiveWrap.dataset.noiRoi) {
+    // Đánh dấu để loadAds() gọi lại lần hai không gắn thêm listener trùng.
+    kwLiveWrap.dataset.noiRoi = '1';
+    kwLiveWrap.addEventListener('toggle', () => {
+      if (kwLiveWrap.open) loadKwLive(false);
+    });
+  }
+
   try {
     // noCache: chủ shop vừa chốt đơn ngay trên màn hình này rồi bảng nạp lại.
     // Đọc trúng bản cache 60 giây thì số tiền vừa gõ không hiện, tưởng mất.
@@ -3862,6 +3894,79 @@ const KW_LOAI_KHOP_STYLES = {
   exact: 'bg-emerald-50 text-emerald-700',
   negative: 'bg-rose-50 text-rose-700',
 };
+
+// Từ khoá thật trên Google Ads. Chỉ tải một lần cho mỗi lần vào trang — số liệu
+// 30 ngày không đổi trong lúc ngồi xem, mà mỗi lần tải là một cuộc gọi ra Google.
+let kwLiveDaTai = false;
+
+async function loadKwLive(batBuoc) {
+  if (kwLiveDaTai && !batBuoc) return;
+  const el = document.getElementById('kwLiveBody');
+  const badge = document.getElementById('kwLiveCount');
+  el.innerHTML = `<p class="text-sm text-gray-500 p-4">Đang gọi Google Ads...</p>`;
+
+  try {
+    const r = await api('/analytics/ads/keywords/live', { noCache: true });
+    kwLiveDaTai = true;
+
+    // Chưa nối được thì nói rõ thiếu biến nào. Trả mảng rỗng suông thì không
+    // phân biệt được "chưa nối" với "nối rồi mà tài khoản chưa có từ khoá".
+    if (!r.daNoi) {
+      badge.textContent = '';
+      el.innerHTML = `<div class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 leading-relaxed">
+        <p class="font-medium mb-1">Chưa nối Google Ads API</p>
+        <p>Thiếu biến môi trường: <code class="text-xs">${esc((r.thieuBien || []).join(', ') || 'không rõ')}</code></p>
+        <p class="mt-1 text-xs">Nạp trên Vercel → koi-leather-api → Settings → Environment Variables, rồi deploy lại.</p>
+      </div>`;
+      return;
+    }
+
+    const ds = r.dsTuKhoa || [];
+    badge.textContent = ds.length ? `(${ds.length})` : '(chưa có)';
+
+    if (!ds.length) {
+      el.innerHTML = `<p class="text-sm text-gray-500 py-3">Tài khoản Google Ads không có từ khoá nào chạy trong 30 ngày qua.</p>`;
+      return;
+    }
+
+    const dong = ds.map((k) => {
+      const nhan = KW_LOAI_KHOP_LABELS[k.loaiKhop] || k.loaiKhop || '—';
+      const mau = KW_LOAI_KHOP_STYLES[k.loaiKhop] || 'bg-gray-50 text-gray-600';
+      // paused làm mờ đi để mắt bỏ qua nhanh, giống cách sổ tay đang làm.
+      const mo = k.trangThai === 'paused' ? 'opacity-50' : '';
+      return `<tr class="border-b border-gray-50 ${mo}">
+        <td class="py-2 pr-3 text-sm text-gray-800">${esc(k.tuKhoa)}</td>
+        <td class="py-2 pr-3"><span class="text-xs px-2 py-0.5 rounded ${mau}">${esc(nhan)}</span></td>
+        <td class="py-2 pr-3 text-xs text-gray-500">${esc(k.chienDich)}</td>
+        <td class="py-2 pr-3 text-sm text-gray-600 text-right">${k.hienThi.toLocaleString('vi-VN')}</td>
+        <td class="py-2 pr-3 text-sm text-gray-600 text-right">${k.cuBam.toLocaleString('vi-VN')}</td>
+        <td class="py-2 pr-3 text-sm text-gray-800 text-right whitespace-nowrap">${Math.round(k.chiPhi).toLocaleString('vi-VN')}đ</td>
+        <td class="py-2 text-xs text-gray-500">${k.ghiChuCuaToi ? esc(k.ghiChuCuaToi) : ''}</td>
+      </tr>`;
+    }).join('');
+
+    el.innerHTML = `<div class="overflow-x-auto">
+      <table class="w-full">
+        <thead><tr class="border-b border-gray-200 text-xs text-gray-500 uppercase">
+          <th class="text-left py-2 pr-3 font-medium">Từ khoá</th>
+          <th class="text-left py-2 pr-3 font-medium">Loại khớp</th>
+          <th class="text-left py-2 pr-3 font-medium">Chiến dịch</th>
+          <th class="text-right py-2 pr-3 font-medium">Hiển thị</th>
+          <th class="text-right py-2 pr-3 font-medium">Cú bấm</th>
+          <th class="text-right py-2 pr-3 font-medium">Chi phí 30n</th>
+          <th class="text-left py-2 font-medium">Ghi chú của tôi</th>
+        </tr></thead>
+        <tbody>${dong}</tbody>
+      </table>
+      <p class="text-xs text-gray-400 mt-2">Số liệu 30 ngày gần nhất, lấy trực tiếp từ Google Ads.
+        <button onclick="loadKwLive(true)" class="text-amber-600 hover:underline ml-1">Tải lại</button></p>
+    </div>`;
+  } catch (e) {
+    document.getElementById('kwLiveCount').textContent = '';
+    el.innerHTML = `<p class="text-sm text-gray-500 py-3">Không gọi được Google Ads: ${esc(e.message || 'lỗi không rõ')}
+      <button onclick="loadKwLive(true)" class="text-amber-600 hover:underline ml-1">Thử lại</button></p>`;
+  }
+}
 
 async function loadKwList() {
   const el = document.getElementById('kwBody');
