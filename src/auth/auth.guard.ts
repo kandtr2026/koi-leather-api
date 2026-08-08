@@ -20,6 +20,22 @@ const DUONG_TU_CHOI_SERVICE = [
   "/analytics/ads/feed-config",
 ];
 
+/**
+ * Chuẩn hoá trước khi so khớp deny-list.
+ *
+ * Express để strict routing = false nên "/analytics/ads/feed-config/" vẫn khớp
+ * đúng handler đó, nhưng request.path GIỮ dấu / cuối. So khớp chính xác bằng
+ * includes() sẽ trượt, và một dấu / là vượt được deny-list — đã rò thật:
+ * feed-config trả mật khẩu feed Google Ads cho service token.
+ *
+ * Hạ chữ hoa vì Express khớp route không phân biệt hoa thường (caseSensitive
+ * = false), nên "/Analytics/Ads/Feed-Config" cũng vào đúng handler.
+ */
+function chuanHoaDuong(duong: string): string {
+  const bo = duong.split("?")[0].replace(/\/+$/, "");
+  return (bo || "/").toLowerCase();
+}
+
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(private authService: AuthService) {}
@@ -66,17 +82,19 @@ export class AuthGuard implements CanActivate {
     // Kiểm tra trước nhánh GET chung vì token này không phải JWT — verifyToken
     // sẽ ném lỗi và bị coi là ẩn danh rồi chặn.
     if (token && this.laServiceToken(token)) {
+      const duong = chuanHoaDuong(path);
+
       if (!["GET", "HEAD"].includes(method)) {
         throw new UnauthorizedException(
           "Service token chỉ được đọc, không được ghi",
         );
       }
-      if (!path.startsWith(DUONG_CHI_DOC)) {
+      if (duong !== DUONG_CHI_DOC && !duong.startsWith(DUONG_CHI_DOC + "/")) {
         throw new UnauthorizedException(
           "Service token chỉ được đọc nhóm /analytics",
         );
       }
-      if (DUONG_TU_CHOI_SERVICE.includes(path)) {
+      if (DUONG_TU_CHOI_SERVICE.includes(duong)) {
         throw new UnauthorizedException(
           "Đường dẫn này không cấp cho service token",
         );

@@ -82,6 +82,12 @@ describe("AuthGuard — service token cho Heoiu", () => {
       const { ctx: c } = ctx("HEAD", "/analytics/summary", TOKEN);
       expect(guard.canActivate(c)).toBe(true);
     });
+
+    it("dấu / cuối trên đường ĐƯỢC PHÉP vẫn qua (chuẩn hoá không làm chặt quá)", () => {
+      const { guard } = guardMoi();
+      const { ctx: c } = ctx("GET", "/analytics/summary/", TOKEN);
+      expect(guard.canActivate(c)).toBe(true);
+    });
   });
 
   describe("từ chối", () => {
@@ -100,6 +106,39 @@ describe("AuthGuard — service token cho Heoiu", () => {
     ])("GET %s bị chặn dù nằm trong /analytics", (path) => {
       const { guard } = guardMoi();
       const { ctx: c } = ctx("GET", path, TOKEN);
+      expect(() => guard.canActivate(c)).toThrow(UnauthorizedException);
+    });
+
+    /**
+     * ĐÃ RÒ THẬT trên production: thêm một dấu / cuối là vượt deny-list.
+     * Express để strict routing = false nên "/…/feed-config/" vẫn vào đúng
+     * handler, nhưng request.path giữ dấu / nên includes() trượt.
+     * feed-config đã trả mật khẩu feed Google Ads (28 ký tự) cho service token.
+     */
+    it.each([
+      "/analytics/ads/feed-config/",
+      "/analytics/ads/export.csv/",
+      "/analytics/ads/feed-config//",
+      "/Analytics/Ads/Feed-Config", // route khớp không phân biệt hoa thường
+      "/ANALYTICS/ADS/EXPORT.CSV/",
+    ])("GET %s cũng bị chặn (biến thể lách deny-list)", (path) => {
+      const { guard } = guardMoi();
+      const { ctx: c } = ctx("GET", path, TOKEN);
+      expect(() => guard.canActivate(c)).toThrow(UnauthorizedException);
+    });
+
+    it.each([
+      "/analytics-noi-bo", // startsWith('/analytics') khớp nhầm
+      "/analyticsx",
+    ])("GET %s bị chặn — không phải nhóm /analytics", (path) => {
+      const { guard } = guardMoi();
+      const { ctx: c } = ctx("GET", path, TOKEN);
+      expect(() => guard.canActivate(c)).toThrow(UnauthorizedException);
+    });
+
+    it("đường dẫn kèm query vẫn bị chặn", () => {
+      const { guard } = guardMoi();
+      const { ctx: c } = ctx("GET", "/analytics/ads/feed-config?x=1", TOKEN);
       expect(() => guard.canActivate(c)).toThrow(UnauthorizedException);
     });
 
