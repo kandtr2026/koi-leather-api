@@ -17,6 +17,8 @@
     .tab-btn { cursor: pointer; transition: all 0.2s; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; }
     .tab-btn:hover { background: #e2e8f0; }
     .tab-btn.active { background: #1e293b; color: white; }
+    .admin-link { display: inline-flex; align-items: center; cursor: pointer; transition: all 0.2s; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; }
+    .admin-link:hover { background: #e2e8f0; }
     .panel { display: none; }
     .panel.active { display: block; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; }
@@ -289,6 +291,7 @@
     <button class="tab-btn" data-tab="ads"><i class="fas fa-bullhorn mr-2 text-amber-500"></i>Quảng cáo</button>
     <button class="tab-btn" data-tab="leads"><i class="fas fa-address-book mr-2 text-amber-500"></i>Khách để lại số<span id="leadBadge" class="hidden ml-2 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold align-middle"></span></button>
     <button class="tab-btn" data-tab="aiedit"><i class="fas fa-wand-magic-sparkles mr-2 text-amber-500"></i>Sửa bằng AI</button>
+    <a class="admin-link" href="/quan-tri/noi-dung/"><i class="fas fa-pen-to-square mr-2 text-amber-500"></i>Sửa nội dung</a>
 
   </div>
 
