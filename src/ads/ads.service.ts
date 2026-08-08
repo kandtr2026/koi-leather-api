@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { randomInt } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { dauNgayVN } from "../common/ngay-vn";
@@ -672,5 +672,138 @@ export class AdsService {
       },
     });
     return { deleted: r.count };
+  }
+
+  // ─── Sổ tay từ khoá quảng cáo ────────────────────────────────────────────
+
+  /**
+   * Trả toàn bộ danh sách từ khoá, active trước rồi paused.
+   *
+   * Không phân trang: shop nhỏ, cỡ vài trăm từ khoá là nhiều nhất; lấy hết
+   * một lượt đơn giản hơn là quản lý cursor ở phía admin.
+   */
+  async danhSachTuKhoa() {
+    return this.prisma.koiAdKeyword.findMany({
+      orderBy: [{ trangThai: "asc" }, { taoLuc: "desc" }],
+    });
+  }
+
+  /**
+   * Thêm một từ khoá mới vào sổ tay.
+   *
+   * Không cho trùng tuKhoa + loaiKhop + chienDich để tránh nhập đôi vô tình.
+   * Nếu muốn cùng từ khoá ở hai chiến dịch khác nhau thì điền chienDich.
+   */
+  async themTuKhoa(input: {
+    tuKhoa: string;
+    chienDich?: string;
+    loaiKhop?: string;
+    trangThai?: string;
+    ghiChu?: string;
+  }) {
+    const tuKhoa = input.tuKhoa.trim();
+    if (!tuKhoa) throw new BadRequestException("Từ khoá không được để trống");
+
+    const chienDich = input.chienDich?.trim() || null;
+    const loaiKhop = input.loaiKhop?.trim() || null;
+
+    const LOAI_HOP_LE = ["broad", "phrase", "exact", "negative"];
+    if (loaiKhop && !LOAI_HOP_LE.includes(loaiKhop)) {
+      throw new BadRequestException(`Loại khớp không hợp lệ: ${loaiKhop}`);
+    }
+
+    const TRANG_THAI_HOP_LE = ["active", "paused"];
+    const trangThai = input.trangThai?.trim() || "active";
+    if (!TRANG_THAI_HOP_LE.includes(trangThai)) {
+      throw new BadRequestException(`Trạng thái không hợp lệ: ${trangThai}`);
+    }
+
+    // Chặn trùng lặp ở tầng service thay vì dùng unique constraint DB, vì
+    // null != null trong SQL (mỗi NULL là một giá trị riêng) nên unique index
+    // nhiều cột chứa NULL không hoạt động như mong đợi.
+    //
+    // Truyền thẳng null chứ không `?? undefined`: undefined làm Prisma bỏ hẳn
+    // điều kiện khỏi câu WHERE, nên thêm "ví da" không chiến dịch sẽ khớp với
+    // "ví da" của chiến dịch bất kỳ rồi báo trùng oan. null mới ra IS NULL.
+    const trung = await this.prisma.koiAdKeyword.findFirst({
+      where: { tuKhoa, chienDich, loaiKhop },
+    });
+    if (trung) throw new BadRequestException("Từ khoá này đã tồn tại trong sổ tay");
+
+    return this.prisma.koiAdKeyword.create({
+      data: {
+        tuKhoa,
+        chienDich,
+        loaiKhop,
+        trangThai,
+        ghiChu: input.ghiChu?.trim().slice(0, 500) || null,
+      },
+    });
+  }
+
+  /**
+   * Cập nhật từ khoá theo id.
+   *
+   * Chỉ cập nhật trường nào được gửi lên; các trường bỏ qua giữ nguyên.
+   */
+  async suaTuKhoa(
+    id: string,
+    input: {
+      tuKhoa?: string;
+      chienDich?: string | null;
+      loaiKhop?: string | null;
+      trangThai?: string;
+      ghiChu?: string | null;
+    },
+  ) {
+    const ton = await this.prisma.koiAdKeyword.findUnique({ where: { id } });
+    if (!ton) throw new NotFoundException("Không tìm thấy từ khoá");
+
+    const data: Record<string, unknown> = {};
+
+    if (input.tuKhoa !== undefined) {
+      const tuKhoa = input.tuKhoa.trim();
+      if (!tuKhoa) throw new BadRequestException("Từ khoá không được để trống");
+      data.tuKhoa = tuKhoa;
+    }
+
+    if (input.chienDich !== undefined) {
+      data.chienDich = input.chienDich?.trim() || null;
+    }
+
+    if (input.loaiKhop !== undefined) {
+      const LOAI_HOP_LE = ["broad", "phrase", "exact", "negative"];
+      if (input.loaiKhop && !LOAI_HOP_LE.includes(input.loaiKhop)) {
+        throw new BadRequestException(`Loại khớp không hợp lệ: ${input.loaiKhop}`);
+      }
+      data.loaiKhop = input.loaiKhop || null;
+    }
+
+    if (input.trangThai !== undefined) {
+      const TRANG_THAI_HOP_LE = ["active", "paused"];
+      if (!TRANG_THAI_HOP_LE.includes(input.trangThai)) {
+        throw new BadRequestException(`Trạng thái không hợp lệ: ${input.trangThai}`);
+      }
+      data.trangThai = input.trangThai;
+    }
+
+    if (input.ghiChu !== undefined) {
+      data.ghiChu = input.ghiChu?.trim().slice(0, 500) || null;
+    }
+
+    return this.prisma.koiAdKeyword.update({ where: { id }, data });
+  }
+
+  /**
+   * Xoá vĩnh viễn một từ khoá khỏi sổ tay.
+   *
+   * Đây là sổ tay nội bộ nên xoá thật sự là ổn — không ảnh hưởng lịch sử
+   * cú bấm hay báo cáo doanh thu vốn nằm ở bảng koi_ad_clicks.
+   */
+  async xoaTuKhoa(id: string): Promise<{ ok: boolean }> {
+    const ton = await this.prisma.koiAdKeyword.findUnique({ where: { id } });
+    if (!ton) throw new NotFoundException("Không tìm thấy từ khoá");
+    await this.prisma.koiAdKeyword.delete({ where: { id } });
+    return { ok: true };
   }
 }

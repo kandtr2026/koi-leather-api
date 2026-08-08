@@ -523,6 +523,35 @@
         </div>
       </details>
 
+      <!-- SỔ TAY TỪ KHOÁ. Gập lại mặc định: nó là chỗ lập kế hoạch, mở tab ra
+           thì việc trước mắt vẫn là tra mã và xem đơn nào chờ gửi. Ghi rõ ngay
+           dòng đầu rằng sửa ở đây KHÔNG đổi gì trong Google Ads — không nói thì
+           chủ tiệm sửa xong tưởng đã tắt từ khoá đắt, mà tiền vẫn chạy. -->
+      <details class="bg-white rounded-xl border border-gray-100 shadow-sm mb-5">
+        <summary class="p-4 cursor-pointer text-sm text-gray-600 hover:text-gray-800 select-none flex items-center gap-1.5">
+          <i class="fas fa-key text-gray-400"></i>
+          Sổ tay từ khoá
+          <span id="kwCount" class="text-xs text-gray-400"></span>
+        </summary>
+        <div class="px-4 pb-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
+              Đây là <strong>sổ ghi nhớ</strong> để nhớ mình đang nhắm từ nào, từ nào đắt phải bỏ, từ nào cần chặn.
+              Sửa ở đây <strong>không thay đổi tài khoản Google Ads</strong> — muốn đổi thật vẫn phải vào Google Ads bấm tay.
+            </p>
+            <button onclick="openKeyword()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shrink-0">
+              <i class="fas fa-plus"></i> Thêm từ khoá
+            </button>
+          </div>
+          <div id="kwBody">
+            <div class="skeleton-loading p-4 space-y-2">
+              <div class="h-5 bg-gray-100 rounded animate-pulse"></div>
+              <div class="h-5 bg-gray-50 rounded animate-pulse w-2/3"></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
       <div id="adsBody">
         <div class="skeleton-loading p-6 space-y-3">
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
@@ -1168,6 +1197,65 @@
   </div>
 </div>
 
+<!-- THÊM / SỬA TỪ KHOÁ.
+     Một modal dùng cho cả hai việc: hai modal gần giống nhau thì sớm muộn cũng
+     lệch nhau một ô, và ô lệch đó là ô không ai lưu được. Phân biệt bằng
+     #kwId rỗng hay không. -->
+<div class="modal-overlay" id="keywordModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 fade-in">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-bold" id="kwTitle">Thêm từ khoá</h2>
+      <button onclick="closeModal('keywordModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="space-y-3">
+      <input type="hidden" id="kwId">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Từ khoá <span class="text-red-500">*</span></label>
+        <input id="kwTuKhoa" type="text" autocomplete="off" maxlength="200" placeholder="ví da bò thủ công"
+          onkeydown="if (event.key === 'Enter') saveKeyword();"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Chiến dịch <span class="font-normal text-gray-400">— không bắt buộc</span></label>
+        <input id="kwChienDich" type="text" autocomplete="off" maxlength="120" placeholder="Ví da – Tìm kiếm"
+          list="kwChienDichList"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+        <!-- Gợi ý từ chính các chiến dịch đã gõ: không có nó thì cùng một chiến
+             dịch bị gõ ba kiểu và nhóm theo chiến dịch thành vô nghĩa. -->
+        <datalist id="kwChienDichList"></datalist>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Loại khớp</label>
+          <select id="kwLoaiKhop" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+            <option value="">— chưa chọn —</option>
+            <option value="broad">Rộng (broad)</option>
+            <option value="phrase">Cụm từ (phrase)</option>
+            <option value="exact">Chính xác (exact)</option>
+            <option value="negative">Phủ định (negative)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Trạng thái</label>
+          <select id="kwTrangThai" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+            <option value="active">Đang chạy</option>
+            <option value="paused">Tạm dừng</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Ghi chú</label>
+        <textarea id="kwGhiChu" rows="2" maxlength="500" placeholder="Đắt quá, 90k/cú bấm — theo dõi thêm một tuần"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400"></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+      <button onclick="closeModal('keywordModal')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+      <button id="kwSaveBtn" onclick="saveKeyword()" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-save mr-1"></i> Lưu</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRM DIALOG -->
 <div class="modal-overlay" id="confirmModal">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 fade-in text-center" style="transform:translateY(0)">
@@ -1288,6 +1376,11 @@ let adsLoaded = false;
 let adsRange = 90;
 let adsGoogleData = null;
 
+// Sổ tay từ khoá. Giữ bản thô của lượt tải gần nhất để nút Sửa đổ lại đúng chữ
+// người dùng đã gõ — bóc từ DOM thì "A & B" đã qua esc() thành "A &amp; B" và
+// lưu lại một lần là dấu & nhân đôi.
+let kwData = [];
+
 // Cùng lý do: applyRoute đọc leadsLoaded. `let` không hoisted như `var` nên để
 // khai báo bên dưới thì mở thẳng /admin/leads sẽ ném ReferenceError.
 let leadsLoaded = false;
@@ -1324,6 +1417,7 @@ function getRouteFromPath() {
 function applyRoute(route) {
   const entry = ROUTE_MAP[route];
   if (!entry) return;
+  hideTrafficChartTooltip();
 
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === entry.panel);
@@ -1468,7 +1562,7 @@ async function api(path, options = {}) {
   const timeout = setTimeout(() => controller.abort(), hanCho);
 
   // Attach auth token if available
-  const token = sessionStorage.getItem('auth_token');
+  const token = localStorage.getItem('auth_token');
   const headers = { 'Content-Type': 'application/json' };
   if (options.headers) Object.assign(headers, options.headers);
   if (token) headers['Authorization'] = 'Bearer ' + token;
@@ -1569,7 +1663,7 @@ async function handleGoogleCredential(response) {
       body: JSON.stringify({ credential: response.credential }),
     });
     if (data.accessToken) {
-      sessionStorage.setItem('auth_token', data.accessToken);
+      localStorage.setItem('auth_token', data.accessToken);
       applyAuth(data.user);
     }
   } catch (e) {
@@ -1635,7 +1729,7 @@ async function demLeadChuaGoi() {
 }
 
 function logout() {
-  sessionStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_token');
   isAuthenticated = false;
   document.body.classList.remove('authenticated');
   document.getElementById('gSignInWrapper').classList.remove('hidden');
@@ -1652,17 +1746,17 @@ function logout() {
 }
 
 async function checkAuth() {
-  const token = sessionStorage.getItem('auth_token');
+  const token = localStorage.getItem('auth_token');
   if (!token) return;
   try {
     const data = await api('/auth/me');
     if (data.authenticated && data.user) {
       applyAuth(data.user);
     } else {
-      sessionStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_token');
     }
   } catch {
-    sessionStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_token');
   }
 }
 
@@ -1757,7 +1851,7 @@ function uploadFileXHR(productId, fileEntry, imageType, token) {
 
 async function uploadPendingFiles(productId, onProgress) {
   if (!pendingFiles.length) { if (onProgress) onProgress(1); return; }
-  const token = sessionStorage.getItem('auth_token');
+  const token = localStorage.getItem('auth_token');
   const selectedType = document.querySelector('input[name="uploadType"]:checked');
   const imageType = selectedType ? selectedType.value : null;
   const total = pendingFiles.length;
@@ -2588,7 +2682,88 @@ const DEVICE_LABELS = { mobile: 'Điện thoại', tablet: 'Máy tính bảng', 
 /** 9 → "09h". Hai chữ số để nhãn trục ngang không nhảy bề rộng giữa 9h và 10h. */
 const gio2 = h => String(h).padStart(2, '0') + 'h';
 
+/**
+ * Tooltip dùng position:fixed và nằm trực tiếp dưới body để không bị khung
+ * overflow-x-auto của biểu đồ cắt mất. Một tooltip dùng chung cũng tránh tạo
+ * 24-90 phần tử nổi và giữ việc định vị ở đúng một chỗ.
+ */
+function getTrafficChartTooltip() {
+  let tip = document.getElementById('trafficChartTooltip');
+  if (tip) return tip;
+
+  tip = document.createElement('div');
+  tip.id = 'trafficChartTooltip';
+  tip.className = 'fixed hidden pointer-events-none whitespace-nowrap bg-gray-900 text-white text-[11px] px-2 py-1 rounded shadow-lg';
+  tip.style.zIndex = '120';
+  tip.setAttribute('role', 'tooltip');
+  document.body.appendChild(tip);
+  return tip;
+}
+
+function hideTrafficChartTooltip() {
+  const tip = document.getElementById('trafficChartTooltip');
+  if (!tip) return;
+  tip.classList.add('hidden');
+  tip.style.visibility = '';
+}
+
+/** Đặt tooltip cạnh con trỏ, tự né bốn mép màn hình. */
+function moveTrafficChartTooltip(event) {
+  const tip = document.getElementById('trafficChartTooltip');
+  if (!tip || tip.classList.contains('hidden')) return;
+
+  const margin = 8;
+  const gap = 12;
+  const rect = tip.getBoundingClientRect();
+  const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+  const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+
+  let left = event.clientX - rect.width / 2;
+  left = Math.min(Math.max(left, margin), maxLeft);
+
+  let top = event.clientY - rect.height - gap;
+  if (top < margin) top = event.clientY + gap;
+  top = Math.min(Math.max(top, margin), maxTop);
+
+  tip.style.left = `${Math.round(left)}px`;
+  tip.style.top = `${Math.round(top)}px`;
+}
+
+let trafficChartTooltipGlobalListenersBound = false;
+
+/** Gắn lại listener sau mỗi lần renderTraffic thay toàn bộ innerHTML. */
+function bindTrafficChartTooltips() {
+  const chart = document.getElementById('trafficChart');
+  if (!chart) return;
+
+  const tip = getTrafficChartTooltip();
+  chart.querySelectorAll('[data-traffic-tooltip]').forEach(col => {
+    col.addEventListener('pointerenter', event => {
+      const text = col.dataset.trafficTooltip;
+      if (!text) return;
+      tip.textContent = text;
+      // Ẩn trong lúc đo kích thước để không chớp ở vị trí cũ.
+      tip.style.visibility = 'hidden';
+      tip.classList.remove('hidden');
+      moveTrafficChartTooltip(event);
+      tip.style.visibility = 'visible';
+    });
+    col.addEventListener('pointermove', moveTrafficChartTooltip);
+    col.addEventListener('pointerleave', hideTrafficChartTooltip);
+    col.addEventListener('pointercancel', hideTrafficChartTooltip);
+  });
+
+  // Cuộn trang hoặc kéo ngang biểu đồ thì tooltip cũ phải biến mất, không được
+  // đứng lơ lửng tại tọa độ cũ. Chỉ gắn listener toàn cục đúng một lần.
+  if (!trafficChartTooltipGlobalListenersBound) {
+    window.addEventListener('scroll', hideTrafficChartTooltip, { capture: true, passive: true });
+    window.addEventListener('blur', hideTrafficChartTooltip);
+    trafficChartTooltipGlobalListenersBound = true;
+  }
+}
+
 function renderTraffic(d) {
+  hideTrafficChartTooltip();
   const el = document.getElementById('trafficBody');
   const { totals, daily, topPages, sources, devices } = d;
   // Mặc định 0: phản hồi cũ còn trong sessionStorage (cache 60 giây) chưa có
@@ -2653,12 +2828,14 @@ function renderTraffic(d) {
     // tới luôn cao 0 (chưa có lượt nào) nên đổi màu thanh thì không hiện ra gì
     // — nhìn y hệt giờ đã qua mà không ai vào, đúng hai chuyện phải phân biệt.
     const chuaToi = theoGio && r.daQua === false;
-    return `<div class="flex-1 flex flex-col justify-end items-center group relative min-w-[6px] ${chuaToi ? 'bg-gray-50' : ''}">
+    // Thanh con dùng height theo %, nên ô cột phải cao bằng toàn bộ khung h-40.
+    // Thiếu h-full thì flex item co theo nội dung, % không có mốc để tính và mọi
+    // thanh đều thành 0px dù d.hourly/daily vẫn có số liệu.
+    const tooltip = `${nhanCua(r)} · ${nf(r.luot)} lượt · ${nf(r.khach)} khách${chuaToi ? ' · chưa tới giờ' : ''}`;
+    return `<div class="h-full flex-1 flex flex-col justify-end items-center group relative min-w-[6px] ${chuaToi ? 'bg-gray-50' : ''}"
+                 data-traffic-tooltip="${escAttr(tooltip)}" aria-label="${escAttr(tooltip)}">
       <div class="w-full bg-amber-400 hover:bg-amber-500 transition-colors rounded-t"
            style="height:${Math.max(h, r.luot ? 3 : 0)}%"></div>
-      <div class="absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap bg-gray-900 text-white text-[11px] px-2 py-1 rounded shadow-lg z-10">
-        ${nhanCua(r)} · ${nf(r.luot)} lượt · ${nf(r.khach)} khách${chuaToi ? ' · chưa tới giờ' : ''}
-      </div>
     </div>`;
   }).join('');
 
@@ -2750,9 +2927,9 @@ function renderTraffic(d) {
              đòi ~500px bề ngang. Ô lưới trên điện thoại chỉ ~350px, mà ô lưới
              mặc định KHÔNG co dưới bề rộng nội dung (min-width:auto) — thiếu
              hai lớp này thì biểu đồ đội cả thẻ tràn ra ngoài màn hình. -->
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" data-traffic-chart-scroll>
           <div class="min-w-[280px]">
-            <div class="flex items-end gap-[2px] h-40">${cols}</div>
+            <div class="flex items-end gap-[2px] h-40" id="trafficChart">${cols}</div>
             <div class="flex gap-[2px] mt-1.5">${nhan}</div>
           </div>
         </div>
@@ -2806,6 +2983,7 @@ function renderTraffic(d) {
         </table>
       </div>
     </div>`;
+  bindTrafficChartTooltips();
 }
 
 // ========== ĐANG XEM (REALTIME) ==========
@@ -3018,6 +3196,10 @@ async function loadAds() {
   // await thì một bên lỗi là bên kia không hiện — trong khi cả hai đều tự xử lý
   // lỗi của mình rồi.
   loadAdsFeedConfig();
+
+  // Sổ tay từ khoá cũng vậy: nằm trong <details> đóng sẵn nên chậm hơn bảng số
+  // liệu vài trăm mili giây không ai thấy, mà await là chặn phần quan trọng.
+  loadKwList();
 
   try {
     // noCache: chủ shop vừa chốt đơn ngay trên màn hình này rồi bảng nạp lại.
@@ -3619,7 +3801,7 @@ async function exportAdsCsv() {
   let url = null;
   try {
     const res = await fetch(API + '/analytics/ads/export.csv?name=' + encodeURIComponent(name), {
-      headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('auth_token') },
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('auth_token') },
     });
     if (!res.ok) throw new Error('máy chủ trả về ' + res.status);
 
@@ -3660,6 +3842,157 @@ async function exportAdsCsv() {
     if (url) setTimeout(() => URL.revokeObjectURL(url), 10000);
     btn.disabled = false;
     btn.classList.remove('loading');
+  }
+}
+
+// ========== SỔ TAY TỪ KHOÁ ==========
+//
+// Bảng koi_ad_keywords là sổ ghi nhớ nội bộ, KHÔNG nối với Google Ads API. Sửa
+// ở đây không đổi tài khoản quảng cáo — chỗ này để nhớ đã thử từ nào, từ nào
+// đắt, từ nào cần phủ định, vì màn hình Google Ads không giữ ghi chú của mình.
+const KW_LOAI_KHOP_LABELS = {
+  broad: 'Rộng', phrase: 'Cụm từ', exact: 'Chính xác', negative: 'Phủ định',
+};
+
+// Phủ định là loại cần nhìn thấy khác hẳn: nó CHẶN hiển thị, đọc nhầm thành từ
+// đang chạy là hiểu sai hoàn toàn tác dụng.
+const KW_LOAI_KHOP_STYLES = {
+  broad: 'bg-blue-50 text-blue-700',
+  phrase: 'bg-indigo-50 text-indigo-700',
+  exact: 'bg-emerald-50 text-emerald-700',
+  negative: 'bg-rose-50 text-rose-700',
+};
+
+async function loadKwList() {
+  const el = document.getElementById('kwBody');
+  try {
+    // noCache: vừa thêm/sửa xong là gọi lại hàm này. Trúng cache 60 giây thì từ
+    // khoá mới không hiện, người dùng tưởng nút Lưu không chạy rồi bấm lần nữa.
+    kwData = await api('/analytics/ads/keywords', { noCache: true });
+    renderKwTable();
+  } catch (e) {
+    kwData = [];
+    document.getElementById('kwCount').textContent = '';
+    el.innerHTML = `<p class="text-xs text-gray-500 py-3">Không tải được sổ tay: ${esc(e.message || 'lỗi không rõ')}
+      <button onclick="loadKwList()" class="text-amber-600 hover:underline ml-1">Thử lại</button></p>`;
+  }
+}
+
+function renderKwTable() {
+  const el = document.getElementById('kwBody');
+  const badge = document.getElementById('kwCount');
+
+  const dangChay = kwData.filter(k => k.trangThai === 'active').length;
+  badge.textContent = kwData.length ? `${dangChay} đang chạy / ${kwData.length} từ` : '';
+
+  // Đổ gợi ý chiến dịch từ chính dữ liệu đã có, bỏ trùng và bỏ rỗng.
+  document.getElementById('kwChienDichList').innerHTML =
+    [...new Set(kwData.map(k => k.chienDich).filter(Boolean))]
+      .map(c => `<option value="${esc(c)}"></option>`).join('');
+
+  if (!kwData.length) {
+    el.innerHTML = `<p class="text-xs text-gray-400 py-4 text-center">Chưa ghi từ khoá nào.
+      Bấm <strong>Thêm từ khoá</strong> để bắt đầu.</p>`;
+    return;
+  }
+
+  const rows = kwData.map(k => {
+    const tam = k.trangThai !== 'active';
+    const loai = k.loaiKhop
+      ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-medium ${KW_LOAI_KHOP_STYLES[k.loaiKhop] || 'bg-gray-100 text-gray-600'}">${esc(KW_LOAI_KHOP_LABELS[k.loaiKhop] || k.loaiKhop)}</span>`
+      : '<span class="text-gray-300">—</span>';
+    return `<tr class="border-b border-gray-50 ${tam ? 'opacity-50' : ''}">
+      <td class="py-2 pr-3 text-sm ${tam ? 'line-through' : 'font-medium'}">${esc(k.tuKhoa)}</td>
+      <td class="py-2 pr-3 text-xs text-gray-500">${k.chienDich ? esc(k.chienDich) : '<span class="text-gray-300">—</span>'}</td>
+      <td class="py-2 pr-3">${loai}</td>
+      <td class="py-2 pr-3 text-xs text-gray-500 max-w-[220px] truncate" title="${esc(k.ghiChu || '')}">${k.ghiChu ? esc(k.ghiChu) : ''}</td>
+      <td class="py-2 text-right whitespace-nowrap">
+        <button onclick="openKeyword('${esc(k.id)}')" class="text-gray-400 hover:text-amber-600 px-1.5" title="Sửa"><i class="fas fa-pen text-xs"></i></button>
+        <button onclick="deleteKeyword('${esc(k.id)}')" class="text-gray-400 hover:text-red-500 px-1.5" title="Xoá"><i class="fas fa-trash text-xs"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<div class="overflow-x-auto">
+    <table class="w-full">
+      <thead><tr class="text-[11px] uppercase tracking-wide text-gray-400 border-b border-gray-100">
+        <th class="text-left font-medium pb-2 pr-3">Từ khoá</th>
+        <th class="text-left font-medium pb-2 pr-3">Chiến dịch</th>
+        <th class="text-left font-medium pb-2 pr-3">Khớp</th>
+        <th class="text-left font-medium pb-2 pr-3">Ghi chú</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+/** Mở modal. Không truyền id là thêm mới, có id là sửa bản ghi đó. */
+function openKeyword(id) {
+  const k = id ? kwData.find(x => x.id === id) : null;
+  if (id && !k) { toast('Không tìm thấy từ khoá, thử tải lại danh sách'); return; }
+
+  document.getElementById('kwTitle').textContent = k ? 'Sửa từ khoá' : 'Thêm từ khoá';
+  document.getElementById('kwId').value = k ? k.id : '';
+  // Gán bằng .value nên lấy bản thô trong kwData: bóc từ DOM đã qua esc() thì
+  // "A & B" thành "A &amp; B", lưu lại một lần là dấu & nhân đôi.
+  document.getElementById('kwTuKhoa').value = k ? k.tuKhoa : '';
+  document.getElementById('kwChienDich').value = k?.chienDich || '';
+  document.getElementById('kwLoaiKhop').value = k?.loaiKhop || '';
+  document.getElementById('kwTrangThai').value = k?.trangThai || 'active';
+  document.getElementById('kwGhiChu').value = k?.ghiChu || '';
+
+  openModal('keywordModal');
+  document.getElementById('kwTuKhoa').focus();
+}
+
+async function saveKeyword() {
+  const id = document.getElementById('kwId').value;
+  const tuKhoa = document.getElementById('kwTuKhoa').value.trim();
+  if (!tuKhoa) { toast('Nhập từ khoá đã'); document.getElementById('kwTuKhoa').focus(); return; }
+
+  // Gửi cả trường rỗng dưới dạng chuỗi rỗng chứ không bỏ khỏi body: service coi
+  // undefined là "giữ nguyên", nên xoá trắng ô chiến dịch mà không gửi thì giá
+  // trị cũ vẫn còn — người dùng xoá xong thấy nó quay lại.
+  const body = {
+    tuKhoa,
+    chienDich: document.getElementById('kwChienDich').value.trim(),
+    loaiKhop: document.getElementById('kwLoaiKhop').value,
+    trangThai: document.getElementById('kwTrangThai').value,
+    ghiChu: document.getElementById('kwGhiChu').value.trim(),
+  };
+
+  const btn = document.getElementById('kwSaveBtn');
+  btn.disabled = true;
+  try {
+    await api(id ? `/analytics/ads/keywords/${encodeURIComponent(id)}` : '/analytics/ads/keywords', {
+      method: id ? 'PATCH' : 'POST',
+      body: JSON.stringify(body),
+    });
+    closeModal('keywordModal');
+    toast(id ? 'Đã cập nhật từ khoá' : 'Đã thêm từ khoá');
+    await loadKwList();
+  } catch (e) {
+    // Giữ modal mở khi lỗi: đóng là mất hết chữ vừa gõ, phải nhập lại từ đầu.
+    toast(e.message || 'Không lưu được');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function deleteKeyword(id) {
+  const k = kwData.find(x => x.id === id);
+  if (!await showConfirm({
+    title: 'Xoá từ khoá?',
+    message: `Xoá <strong>${esc(k ? k.tuKhoa : 'từ khoá này')}</strong> khỏi sổ tay. Ghi chú kèm theo mất luôn và không hoàn tác được.`,
+    confirmText: 'Xoá', danger: true,
+  })) return;
+
+  try {
+    await api(`/analytics/ads/keywords/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    toast('Đã xoá từ khoá');
+    await loadKwList();
+  } catch (e) {
+    toast(e.message || 'Không xoá được');
   }
 }
 

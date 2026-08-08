@@ -1,10 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Header,
   HttpCode,
   HttpStatus,
+  Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -336,5 +339,70 @@ export class AdsAdminController {
     // admin thấy blob.size > 0 nên tưởng tải được và báo thành công.
     if (!csv) return "";
     return `﻿${csv}`;
+  }
+
+  /**
+   * Sổ tay từ khoá quảng cáo — CRUD.
+   *
+   * Đây KHÔNG phải là nối vào Google Ads API: sửa ở đây không đổi gì trong tài
+   * khoản quảng cáo. Nó là chỗ ghi lại "tiệm đang nhắm những từ nào", để lần sau
+   * mở lại còn nhớ mình đã thử gì, từ nào bỏ vì đắt, từ nào phải chặn. Muốn thay
+   * thật thì vẫn phải vào Google Ads bấm tay.
+   *
+   * Đặt dưới /analytics/ads/keywords chứ không mở nhánh mới: koi-domain-router là
+   * repo riêng và chỉ chuyển tiếp một số tiền tố cố định. Thêm tiền tố lạ là phải
+   * đi deploy thêm một repo nữa mới gọi được.
+   */
+  @Get("ads/keywords")
+  @ApiOperation({ summary: "Danh sách từ khoá quảng cáo trong sổ tay" })
+  async danhSachTuKhoa(@Req() req: Request) {
+    // Tự kiểm đăng nhập: PUBLIC_VIEW=1 mở hết các GET, mà sổ tay từ khoá là
+    // chuyện làm ăn nội bộ — để lộ là đối thủ đọc được cả kế hoạch chạy quảng cáo.
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.ads.danhSachTuKhoa();
+  }
+
+  @Post("ads/keywords")
+  @ApiOperation({ summary: "Thêm từ khoá vào sổ tay" })
+  async themTuKhoa(
+    @Body()
+    body: {
+      tuKhoa: string;
+      chienDich?: string;
+      loaiKhop?: string;
+      trangThai?: string;
+      ghiChu?: string;
+    },
+  ) {
+    return this.ads.themTuKhoa(body);
+  }
+
+  /**
+   * PATCH chứ không PUT: giao diện cho sửa từng ô một (đổi trạng thái nhanh
+   * active/paused ngay trên bảng), gửi cả bản ghi mỗi lần bấm là dễ ghi đè mất
+   * ghi chú người khác vừa nhập.
+   */
+  @Patch("ads/keywords/:id")
+  @ApiOperation({ summary: "Sửa từ khoá trong sổ tay" })
+  async suaTuKhoa(
+    @Param("id") id: string,
+    @Body()
+    body: {
+      tuKhoa?: string;
+      chienDich?: string | null;
+      loaiKhop?: string | null;
+      trangThai?: string;
+      ghiChu?: string | null;
+    },
+  ) {
+    return this.ads.suaTuKhoa(id, body);
+  }
+
+  @Delete("ads/keywords/:id")
+  @ApiOperation({ summary: "Xoá từ khoá khỏi sổ tay" })
+  async xoaTuKhoa(@Param("id") id: string) {
+    return this.ads.xoaTuKhoa(id);
   }
 }

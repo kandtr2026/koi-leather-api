@@ -747,3 +747,38 @@ model KoiContentRevision {
   @@map("koi_content_revisions")
   @@schema("koi_free_style")
 }
+
+/// Sổ tay từ khoá quảng cáo — lập kế hoạch nội bộ, không nối trực tiếp Google Ads API.
+/// VÌ SAO BẢNG NÀY: Google Ads không cung cấp giao diện gọn để ghi chú chiến thuật
+/// theo từng từ khoá. Bảng này là nơi chủ shop ghi lại từ khoá đang đặt giá, loại
+/// khớp, chiến dịch, và quan sát tối ưu — đối chiếu với số liệu cú bấm trong bảng
+/// koi_ad_clicks để biết từ khoá nào ra khách, từ khoá nào đốt tiền không hiệu quả.
+/// Đây là sổ tay, không phải bản sao của tài khoản Google Ads.
+model KoiAdKeyword {
+  id        String   @id @default(uuid())
+
+  /// Nội dung từ khoá, ví dụ "bóp da bò thật" hay "mua ví da koileather".
+  tuKhoa    String
+
+  /// Tên chiến dịch Google Ads. Để trống nếu chỉ có một chiến dịch.
+  chienDich String?
+
+  /// Loại khớp: broad | phrase | exact | negative. Null = chưa phân loại.
+  loaiKhop  String?
+
+  /// active = đang chạy, paused = tạm dừng.
+  trangThai String   @default("active")
+
+  /// Ghi chú tối ưu: CPC thực tế, tỷ lệ chuyển đổi, quan sát về lượt xem trang...
+  ghiChu    String?
+
+  taoLuc     DateTime @default(now())
+
+  /// Lần cuối chỉnh sửa — theo dõi ai cập nhật gần nhất khi audit chiến dịch.
+  capNhatLuc DateTime @updatedAt
+
+  /// Lọc nhanh theo trạng thái — hiện active trước, paused sau.
+  @@index([trangThai])
+  @@map("koi_ad_keywords")
+  @@schema("koi_free_style")
+}
