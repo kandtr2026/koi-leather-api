@@ -37,6 +37,22 @@ const CUA_SO_ONLINE_MS = 5 * 60 * 1000;
 const HAN_DON_RAC_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * Tỉ lệ lượt ghi kéo theo một lần dọn rác.
+ *
+ * Dọn ké đường GHI, không ké đường ĐỌC. Trước đây dọn ké realtime() nên bảng
+ * chỉ được dọn khi có người mở tab admin — tức là ngừng dọn đúng lúc không ai
+ * nhìn, mà đó mới là lúc rác dồn. Giờ báo cáo đã dời sang Heoiu, đường đọc đó
+ * sắp không còn ai gọi nữa.
+ *
+ * Không dọn mọi lượt ghi: mỗi lượt xem thêm một DELETE là trả tiền vô ích.
+ * Không đếm biến trong bộ nhớ: mỗi hàm serverless một tiến trình riêng, biến
+ * đếm không dùng chung được nên có instance đếm mãi không tới ngưỡng. Bốc thăm
+ * thì không cần trạng thái. 2% của ~400 lượt/ngày là khoảng 8 lần dọn/ngày —
+ * thừa sức cho một hạn 24 giờ, kể cả ngày vắng khách.
+ */
+const TI_LE_DON_RAC = 0.02;
+
+/**
  * Múi giờ để cắt ngày — xem src/common/ngay-vn.ts.
  *
  * Chuyển sang dùng chung với trang quảng cáo: hai trang admin phải cắt khoảng
@@ -161,6 +177,8 @@ export class AnalyticsService {
     // Hiện diện cập nhật cho CẢ nhịp tim lẫn lượt xem thật.
     await this.capNhatHienDien({ visitorHash, path, source, device });
 
+    this.donRacHienDien();
+
     if (input.ping) return { tracked: true, ping: true };
 
     await this.prisma.koiPageView.create({
@@ -173,6 +191,20 @@ export class AnalyticsService {
       },
     });
     return { tracked: true };
+  }
+
+  /**
+   * Dọn dòng hiện diện quá hạn. Bốc thăm nên phần lớn lượt gọi không làm gì.
+   *
+   * KHÔNG await: khách đang đợi trang, không có lý do gì để họ chờ một cái
+   * DELETE dọn nhà. Lỗi thì bỏ qua — dọn rác hỏng không được làm hỏng việc ghi
+   * nhận lượt xem, lần bốc thăm sau dọn tiếp.
+   */
+  private donRacHienDien() {
+    if (Math.random() >= TI_LE_DON_RAC) return;
+    this.prisma.koiPresence
+      .deleteMany({ where: { lastSeenAt: { lt: new Date(Date.now() - HAN_DON_RAC_MS) } } })
+      .catch(() => {});
   }
 
   /**
@@ -228,11 +260,9 @@ export class AnalyticsService {
       take: 500,
     });
 
-    // Dọn rác cơ hội: không có cron trên Vercel serverless nên dọn ké lúc admin
-    // mở tab. Lỗi thì kệ — dọn rác hỏng không được làm hỏng số liệu đang xem.
-    this.prisma.koiPresence
-      .deleteMany({ where: { lastSeenAt: { lt: new Date(Date.now() - HAN_DON_RAC_MS) } } })
-      .catch(() => {});
+    // Dọn rác đã chuyển sang đường ghi (donRacHienDien) — xem ghi chú ở
+    // TI_LE_DON_RAC. Đường đọc này sắp không còn ai gọi nên không được giữ
+    // việc dọn ở đây.
 
     // Gom theo trang: nhiều khách cùng đứng một trang thì hiện một dòng, đếm số.
     const theoTrang = new Map<
