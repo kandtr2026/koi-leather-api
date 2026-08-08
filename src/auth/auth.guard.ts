@@ -4,7 +4,21 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from "@nestjs/common";
+import { timingSafeEqual } from "crypto";
 import { AuthService } from "./auth.service";
+
+// Máy-gọi-máy: trang báo cáo Heoiu đọc số liệu qua service token, không phải
+// người đăng nhập Google. Token này CHỈ đọc, và chỉ đọc nhóm /analytics.
+//
+// Hai đường bị chặn dù nằm trong /analytics, vì chúng không phải "đọc thuần":
+//   - ads/export.csv    ghi cột exportedAt (có tác dụng phụ) và trả gclid đầy đủ
+//   - ads/feed-config   trả mật khẩu feed cho Google Ads
+// Heoiu không cần hai thứ đó để vẽ báo cáo, nên không cấp.
+const DUONG_CHI_DOC = "/analytics";
+const DUONG_TU_CHOI_SERVICE = [
+  "/analytics/ads/export.csv",
+  "/analytics/ads/feed-config",
+];
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -48,6 +62,31 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
+    // Service token (Heoiu): chỉ đọc, chỉ /analytics, không cấp quyền ghi.
+    // Kiểm tra trước nhánh GET chung vì token này không phải JWT — verifyToken
+    // sẽ ném lỗi và bị coi là ẩn danh rồi chặn.
+    if (token && this.laServiceToken(token)) {
+      if (!["GET", "HEAD"].includes(method)) {
+        throw new UnauthorizedException(
+          "Service token chỉ được đọc, không được ghi",
+        );
+      }
+      if (!path.startsWith(DUONG_CHI_DOC)) {
+        throw new UnauthorizedException(
+          "Service token chỉ được đọc nhóm /analytics",
+        );
+      }
+      if (DUONG_TU_CHOI_SERVICE.includes(path)) {
+        throw new UnauthorizedException(
+          "Đường dẫn này không cấp cho service token",
+        );
+      }
+      // Đánh dấu là máy gọi, không phải người. Controller nào cần biết ai đang
+      // đọc thì phân biệt được bằng cờ này.
+      request.user = { service: "heoiu", chiDoc: true };
+      return true;
+    }
+
     // GET/HEAD/OPTIONS: đọc dữ liệu.
     if (["GET", "HEAD", "OPTIONS"].includes(method)) {
       let user: unknown = null;
@@ -76,6 +115,17 @@ export class AuthGuard implements CanActivate {
     }
     request.user = this.authService.verifyToken(token);
     return true;
+  }
+
+  // So sánh chống dò theo thời gian. Fail-closed: chưa đặt biến môi trường
+  // hoặc token quá ngắn thì không có service token nào hợp lệ.
+  private laServiceToken(token: string): boolean {
+    const mong = process.env.HEOIU_SERVICE_TOKEN;
+    if (!mong || mong.length < 32) return false;
+    const a = Buffer.from(token);
+    const b = Buffer.from(mong);
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
   }
 
   private extractToken(request: any): string | null {
