@@ -6,7 +6,13 @@ import * as path from "path";
 import * as express from "express";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+
+  // Thân bài WordPress dài nhất hiện vượt 120 KB; thao tác sửa gửi cả bản cũ
+  // lẫn bản mới để chống ghi đè đồng thời. Mức mặc định 100 KB của Express làm
+  // các bài dài lỗi 413 trước khi tới DTO, nên cấp đủ cho tối đa vài trường chữ.
+  app.use(express.json({ limit: "5mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
   app.useGlobalPipes(
     new ValidationPipe({

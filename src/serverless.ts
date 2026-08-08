@@ -12,7 +12,13 @@ let bootstrapPromise: Promise<any> | null = null;
 async function bootstrapServer() {
   const app = await NestFactory.create(AppModule, {
     logger: ["error", "warn", "log"],
+    bodyParser: false,
   });
+
+  // Đồng bộ với main.ts: request sửa bài chứa cả chữ trước và sau, nên các bài
+  // WordPress dài vượt giới hạn JSON 100 KB mặc định của Express.
+  app.use(express.json({ limit: "5mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
   app.useGlobalPipes(
     new ValidationPipe({

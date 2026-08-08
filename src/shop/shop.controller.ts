@@ -167,14 +167,14 @@ export class ShopController {
   // ----- Nội dung cũ (blog / trang / tag) — schema public -----
 
   @Get("posts")
-  @Header("Cache-Control", "public, max-age=120, s-maxage=600")
+  @Header("Cache-Control", "no-store")
   @ApiOperation({ summary: "Danh sách bài viết blog + chuyên mục" })
   posts(@Query("page") page?: string, @Query("limit") limit?: string) {
     return this.content.posts(soNguyen(page, 1), soNguyen(limit, 12));
   }
 
   @Get("content/:slug")
-  @Header("Cache-Control", "public, max-age=120, s-maxage=600")
+  @Header("Cache-Control", "no-store")
   @ApiOperation({ summary: "Bài viết hoặc trang tĩnh theo slug" })
   async contentBySlug(@Param("slug", SlugPipe) slug: string) {
     const found = await this.content.contentBySlug(slug);
@@ -183,7 +183,7 @@ export class ShopController {
   }
 
   @Get("blog-terms/:taxonomy/:slug")
-  @Header("Cache-Control", "public, max-age=120, s-maxage=600")
+  @Header("Cache-Control", "no-store")
   @ApiOperation({ summary: "Chuyên mục / tag blog + các bài thuộc nó" })
   async blogTerm(
     @Param("taxonomy", SlugPipe) taxonomy: "category" | "tag",
