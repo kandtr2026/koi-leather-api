@@ -179,11 +179,18 @@ export class AnalyticsController {
     @Query("status") status?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    @Query("days") days?: string,
   ) {
+    // Kẹp `days` như hanh-vi ở trên; service kẹp lại y hệt một lần nữa — cố ý
+    // trùng, vì service là hàm công khai còn gọi từ chỗ khác và từ test.
+    const soNgay = days
+      ? Math.min(Math.max(Math.trunc(Number(days) || 0), 0), 365)
+      : undefined;
     return this.analytics.leads({
       status,
       limit: Number(limit) || undefined,
       offset: Number(offset) || undefined,
+      days: soNgay,
     });
   }
 

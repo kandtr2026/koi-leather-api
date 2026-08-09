@@ -777,20 +777,41 @@ export class AnalyticsService {
   /**
    * Danh sách lead, mới nhất trước.
    *
+   * `days` cắt theo NGÀY LỊCH giờ Việt Nam (dauNgayVN), giống kenhLienHe() —
+   * trừ thẳng Date.now() - days*86400000 là hai panel cùng ghi "30 ngày" mà
+   * đếm hai khoảng khác nhau. Không truyền days (hoặc 0) là lấy TOÀN BỘ từ
+   * trước đến giờ, giữ nguyên hành vi cũ khi bảng chưa ai lọc theo kỳ.
+   *
    * `id` trong bảng là BigInt. JSON.stringify() ném TypeError khi gặp BigInt
    * nên phải đổi sang Number ngay tại đây — để lọt ra ngoài là cả phản hồi
    * thành lỗi 500, không phải chỉ thiếu một trường.
    */
-  async leads(input: { status?: string; limit?: number; offset?: number }) {
+  async leads(input: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+    days?: number;
+  }) {
     const gioiHan = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
     const boQua = Math.max(Number(input.offset) || 0, 0);
 
+    // Kẹp lại y hệt controller — cố ý trùng, vì hàm này công khai còn gọi từ
+    // test và từ chỗ khác, không dựa vào cửa controller để an toàn.
+    const soNgay = Math.min(Math.max(Math.trunc(Number(input.days) || 0), 0), 365);
+
+    // Lọc KỲ để riêng khỏi lọc TRẠNG THÁI, vì hai cái đi vào những truy vấn
+    // khác nhau: `counts` chỉ nhận lọc kỳ, xem ghi chú ở dưới.
+    const locKy = soNgay > 0 ? { created_at: { gte: this.dauNgayVN(soNgay - 1) } } : {};
+
     // Chỉ nhận trạng thái nằm trong danh sách trên; chuỗi lạ coi như không lọc.
-    const loc = (
-      AnalyticsService.TRANG_THAI_LEAD as readonly string[]
-    ).includes(String(input.status))
-      ? { status: String(input.status) }
-      : {};
+    const loc = {
+      ...locKy,
+      ...((AnalyticsService.TRANG_THAI_LEAD as readonly string[]).includes(
+        String(input.status),
+      )
+        ? { status: String(input.status) }
+        : {}),
+    };
 
     const [dong, tong, theoTrangThai] = await Promise.all([
       this.prisma.leads.findMany({
@@ -800,7 +821,22 @@ export class AnalyticsService {
         skip: boQua,
       }),
       this.prisma.leads.count({ where: loc }),
-      this.prisma.leads.groupBy({ by: ["status"], _count: { _all: true } }),
+      // `counts` PHẢI nhận locKy: thiếu nó là đếm cả bảng từ 2018 trong khi
+      // `total` ngay bên cạnh chỉ đếm trong kỳ, và panel Heoiu đặt hai con số đó
+      // cạnh nhau trên cùng một hàng thẻ (panel.js:1349 đọc `total` cho thẻ "Qua
+      // form", panel.js:1350 đọc `counts.new` cho thẻ "Chưa xử lý"). Chọn kỳ
+      // "Ngày hôm nay" là ra "Qua form 0 / Chưa xử lý 12" — hai câu chống nhau
+      // trên cùng một hàng, không có cách nào đoán ra con nào tính khoảng nào.
+      //
+      // Nhưng KHÔNG nhận `loc`: lọc trạng thái vào đây là chọn tab "Chốt được"
+      // thì ba tab kia tụt về 0, tức mất luôn cái bảng đếm dùng để bấm sang tab
+      // khác. `counts` là "trong kỳ này, mỗi trạng thái bao nhiêu" — độc lập với
+      // trạng thái đang xem.
+      this.prisma.leads.groupBy({
+        by: ["status"],
+        _count: { _all: true },
+        where: locKy,
+      }),
     ]);
 
     const dem: Record<string, number> = {};
@@ -813,6 +849,8 @@ export class AnalyticsService {
       total: tong,
       limit: gioiHan,
       offset: boQua,
+      // days = 0 nghĩa là "toàn bộ từ trước đến giờ", không cắt theo ngày.
+      days: soNgay,
       counts: dem,
       data: dong.map((l) => ({
         id: Number(l.id),
