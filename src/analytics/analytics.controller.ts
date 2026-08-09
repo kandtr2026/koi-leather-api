@@ -56,6 +56,51 @@ export class AnalyticsTrackController {
       // trên trang của khách. 204 dù có chuyện gì.
     }
   }
+
+  /**
+   * Ghi một cú bấm nút liên hệ. CÔNG KHAI, ẩn danh.
+   *
+   * Đường RIÊNG, không gộp vào /shop/ad-contact: đường đó là đường chuyển đổi
+   * Google, gọi hụt là mất hẳn một chuyển đổi. Đường này hỏng thì chỉ mất số đo,
+   * nên hai đường phải độc lập — storefront gọi cả hai khi khách quảng cáo bấm.
+   *
+   * 204 và nuốt lỗi y hệt track ở trên: khách đang chờ Zalo mở, không có lý do
+   * gì để một lỗi thống kê chặn đường họ đi.
+   */
+  @Post("contact-click")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Ghi một cú bấm nút liên hệ (ẩn danh)" })
+  async contactClick(
+    @Body()
+    body: {
+      channel?: string;
+      path?: string;
+      referrer?: string | null;
+      productName?: string | null;
+      adToken?: string | null;
+    },
+    @Req() req: Request,
+  ): Promise<void> {
+    // Cùng cách lấy IP như track: sau proxy thì req.ip là IP của proxy, phần tử
+    // đầu của x-forwarded-for mới là khách.
+    const xff = (req.headers["x-forwarded-for"] as string) || "";
+    const ip = xff.split(",")[0].trim() || req.ip || "0.0.0.0";
+
+    try {
+      await this.analytics.ghiCuBamLienHe({
+        channel: body?.channel || "",
+        path: body?.path || "/",
+        referrer: body?.referrer ?? null,
+        ip,
+        ua: (req.headers["user-agent"] as string) || "",
+        host: (req.headers["host"] as string) || "",
+        productName: body?.productName ?? null,
+        adToken: body?.adToken ?? null,
+      });
+    } catch {
+      // Nuốt lỗi như trên.
+    }
+  }
 }
 
 /**
@@ -103,6 +148,21 @@ export class AnalyticsController {
   hanhVi(@Query("days") days?: string) {
     const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 7), 1), 90);
     return this.analytics.hanhVi(soNgay);
+  }
+
+  /**
+   * Kênh liên hệ: khách bấm Zalo / Messenger / Gọi điện, và đến từ đâu.
+   *
+   * Không tự kiểm req.user, đi theo tiền lệ GET /analytics/ads: số ở đây là số
+   * gộp, không có tên hay số điện thoại của ai. Guard toàn cục đã chặn ở cửa.
+   *
+   * Kẹp `days` như hanh-vi ở trên, và service kẹp lại một lần nữa — cố ý trùng.
+   */
+  @Get("kenh-lien-he")
+  @ApiOperation({ summary: "Cú bấm nút liên hệ theo kênh và nguồn" })
+  kenhLienHe(@Query("days") days?: string) {
+    const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 30), 1), 90);
+    return this.analytics.kenhLienHe(soNgay);
   }
 
   /**

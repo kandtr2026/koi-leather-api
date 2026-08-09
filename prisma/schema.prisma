@@ -632,6 +632,63 @@ model KoiPresence {
   @@schema("koi_free_style")
 }
 
+/// Một cú bấm nút liên hệ — Zalo, Messenger, hay Gọi điện — của BẤT KỲ khách nào.
+///
+/// VÌ SAO CẦN BẢNG NÀY. Trước bảng này, cú bấm nút liên hệ chỉ được ghi ở
+/// koi_ad_clicks.contactedAt, mà dòng đó chỉ tồn tại khi khách đến từ quảng cáo
+/// Google (phải có gclid). Khách vào từ Google tự nhiên, từ Facebook, hay gõ
+/// thẳng địa chỉ rồi bấm Zalo thì KHÔNG CÓ DÒNG NÀO Ở ĐÂU CẢ — mà đó là phần
+/// đông khách. Chủ shop mở admin ra chỉ thấy phần khách quảng cáo và tưởng đó là
+/// toàn bộ.
+///
+/// Bảng này ghi MỌI cú bấm, kèm NGUỒN dẫn khách vào. Đó là thứ trả lời được câu
+/// "khách nhắn tin cho mình đến từ đâu" — koi_ad_clicks không lưu nguồn, vì với
+/// nó mọi dòng đều đến từ quảng cáo.
+///
+/// VÌ SAO KHÔNG NHỒI CỜ VÀO koi_page_views. Cùng lý do koi_presence phải tách ra
+/// (xem ghi chú ở model đó): nhồi một loại dòng khác vào bảng lượt xem là mọi
+/// con số cũ — lượt xem, trang/khách, biểu đồ theo ngày — phồng lên và không
+/// còn tin được. Bảng riêng thì bảng lượt xem sạch nguyên.
+///
+/// MỖI CÚ BẤM MỘT DÒNG, KHÔNG GỘP. Khách bấm Zalo ở đầu trang rồi cuộn xuống
+/// bấm tiếp là hai dòng, vì cả hai đều là cú bấm thật. Nên số dòng là SỐ LẦN
+/// liên hệ, không phải số người — muốn số người thì đếm visitorHash riêng biệt.
+/// Đây là chỗ khác hẳn koi_ad_clicks: bên đó buộc phải chốt lần bấm ĐẦU để giữ
+/// mốc giờ cho Google khử trùng lặp, còn bảng này không gửi đi đâu cả.
+model KoiContactClick {
+  id          String   @id @default(uuid())
+  /// zalo | messenger | phone. Chỉ nhận đúng ba giá trị này — đường ghi là
+  /// đường công khai nên phải lọc, không thì ai gửi gì vào cũng nằm trong bảng.
+  channel     String
+  /// Trang khách đang đứng lúc bấm. Đã bỏ query, y hệt KoiPageView.path.
+  path        String
+  /// Nguồn dẫn khách vào, gom nhóm bằng CHÍNH hàm nguon() của lượt xem:
+  /// direct | google | facebook | zalo | instagram | tiktok | search_khac |
+  /// internal | other. Dùng chung hàm là điều kiện bắt buộc — tự phân nhóm lại
+  /// thì bảng nguồn của hai panel đếm theo hai định nghĩa khác nhau.
+  source      String
+  /// Referrer thô, giữ lại để còn truy được khi nhóm ở trên gom vào 'other'.
+  referrer    String?
+  /// mobile | tablet | desktop — đoán từ User-Agent.
+  device      String
+  /// Băm ẩn danh, y hệt KoiPageView.visitorHash: đổi mỗi ngày, không truy ngược
+  /// ra danh tính. Đếm được "số người" trong ngày mà vẫn không lưu IP thô.
+  visitorHash String
+  /// Sản phẩm khách đang xem lúc bấm, nếu nút nằm ở trang sản phẩm.
+  productName String?
+  /// Mã quảng cáo nếu khách này đến từ quảng cáo. Sợi dây đối chiếu với
+  /// koi_ad_clicks, KHÔNG phải khoá ngoại: donRac() bên ads xoá dòng chưa chốt
+  /// sau 120 ngày, có khoá ngoại là nó chặn hoặc xoá lây sang bảng này.
+  adToken     String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([channel])
+  @@index([source])
+  @@map("koi_contact_clicks")
+  @@schema("koi_free_style")
+}
+
 /// Một cú bấm quảng cáo Google, nối với cuộc trò chuyện Zalo mà nó đẻ ra.
 ///
 /// VÌ SAO CẦN BẢNG NÀY. Google Ads chỉ học được cách tiêu tiền cho khôn nếu ta

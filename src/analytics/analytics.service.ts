@@ -3,6 +3,13 @@ import { createHash, randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { MUI_GIO, dauNgayVN, gioHienTaiVN } from "../common/ngay-vn";
 import { gomHanhVi, type HanhViRa, type LuotTho } from "./hanh-vi";
+import {
+  NHAN_KENH,
+  gomKenhLienHe,
+  laKenhHopLe,
+  type CuBamTho,
+  type KenhLienHeRa,
+} from "./kenh-lien-he";
 
 /**
  * Theo dõi lưu lượng truy cập storefront.
@@ -169,6 +176,20 @@ export class AnalyticsService {
   }
 
   /**
+   * Có phải bot không.
+   *
+   * Đếm cả bot thì mọi con số đều vô nghĩa: Googlebot một mình có thể quét hàng
+   * nghìn trang một đêm.
+   *
+   * Để riêng một hàm vì có HAI đường ghi cần lọc — lượt xem và cú bấm liên hệ.
+   * Chép regex ra hai chỗ thì một ngày nào đó thêm tên bot vào một chỗ mà quên
+   * chỗ kia, và chỗ bị quên lặng lẽ đếm rác.
+   */
+  private laBot(ua: string): boolean {
+    return /bot|crawler|spider|crawling|headless|lighthouse|preview/i.test(ua);
+  }
+
+  /**
    * Ghi một lượt xem. Gọi từ storefront, không cần đăng nhập.
    *
    * `ping = true` là NHỊP TIM: khách vẫn đang mở trang cũ, không phải xem trang
@@ -186,9 +207,7 @@ export class AnalyticsService {
   }) {
     const ua = (input.ua || "").slice(0, 400);
 
-    // Bỏ qua bot: đếm cả bot thì mọi con số đều vô nghĩa, Googlebot một mình
-    // có thể quét hàng nghìn trang một đêm.
-    if (/bot|crawler|spider|crawling|headless|lighthouse|preview/i.test(ua)) {
+    if (this.laBot(ua)) {
       return { tracked: false, reason: "bot" };
     }
 
@@ -211,6 +230,58 @@ export class AnalyticsService {
         source,
         device,
         visitorHash,
+      },
+    });
+    return { tracked: true };
+  }
+
+  /**
+   * Ghi một cú bấm nút liên hệ (Zalo / Messenger / Gọi điện) của BẤT KỲ khách nào.
+   *
+   * VÌ SAO ĐƯỜNG NÀY TỒN TẠI RIÊNG, không gộp vào /shop/ad-contact: đường đó là
+   * đường chuyển đổi Google, gọi hụt là mất hẳn một chuyển đổi và không có bước
+   * nào vớt lại. Hơn nữa nó chỉ ghi được khi khách có mã quảng cáo, nên khách
+   * vào từ Google tự nhiên, Facebook, hay gõ thẳng địa chỉ thì trước đây KHÔNG
+   * CÓ DÒNG NÀO Ở ĐÂU CẢ — mà đó là phần đông khách.
+   *
+   * Storefront gọi CẢ HAI đường khi khách quảng cáo bấm nút. Cố ý trùng: đường
+   * này hỏng thì chỉ mất số đo, còn đường kia hỏng là mất tiền.
+   *
+   * Dùng lại nguyên nguon() / thietBi() / visitorHash() / chuanHoa() của lượt
+   * xem. KHÔNG viết lại cách phân nhóm nguồn, nếu không bảng nguồn của hai panel
+   * đọc ra hai kết quả khác nhau trên cùng một tập khách.
+   */
+  async ghiCuBamLienHe(input: {
+    channel: string;
+    path: string;
+    referrer?: string | null;
+    ip: string;
+    ua: string;
+    host: string;
+    productName?: string | null;
+    adToken?: string | null;
+  }) {
+    // Đường ghi CÔNG KHAI: ai gọi cũng được, gửi gì cũng được. Không lọc thì
+    // bảng đầy rác và ba thẻ kênh trên panel cộng lại không bằng thẻ tổng.
+    if (!laKenhHopLe(input.channel)) {
+      return { tracked: false, reason: "channel" };
+    }
+
+    const ua = (input.ua || "").slice(0, 400);
+    if (this.laBot(ua)) {
+      return { tracked: false, reason: "bot" };
+    }
+
+    await this.prisma.koiContactClick.create({
+      data: {
+        channel: input.channel,
+        path: this.chuanHoa(input.path),
+        source: this.nguon(input.referrer ?? null, input.host),
+        referrer: input.referrer ? input.referrer.slice(0, 500) : null,
+        device: this.thietBi(ua),
+        visitorHash: this.visitorHash(input.ip, ua),
+        productName: input.productName ? input.productName.slice(0, 200) : null,
+        adToken: input.adToken ? input.adToken.slice(0, 64) : null,
       },
     });
     return { tracked: true };
@@ -595,6 +666,99 @@ export class AnalyticsService {
       from: this.ngayVN(tu),
       den: this.ngayVN(new Date()),
     });
+  }
+
+  /**
+   * Số cú bấm nút liên hệ: theo kênh, theo nguồn, chéo hai chiều, và dòng gần nhất.
+   *
+   * Cắt kỳ bằng dauNgayVN() chứ KHÔNG phải Date.now() - days*86400000. Trừ thẳng
+   * là được một cửa sổ 24 giờ trôi, nên panel này và panel lưu lượng cùng ghi
+   * "30 ngày" mà đếm hai khoảng khác nhau (ads.service.ts:255 đã có ghi chú về
+   * đúng cái bẫy này).
+   *
+   * Phần gộp số nằm ở kenh-lien-he.ts (hàm thuần tuý, có test). Hàm này chỉ lấy
+   * dữ liệu và cắt múi giờ.
+   *
+   * TRẢ RA NGOÀI: không có visitorHash trong bảng dòng gần nhất. Hash là khoá gom
+   * phía server, lộ ra là ai cũng đối chiếu được cú bấm với dòng hiện diện.
+   */
+  async kenhLienHe(days = 30): Promise<
+    KenhLienHeRa & {
+      days: number;
+      from: string;
+      den: string;
+      nhanKenh: Record<string, string>;
+      ganNhat: {
+        channel: string;
+        nhan: string;
+        source: string;
+        path: string;
+        device: string;
+        productName: string | null;
+        luc: string;
+      }[];
+    }
+  > {
+    // Kẹp lại y hệt controller — cố ý trùng, vì hàm này công khai còn gọi từ
+    // test và từ chỗ khác, không dựa vào cửa controller để an toàn.
+    const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 30), 1), 90);
+    const tu = this.dauNgayVN(soNgay - 1);
+
+    // Hai truy vấn song song: một để gộp (chỉ lấy cột cần đếm), một lấy dòng gần
+    // nhất để hiện bảng. Không dùng chung một lượt kéo về rồi tự cắt 20 dòng:
+    // bảng gộp cần cả kỳ còn bảng hiện chỉ cần 20 dòng cuối, kéo cả kỳ về rồi
+    // slice là chở thừa dữ liệu qua đường dây mỗi lần mở panel.
+    const [tho, ganNhat] = await Promise.all([
+      this.prisma.koiContactClick.findMany({
+        where: { createdAt: { gte: tu } },
+        select: {
+          visitorHash: true,
+          channel: true,
+          source: true,
+          path: true,
+        },
+      }),
+      this.prisma.koiContactClick.findMany({
+        where: { createdAt: { gte: tu } },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          channel: true,
+          source: true,
+          path: true,
+          device: true,
+          productName: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    // Nhãn nguồn để panel tự dán (heoiu đã có NHAN_NGUON riêng), nên truyền hàm
+    // đồng nhất: backend trả giá trị máy, panel lo phần chữ. Trả nhãn từ đây là
+    // hai nơi cùng đặt tên cho một thứ, sớm muộn lệch nhau.
+    const gop = gomKenhLienHe(tho as CuBamTho[]);
+
+    return {
+      ...gop,
+      days: soNgay,
+      // Biên ngày theo LỊCH VIỆT NAM, không dùng toISOString() — xem ghi chú ở
+      // hanhVi(): cắt theo UTC là nhãn lùi đúng một ngày so với số bên trong.
+      from: this.ngayVN(tu),
+      den: this.ngayVN(new Date()),
+      // Nhãn kênh gửi kèm để panel không tự đoán chữ cho giá trị máy. Khác nguồn
+      // ở chỗ danh sách kênh do backend chốt (đúng ba giá trị), còn nhãn nguồn
+      // panel đã có sẵn.
+      nhanKenh: NHAN_KENH,
+      ganNhat: ganNhat.map((r) => ({
+        channel: r.channel,
+        nhan: laKenhHopLe(r.channel) ? NHAN_KENH[r.channel] : r.channel,
+        source: r.source,
+        path: r.path,
+        device: r.device,
+        productName: r.productName,
+        luc: r.createdAt.toISOString(),
+      })),
+    };
   }
 
   // ----- KHÁCH ĐỂ LẠI THÔNG TIN (lead) -----
