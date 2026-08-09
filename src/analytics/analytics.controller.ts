@@ -83,6 +83,29 @@ export class AnalyticsController {
   }
 
   /**
+   * Hành vi khách: nguồn dẫn khách, khách vào trang nào, đi tiếp đường nào.
+   *
+   * Phải nằm ở /analytics chứ KHÔNG phải /shop: auth.guard.ts:101 cho qua vô
+   * điều kiện mọi đường bắt đầu bằng /shop, đặt sang đó là phơi toàn bộ số liệu
+   * kinh doanh cho bất kỳ ai gọi đúng địa chỉ. Guard toàn cục đã gắn qua
+   * APP_GUARD ở app.module.ts nên không cần @UseGuards ở đây.
+   *
+   * Kẹp `days` ngay tại cửa. KHÔNG copy mẫu `Number(days) || 30` của route
+   * summary ở trên: mẫu đó không chặn số âm, days=-5 đi thẳng vào phép tính mốc
+   * ngày và cho khoảng thời gian ở tương lai (bảng rỗng, nhìn như mất dữ liệu).
+   * Math.trunc để days=1.9 không thả số thực xuống dưới.
+   *
+   * Service kẹp lại y hệt một lần nữa — cố ý trùng, vì service là hàm công khai
+   * còn gọi từ chỗ khác và từ test, không dựa vào cửa này để an toàn.
+   */
+  @Get("hanh-vi")
+  @ApiOperation({ summary: "Hành vi khách theo nguồn / giờ / đường đi" })
+  hanhVi(@Query("days") days?: string) {
+    const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 7), 1), 90);
+    return this.analytics.hanhVi(soNgay);
+  }
+
+  /**
    * Danh sách khách để lại thông tin.
    *
    * Nằm ở /analytics chứ KHÔNG phải /shop là điều kiện an toàn bắt buộc, không

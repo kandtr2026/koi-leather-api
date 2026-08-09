@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { MUI_GIO, dauNgayVN, gioHienTaiVN } from "../common/ngay-vn";
+import { gomHanhVi, type HanhViRa, type LuotTho } from "./hanh-vi";
 
 /**
  * Theo dõi lưu lượng truy cập storefront.
@@ -59,6 +60,20 @@ const HAN_DON_RAC_MS = 24 * 60 * 60 * 1000;
  * thừa sức cho một hạn 24 giờ, kể cả ngày vắng khách.
  */
 const TI_LE_DON_RAC = 0.02;
+
+/**
+ * Trần số dòng lượt xem thô mà hanhVi() kéo về một lần.
+ *
+ * Không phải giới hạn hiển thị — mọi LIMIT của phần hiển thị nằm trong hanh-vi.ts
+ * theo hợp đồng. Đây là dây bảo hiểm cho hàm serverless: không có trần thì một
+ * đợt bot lọt lưới hoặc một ngày bị ghi trùng là kéo cả bảng vào bộ nhớ.
+ *
+ * 200.000 dòng so với thực tế ~400 lượt/ngày: 90 ngày (mốc lớn nhất cho phép)
+ * mới khoảng 36.000, tức còn dư gấp năm lần. Nếu có ngày chạm trần thì số trả về
+ * bị hụt phần MỚI NHẤT — ORDER BY createdAt ASC nên phần bị cắt là cuối kỳ.
+ * Đổi lại thứ tự tăng dần giữ cho việc cắt phiên đúng ở phần dữ liệu còn lại.
+ */
+const TRAN_LUOT_HANH_VI = 200_000;
 
 /**
  * Múi giờ để cắt ngày — xem src/common/ngay-vn.ts.
@@ -369,12 +384,21 @@ export class AnalyticsService {
         // ta. Thiếu vế đó thì Postgres coi giá trị đang là giờ Việt Nam và TRỪ
         // đi 7 tiếng thay vì cộng — lượt lúc 10h sáng rơi về 3h sáng, còn lượt
         // từ 00:00 đến 07:00 bị đẩy lùi sang hôm trước.
+        //
+        // WHERE cũng phải đổi múi giờ, cùng lý do — xem ghi chú dài ở hanhVi().
+        // Chỗ này nguy hiểm hơn hanhVi() vì summary() TRỘN hai đường đọc: tổng
+        // `totals.views` đi qua Prisma ORM (Prisma tự gửi đúng kiểu nên luôn
+        // đúng), còn biểu đồ `daily` đi qua $queryRaw. Đã đo trên cơ sở dữ liệu
+        // thật: phiên đặt Asia/Ho_Chi_Minh cho totals.views = 2186 trong khi
+        // tổng các cột daily = 2165 — hai con số lệch nhau NGAY TRONG CÙNG một
+        // phản hồi. Máy chủ hiện chạy UTC nên chưa lộ, và DATABASE_URL không
+        // ghim TimeZone nên không có gì bảo đảm điều đó không đổi.
         this.prisma.$queryRaw<{ ngay: string; luot: number; khach: number }[]>`
           SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${MUI_GIO}, 'YYYY-MM-DD') AS ngay,
                  COUNT(*)::int AS luot,
                  COUNT(DISTINCT "visitorHash")::int AS khach
           FROM koi_free_style.koi_page_views
-          WHERE "createdAt" >= ${tu}
+          WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
           GROUP BY 1
           ORDER BY 1 ASC
         `,
@@ -384,7 +408,7 @@ export class AnalyticsService {
                  COUNT(*)::int AS luot,
                  COUNT(DISTINCT "visitorHash")::int AS khach
           FROM koi_free_style.koi_page_views
-          WHERE "createdAt" >= ${tu}
+          WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
           GROUP BY 1
           ORDER BY 2 DESC
           LIMIT 20
@@ -395,7 +419,7 @@ export class AnalyticsService {
                  COUNT(*)::int AS luot,
                  COUNT(DISTINCT "visitorHash")::int AS khach
           FROM koi_free_style.koi_page_views
-          WHERE "createdAt" >= ${tu}
+          WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
           GROUP BY 1
           ORDER BY 2 DESC
         `,
@@ -403,7 +427,7 @@ export class AnalyticsService {
         this.prisma.$queryRaw<{ device: string; luot: number }[]>`
           SELECT "device", COUNT(*)::int AS luot
           FROM koi_free_style.koi_page_views
-          WHERE "createdAt" >= ${tu}
+          WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
           GROUP BY 1
           ORDER BY 2 DESC
         `,
@@ -430,7 +454,7 @@ export class AnalyticsService {
                      COUNT(*)::int AS luot,
                      COUNT(DISTINCT "visitorHash")::int AS khach
               FROM koi_free_style.koi_page_views
-              WHERE "createdAt" >= ${tu}
+              WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
               GROUP BY 1
               ORDER BY 1 ASC
             `
@@ -480,6 +504,97 @@ export class AnalyticsService {
       sources: theoNguon,
       devices: theoThietBi,
     };
+  }
+
+  /**
+   * Hành vi khách: nguồn -> trang vào -> đường đi. Cho panel Heoiu.
+   *
+   * Kéo lượt xem THÔ về rồi cắt phiên ở tầng JS, không gom sẵn trong SQL. Lý do:
+   * cắt phiên theo khoảng cách 30 phút cần so từng dòng với dòng liền trước
+   * (window function + tổng tích luỹ), viết bằng SQL thì vừa dài vừa không test
+   * được mà không có cơ sở dữ liệu. Số dòng ở đây nhỏ — 7 ngày khoảng 2.800
+   * dòng, 90 ngày cũng chỉ vài chục nghìn — nên kéo về rẻ hơn nhiều so với chi
+   * phí bảo trì một câu SQL không ai dám sửa.
+   *
+   * Toàn bộ phép tính nằm ở hanh-vi.ts (hàm thuần tuý). Hàm này chỉ lấy dữ liệu
+   * và cắt múi giờ.
+   */
+  async hanhVi(days = 7): Promise<HanhViRa> {
+    // Kẹp cả hai đầu VÀ cắt phần thập phân. Mẫu `Number(x) || 7` của các route
+    // cũ không chặn số âm: days=-5 cho soNgay âm, dauNgayVN() nhảy sang tương
+    // lai và bảng rỗng trơn. days=1.9 thì lọt số thực vào LIMIT/vòng lặp.
+    const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 7), 1), 90);
+    const tu = this.dauNgayVN(soNgay - 1);
+
+    // Cắt ngày/giờ/thứ NGAY TRONG SQL theo giờ Việt Nam. Ba cột này là lý do
+    // duy nhất phải đổi múi giờ ở đây; gom lại ở JS bằng giờ máy chủ là lệch 7
+    // tiếng (máy chủ Vercel chạy UTC).
+    //
+    // AT TIME ZONE 'UTC' ở trong là bắt buộc: createdAt là 'timestamp without
+    // time zone' chứa giờ UTC, thiếu vế đó thì Postgres coi giá trị đang là giờ
+    // ta rồi TRỪ 7 tiếng thay vì cộng.
+    //
+    // extract(dow ...) cho 0 = Chủ Nhật, khớp luôn quy ước NGAY của Heoiu nên
+    // không phải đổi chỉ số. Ép ::int vì dow trả numeric.
+    //
+    // WHERE cũng phải đổi múi giờ, không chỉ SELECT. Prisma gửi `tu` xuống dưới
+    // dạng timestamptz, còn createdAt là 'timestamp without time zone'. So một
+    // cặp lệch kiểu như vậy thì Postgres phải ép, và nó ép bằng TimeZone CỦA
+    // PHIÊN — tức cùng một câu lệnh cho số khác nhau tuỳ máy chủ đặt múi giờ
+    // nào. Đã đo trên cơ sở dữ liệu thật, cùng mốc `tu`: phiên UTC ra 2186 dòng,
+    // phiên Asia/Ho_Chi_Minh ra 2165, phiên America/New_York ra 2269.
+    //
+    // Bọc THAM SỐ (`${tu}::timestamptz AT TIME ZONE 'UTC'`) chứ KHÔNG bọc cột.
+    // Bọc cột cũng cho số đúng nhưng biến điều kiện thành hàm của cột, nên index
+    // "koi_page_views_createdAt_idx" hết dùng được vĩnh viễn — EXPLAIN cho thấy
+    // ước lượng số dòng tụt từ 2131 xuống 922. Bọc tham số thì vế trái vẫn là
+    // cột trần, so timestamp với timestamp, không còn dính TimeZone của phiên.
+    const dong = await this.prisma.$queryRaw<
+      {
+        visitorHash: string;
+        path: string;
+        source: string;
+        createdAt: Date;
+        ngay: string;
+        gio: number;
+        thu: number;
+      }[]
+    >`
+      SELECT "visitorHash",
+             "path",
+             "source",
+             "createdAt",
+             to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${MUI_GIO}, 'YYYY-MM-DD') AS ngay,
+             to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${MUI_GIO}, 'HH24')::int AS gio,
+             extract(dow from (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${MUI_GIO}))::int AS thu
+      FROM koi_free_style.koi_page_views
+      WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+      ORDER BY "createdAt" ASC
+      LIMIT ${TRAN_LUOT_HANH_VI}
+    `;
+
+    const luot: LuotTho[] = dong.map((r) => ({
+      visitorHash: r.visitorHash,
+      path: r.path,
+      source: r.source,
+      luc: +r.createdAt,
+      ngay: r.ngay,
+      gio: Number(r.gio),
+      thu: Number(r.thu),
+    }));
+
+    return gomHanhVi(luot, {
+      days: soNgay,
+      // Chạm trần thì mọi số bên trong chỉ tính trên một phần của kỳ, và phần
+      // mất là phần MỚI NHẤT (ORDER BY tăng dần). Không có cờ này thì panel vẽ
+      // đủ `days` ngày với vài ngày cuối bằng 0 — nhìn hệt như mất dữ liệu.
+      daCat: dong.length >= TRAN_LUOT_HANH_VI,
+      // Biên ngày theo LỊCH VIỆT NAM. Dùng tu.toISOString().slice(0,10) là ra
+      // ngày UTC, lùi đúng một ngày (00:00 giờ ta = 17:00 UTC hôm trước) nên
+      // nhãn khoảng thời gian trên panel lệch so với số bên trong.
+      from: this.ngayVN(tu),
+      den: this.ngayVN(new Date()),
+    });
   }
 
   // ----- KHÁCH ĐỂ LẠI THÔNG TIN (lead) -----
