@@ -18,16 +18,12 @@
     .tab-btn:hover { background: #e2e8f0; }
     .tab-btn.active { background: #1e293b; color: white; }
 
-    /* Lối ra ngoài (Heoiu), KHÔNG đặt lớp .tab-btn: hai chỗ quét
-       querySelectorAll('.tab-btn') — applyRoute() bật/tắt 'active', và bộ gắn
-       click coi mọi .tab-btn là tab trong trang. Thẻ <a> không có data-tab nên
-       find() trả undefined rồi rơi về DEFAULT_ROUTE: bấm một cái là vừa mở tab
-       mới vừa nhảy trang hiện tại về Sản phẩm. Nhìn giống tab, không phải tab. */
-    .tab-lien-ket {
-      cursor: pointer; transition: all 0.2s; padding: 10px 20px; border-radius: 8px;
-      font-size: 14px; font-weight: 500; text-decoration: none; color: inherit;
-    }
-    .tab-lien-ket:hover { background: #e2e8f0; }
+    /* Nếu sau này thêm thẻ <a> nào vào hàng tab, ĐỪNG đặt lớp .tab-btn cho nó:
+       hai chỗ quét querySelectorAll('.tab-btn') — applyRoute() bật/tắt 'active',
+       và bộ gắn click coi mọi .tab-btn là tab trong trang. Thẻ <a> không có
+       data-tab nên find() trả undefined rồi rơi về DEFAULT_ROUTE: bấm một cái là
+       vừa mở trang ngoài vừa nhảy trang hiện tại về Sản phẩm. Dùng .admin-link
+       ở dưới, lớp đó chỉ để tạo hình chứ không bị hai bộ quét kia nhặt. */
     .admin-link { display: inline-flex; align-items: center; cursor: pointer; transition: all 0.2s; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; }
     .admin-link:hover { background: #e2e8f0; }
     .panel { display: none; }
@@ -298,11 +294,10 @@
     <button class="tab-btn" data-tab="prodcats"><i class="fas fa-layer-group mr-2 text-amber-500"></i>Loại sản phẩm</button>
     <button class="tab-btn" data-tab="imgcats"><i class="fas fa-tags mr-2 text-amber-500"></i>Loại ảnh</button>
     <button class="tab-btn" data-tab="matcats"><i class="fas fa-gem mr-2 text-amber-500"></i>Loại da</button>
-    <!-- Ba tab báo cáo (Lưu lượng, Quảng cáo, Khách để lại số) đã dời sang
-         heoiu.vercel.app, gom chung với báo cáo của Kit. Chỉ gỡ lối vào ở đây —
-         ROUTE_MAP và các panel vẫn còn nên đường dẫn cũ đã lưu dấu trang vẫn mở
-         được, làm đường lùi trong lúc chạy song song. -->
-    <a class="tab-lien-ket" href="https://heoiu.vercel.app" target="_blank" rel="noreferrer"><i class="fas fa-arrow-up-right-from-square mr-2 text-amber-500"></i>Báo cáo điều hành</a>
+    <!-- Báo cáo điều hành nằm ở heoiu.vercel.app (lưu lượng, quảng cáo, khách
+         để lại số — của cả Koi và Kit). Trước đây có một thẻ <a> trỏ sang đó ở
+         đúng chỗ này; đã gỡ theo yêu cầu vì Heoiu chạy xong, không cần bảng chỉ
+         đường nữa. Giữ dòng ghi chú này để lần sau tìm báo cáo không phải mò. -->
     <button class="tab-btn" data-tab="aiedit"><i class="fas fa-wand-magic-sparkles mr-2 text-amber-500"></i>Sửa bằng AI</button>
     <a class="admin-link" href="/quan-tri/noi-dung/"><i class="fas fa-pen-to-square mr-2 text-amber-500"></i>Sửa nội dung</a>
 
