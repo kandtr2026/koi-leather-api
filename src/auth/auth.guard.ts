@@ -21,6 +21,42 @@ const DUONG_TU_CHOI_SERVICE = [
 ];
 
 /**
+ * Token GHI của Heoiu — biến môi trường KHÁC token đọc.
+ *
+ * Vì sao không nới token đọc ra cho ghi: token đọc nằm trong biến môi trường của
+ * hai dự án khác (Heoiu và kitleather), không hết hạn, và đã phải vá hai lần để
+ * giữ đúng tính chỉ-đọc. Nới nó là bỏ luôn thành quả đó. Hai token riêng thì mất
+ * token đọc vẫn không ghi được gì, và ngược lại.
+ *
+ * Danh sách dưới đây là allow-list khớp CHÍNH XÁC method + đường dẫn, không phải
+ * theo tiền tố. Thêm route ghi mới thì phải thêm vào đây mới gọi được — cố ý bắt
+ * chặt, để không có đường ghi nào lọt ra ngoài mà không ai để ý.
+ *
+ * :\d+ chứ không phải .+ — id là số nguyên, để "/keywords/1/xoa" hay
+ * "/keywords/abc" không khớp. Neo ^...$ để không có đuôi lạ nào đi kèm.
+ */
+const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
+  ["POST", /^\/analytics\/ads\/convert$/],
+  ["POST", /^\/analytics\/ads\/keywords$/],
+  // Từ khoá dùng UUID (`KoiAdKeyword.id String @default(uuid())`), KHÔNG phải
+  // số tự tăng. Để `\d+` ở đây là chặn sạch mọi lần sửa từ khoá thật, mà lỗi
+  // hiện ra là 401 "không được dùng cho đường dẫn này" — nhìn hệt như token
+  // sai, nên rất dễ đi kiểm biến môi trường thay vì kiểm cái regex này.
+  //
+  // chuanHoaDuong() đã hạ chữ thường nên chỉ cần khớp hex thường.
+  //
+  // Khớp đúng khuôn 8-4-4-4-12 chứ không phải [0-9a-f-]{36}: cách sau nhận cả
+  // 36 dấu gạch, hoặc gạch đặt sai chỗ. Không phải lỗ bảo mật (không có '/',
+  // '.' hay '%' nào lọt được vào, nên tệ nhất là Prisma tra không thấy rồi trả
+  // 404), nhưng tầng gửi bên Heoiu đã khớp đúng khuôn này — để hai tầng lệch
+  // luật nhau thì sau này sửa một bên là tưởng cả hai đã theo.
+  ["PATCH", /^\/analytics\/ads\/keywords\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/],
+  ["DELETE", /^\/analytics\/ads\/keywords\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/],
+  // Lead thì ngược lại: `leads.id` là BigInt tự tăng, nên đúng là \d+.
+  ["PATCH", /^\/analytics\/leads\/\d+$/],
+];
+
+/**
  * Chuẩn hoá trước khi so khớp deny-list.
  *
  * Express để strict routing = false nên "/analytics/ads/feed-config/" vẫn khớp
@@ -105,6 +141,26 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
+    // Token ghi (Heoiu): chỉ đúng những method + đường trong GHI_CHO_PHEP.
+    // Đặt sau nhánh token đọc và trước nhánh GET chung, cùng lý do: token này
+    // không phải JWT nên verifyToken sẽ ném lỗi và bị coi là ẩn danh.
+    if (token && this.laTokenGhi(token)) {
+      const duong = chuanHoaDuong(path);
+      const duocPhep = GHI_CHO_PHEP.some(
+        ([m, mau]) => m === method && mau.test(duong),
+      );
+
+      if (!duocPhep) {
+        // Không tách riêng thông báo cho GET: token ghi KHÔNG đọc được gì cả.
+        // Chỉ cấp đúng quyền cần dùng, nên mất token ghi cũng không lộ số liệu.
+        throw new UnauthorizedException(
+          "Token ghi không được dùng cho đường dẫn này",
+        );
+      }
+      request.user = { service: "heoiu", chiGhi: true };
+      return true;
+    }
+
     // GET/HEAD/OPTIONS: đọc dữ liệu.
     if (["GET", "HEAD", "OPTIONS"].includes(method)) {
       let user: unknown = null;
@@ -135,10 +191,29 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 
-  // So sánh chống dò theo thời gian. Fail-closed: chưa đặt biến môi trường
-  // hoặc token quá ngắn thì không có service token nào hợp lệ.
+  // Fail-closed: chưa đặt biến môi trường hoặc token quá ngắn thì không có
+  // service token nào hợp lệ.
   private laServiceToken(token: string): boolean {
-    const mong = process.env.HEOIU_SERVICE_TOKEN;
+    return this.khopToken(token, process.env.HEOIU_SERVICE_TOKEN);
+  }
+
+  /**
+   * Fail-closed thêm một điều kiện so với token đọc: nếu ai đó dán CÙNG một giá
+   * trị vào cả hai biến thì coi như chưa cấu hình token ghi.
+   *
+   * Không có chốt này thì sự cố diễn ra âm thầm: nhánh token đọc chạy trước nên
+   * token đó vẫn đọc được, mọi lệnh ghi trả 401 với thông báo "chỉ được đọc" —
+   * đúng câu mà một token đọc bình thường cũng trả. Nhìn log không phân biệt
+   * được là dán trùng biến hay là quên đặt biến. Chặn hẳn để lỗi hiện ra ngay.
+   */
+  private laTokenGhi(token: string): boolean {
+    const mong = process.env.HEOIU_WRITE_TOKEN;
+    if (mong && mong === process.env.HEOIU_SERVICE_TOKEN) return false;
+    return this.khopToken(token, mong);
+  }
+
+  // So sánh chống dò theo thời gian, dùng chung cho cả hai loại token.
+  private khopToken(token: string, mong?: string): boolean {
     if (!mong || mong.length < 32) return false;
     const a = Buffer.from(token);
     const b = Buffer.from(mong);
