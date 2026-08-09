@@ -257,45 +257,110 @@ export class AdsService {
    * cả từ 9 giờ sáng HÔM QUA, trong khi trang /admin/traffic ngay cạnh lại cắt
    * từ 00:00 hôm nay — hai trang cùng ghi "1 ngày" mà đếm hai khoảng khác nhau,
    * đối chiếu cú bấm với lượt xem là ra số vênh không giải thích được.
+   *
+   * MỖI CON SỐ CẮT THEO ĐÚNG CỘT THỜI GIAN CỦA VIỆC NÓ ĐẾM. Đây là chỗ từng sai
+   * và sai rất kín: cả năm con số đều đếm trên `rows` — tập đã cắt theo
+   * `clickedAt` — nên chúng trả lời "trong số quảng cáo BẤM trong kỳ này, bao
+   * nhiêu về sau chốt được". Đó là câu hỏi về chất lượng quảng cáo, không phải
+   * câu hỏi "hôm nay chốt được mấy đơn", mà nhãn trên panel thì chủ shop đọc
+   * thành câu thứ hai.
+   *
+   * Chênh lệch đó không nhỏ, vì chuyển đổi LUÔN xảy ra sau cú bấm, thường vài
+   * ngày: khách bấm quảng cáo hôm 06/08 rồi 09/08 mới nhắn Zalo. Đo trên dữ liệu
+   * thật: mã SW6RNQ bấm 06/08 11:45, chốt 09/08 21:17. Chọn "Ngày hôm nay" của
+   * ngày 09/08 là dòng đó bị `where` loại ngay từ đầu — panel ghi "Đã chốt 0"
+   * đúng vào ngày có đơn chốt thật. Kỳ càng ngắn thì càng chắc chắn ra 0, tức
+   * thẻ vô dụng đúng lúc cần nhất.
+   *
+   * Nên: `tongCong` theo `clickedAt`, `daLienHe` theo `contactedAt`, còn
+   * `daChot`/`doanhThu`/`daXuat` theo `convertedAt`. Bảng bên dưới vẫn là "click
+   * gần nhất" nên vẫn theo `clickedAt` — nó trả lời câu khác, và đó là lý do
+   * bảng có thể không chứa dòng nào ứng với thẻ "Đã chốt".
+   *
+   * Đếm bằng count() của cơ sở dữ liệu chứ không phải filter() trên `rows`:
+   * `rows` bị chặn `take: 500`, nên khi lưu lượng lớn hơn thì mọi con số lặng lẽ
+   * dừng ở 500 mà không có gì báo.
    */
   async danhSach(days = 90): Promise<unknown> {
-    const soNgay = Math.min(Math.max(Number(days) || 90, 1), 365);
+    // Math.trunc trước khi kẹp: `?days=7.9` mà không cắt phần thập phân thì
+    // xuống tới dauNgayVN(6.9), và hàm đó trừ `luiNgay * 86_400_000` nên mốc rơi
+    // vào 02:24 sáng chứ không phải 00:00. Cả tệp này cắt theo NGÀY LỊCH, một
+    // mốc lệch 2,4 tiếng là phá đúng cái bảo đảm đó — mà nhìn số trên panel thì
+    // không cách nào thấy. Số âm kẹp lên 1 (kỳ hẹp nhất), không bao giờ ra mốc
+    // ở tương lai.
+    const soNgay = Math.min(Math.max(Math.trunc(Number(days)) || 90, 1), 365);
     const tu = dauNgayVN(soNgay - 1);
-    const rows = await this.prisma.koiAdClick.findMany({
-      where: {
-        clickedAt: { gte: tu },
-        OR: [
-          { gclid: { not: null } },
-          { gbraid: { not: null } },
-          { wbraid: { not: null } },
-        ],
-      },
-      orderBy: { clickedAt: "desc" },
-      take: 500,
-    });
+
+    // Dòng không có mã Google thì vĩnh viễn không tải lên được — loại khỏi MỌI
+    // con số, không riêng bảng, nếu không thẻ và bảng đếm hai tập khác nhau.
+    const locMaGoogle = {
+      OR: [
+        { gclid: { not: null } },
+        { gbraid: { not: null } },
+        { wbraid: { not: null } },
+      ],
+    };
+
+    const [rows, tongCong, daLienHe, daChot, daXuat, soDonCoTien, tongTien] =
+      await Promise.all([
+        this.prisma.koiAdClick.findMany({
+          where: { clickedAt: { gte: tu }, ...locMaGoogle },
+          orderBy: { clickedAt: "desc" },
+          take: 500,
+        }),
+        this.prisma.koiAdClick.count({
+          where: { clickedAt: { gte: tu }, ...locMaGoogle },
+        }),
+        this.prisma.koiAdClick.count({
+          where: { contactedAt: { gte: tu }, ...locMaGoogle },
+        }),
+        this.prisma.koiAdClick.count({
+          where: { convertedAt: { gte: tu }, ...locMaGoogle },
+        }),
+        // daXuat tách riêng vì đây là con số DUY NHẤT cho biết Google đã học được
+        // gì. Chuyển đổi nằm trong bảng mà chưa xuất thì với Google là chưa tồn
+        // tại — mà đó đúng là chỗ dễ tưởng đã xong nhất.
+        //
+        // Cắt theo `convertedAt` chứ không theo `exportedAt`: thẻ này đọc là
+        // "trong số đơn chốt của kỳ, bao nhiêu đã gửi", nên mẫu số phải là cùng
+        // một tập với `daChot`. Cắt theo `exportedAt` là đếm cả đơn chốt từ
+        // tháng trước vừa được chuyến feed hôm nay gửi kèm.
+        this.prisma.koiAdClick.count({
+          where: {
+            convertedAt: { gte: tu },
+            exportedAt: { not: null },
+            ...locMaGoogle,
+          },
+        }),
+        // Chỉ đếm dòng CÓ tiền, không đếm dòng tiền null: từ khi cú bấm tự tính
+        // là chuyển đổi, phần lớn dòng có convertedAt mà không có value. Lấy
+        // daChot làm mẫu số cho doanh thu là ra giá trị đơn trung bình gần bằng
+        // không, và đó là con số bịa.
+        this.prisma.koiAdClick.count({
+          where: {
+            convertedAt: { gte: tu },
+            value: { not: null },
+            ...locMaGoogle,
+          },
+        }),
+        // Cộng tiền bằng aggregate, không cộng tay trên `rows`: cùng lý do
+        // `take: 500` ở trên, và ở đây hậu quả nặng hơn — doanh thu thiếu hụt
+        // trông vẫn như một con số hợp lệ.
+        this.prisma.koiAdClick.aggregate({
+          _sum: { value: true },
+          where: { convertedAt: { gte: tu }, ...locMaGoogle },
+        }),
+      ]);
 
     return {
       days: soNgay,
       from: tu.toISOString(),
-      tongCong: rows.length,
-      // Đếm sẵn cho admin khỏi phải tự cộng. Bốn con số là toàn bộ câu chuyện:
-      // bao nhiêu cú bấm vào, bao nhiêu ra hội thoại (= bao nhiêu chuyển đổi,
-      // vì cú bấm nút CHÍNH LÀ chuyển đổi), bao nhiêu đã gửi được sang Google,
-      // và bao nhiêu trong số đó có số tiền thật.
-      daLienHe: rows.filter((r) => r.contactedAt).length,
-      daChot: rows.filter((r) => r.convertedAt).length,
-      // daXuat tách riêng vì đây là con số DUY NHẤT cho biết Google đã học được
-      // gì. Chuyển đổi nằm trong bảng mà chưa xuất thì với Google là chưa tồn
-      // tại — mà đó đúng là chỗ dễ tưởng đã xong nhất.
-      daXuat: rows.filter((r) => r.exportedAt).length,
-      // Chỉ đếm dòng CÓ tiền, không đếm dòng tiền null: từ khi cú bấm tự tính
-      // là chuyển đổi, phần lớn dòng có convertedAt mà không có value. Lấy
-      // daChot làm mẫu số cho doanh thu là ra giá trị đơn trung bình gần bằng
-      // không, và đó là con số bịa.
-      soDonCoTien: rows.filter((r) => r.value !== null).length,
-      doanhThu: rows
-        .reduce((s, r) => s + (r.value ?? 0n), 0n)
-        .toString(),
+      tongCong,
+      daLienHe,
+      daChot,
+      daXuat,
+      soDonCoTien,
+      doanhThu: (tongTien._sum.value ?? 0n).toString(),
       items: rows.map((r) => ({
         token: r.token,
         // Cắt gclid khi hiện: chuỗi 100 ký tự làm vỡ bảng, mà admin không bao
