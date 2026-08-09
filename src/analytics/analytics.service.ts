@@ -705,9 +705,10 @@ export class AnalyticsService {
     const tu = this.dauNgayVN(soNgay - 1);
 
     // Hai truy vấn song song: một để gộp (chỉ lấy cột cần đếm), một lấy dòng gần
-    // nhất để hiện bảng. Không dùng chung một lượt kéo về rồi tự cắt 20 dòng:
-    // bảng gộp cần cả kỳ còn bảng hiện chỉ cần 20 dòng cuối, kéo cả kỳ về rồi
-    // slice là chở thừa dữ liệu qua đường dây mỗi lần mở panel.
+    // nhất để hiện bảng. Không dùng chung một lượt kéo về rồi tự cắt: bảng gộp
+    // cần cả kỳ, còn bảng hiện chủ shop muốn XEM HẾT mọi cú bấm (heoiu phân
+    // trang 100 dòng phía hiển thị) nên cũng cần cả kỳ. Giữ hai truy vấn riêng:
+    // bảng gộp chỉ cần bốn cột nhẹ, chở chung thì vừa nặng vừa lẫn việc.
     const [tho, ganNhat] = await Promise.all([
       this.prisma.koiContactClick.findMany({
         where: { createdAt: { gte: tu } },
@@ -721,7 +722,11 @@ export class AnalyticsService {
       this.prisma.koiContactClick.findMany({
         where: { createdAt: { gte: tu } },
         orderBy: { createdAt: "desc" },
-        take: 20,
+        // Chặn trên đặt rất rộng so với lưu lượng thật (kỳ tối đa 90 ngày), nên
+        // thực tế không cắt mất dòng nào — nó chỉ để một ngày cú bấm tăng đột
+        // biến thì đường này không kéo cả bảng về theo. Đụng mức này là dấu hiệu
+        // phải phân trang từ phía máy chủ, chứ đừng nâng số lên tiếp.
+        take: 5000,
         select: {
           channel: true,
           source: true,
