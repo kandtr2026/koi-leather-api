@@ -22,11 +22,19 @@ const SALT =
 /**
  * Bao lâu không nghe nhịp tim thì coi như khách đã rời đi.
  *
- * 5 phút, khớp thói quen của Google Analytics. Nhịp tim gửi mỗi 60 giây nên
- * khách phải lỡ 5 nhịp liên tiếp mới biến mất — mạng 3G chập chờn không đủ để
- * đá nhầm người đang xem ra khỏi danh sách.
+ * 8 phút. Con số này BUỘC vào nhịp tim phía storefront (NHIP_TIM_MS trong
+ * track-page-view.tsx) — đổi một cái phải đổi cái kia, nếu không cửa sổ hẹp hơn
+ * nhịp sẽ đá người đang đọc ra khỏi danh sách giữa hai nhịp.
+ *
+ * Trước đây là 5 phút cho nhịp 60 giây (lỡ 5 nhịp mới mất). Nhịp đã giãn lên
+ * 180 giây để cắt số lần gọi hàm, nên cửa sổ phải nới theo: 8 phút = lỡ khoảng
+ * 2.7 nhịp. Giữ đúng 5 nhịp thì cửa sổ thành 15 phút, lúc đó "đang xem" đếm cả
+ * người đã đóng tab từ lâu, tức là nói dối chủ shop theo chiều khó phát hiện.
+ *
+ * Không đóng cứng con số này ở nơi khác: hàm realtime() trả nó ra ngoài qua
+ * `windowMinutes` để panel Heoiu ghi đúng nhãn.
  */
-const CUA_SO_ONLINE_MS = 5 * 60 * 1000;
+const CUA_SO_ONLINE_MS = 8 * 60 * 1000;
 
 /**
  * Giữ dòng hiện diện tối đa 1 ngày rồi dọn.
