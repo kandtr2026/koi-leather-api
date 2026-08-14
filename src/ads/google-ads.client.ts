@@ -50,6 +50,18 @@ export class GoogleAdsClient {
   }
 
   /**
+   * Mã tài khoản chạy quảng cáo (10 số, đã bỏ gạch), để dựng resource name kiểu
+   * `customers/{cid}/adGroupCriteria/{adGroupId}~{criterionId}`.
+   *
+   * Đây KHÔNG phải bí mật — là số tài khoản Ads, hiện ngay trên giao diện Google.
+   * Công khai getter thay vì để service tự đọc env: giữ một chỗ duy nhất chuẩn
+   * hoá số (bỏ gạch), tránh mỗi nơi tự parse rồi lệch nhau.
+   */
+  maTaiKhoan(): string {
+    return this.customerId;
+  }
+
+  /**
    * Đủ cấu hình để gọi Ads API hay chưa.
    *
    * Dùng để phần đọc từ khoá thật tự tắt một cách êm ả khi chưa có token, thay
@@ -171,9 +183,12 @@ export class GoogleAdsClient {
       const res = await fetch(url, {
         method: "POST",
         headers: await this.header(),
+        // KHÔNG gửi pageSize: từ Ads API v17+ tham số này bị bỏ, gửi vào là
+        // Google trả lỗi "Setting the page size is not supported" và chặn cả
+        // request. Response nay co page size co dinh 10000 dong, phan trang van
+        // chay binh thuong qua nextPageToken.
         body: JSON.stringify({
           query: gaql,
-          pageSize: 1000,
           ...(pageToken ? { pageToken } : {}),
         }),
       });
@@ -190,6 +205,86 @@ export class GoogleAdsClient {
     } while (pageToken);
 
     return rows;
+  }
+
+  /**
+   * Mã vùng địa lý Việt Nam cho Keyword Planner.
+   *
+   * geoTargetConstants/2704 — Việt Nam có criterion ID 2704 trong bảng
+   * geo target constants của Google Ads (country codes). Cho override qua
+   * GOOGLE_ADS_GEO_VN phòng khi cần nhắm hẹp hơn (một tỉnh) hoặc Google đổi
+   * bảng. Nhận cả dạng số trần ("2704") lẫn resource name đầy đủ.
+   */
+  private get geoVietNam(): string {
+    return this.chuanTaiNguyen(
+      process.env.GOOGLE_ADS_GEO_VN || "2704",
+      "geoTargetConstants",
+    );
+  }
+
+  /**
+   * Mã ngôn ngữ tiếng Việt cho Keyword Planner.
+   *
+   * languageConstants/1040 — tiếng Việt có criterion ID 1040 trong bảng
+   * language constants của Google Ads. Cho override qua GOOGLE_ADS_LANG_VI.
+   * Nhận cả dạng số trần ("1040") lẫn resource name đầy đủ.
+   */
+  private get ngonNguViet(): string {
+    return this.chuanTaiNguyen(
+      process.env.GOOGLE_ADS_LANG_VI || "1040",
+      "languageConstants",
+    );
+  }
+
+  /** Số trần thì bọc thành resource name; đã đầy đủ thì để nguyên. */
+  private chuanTaiNguyen(raw: string, loai: string): string {
+    const s = (raw || "").trim();
+    return /^\d+$/.test(s) ? `${loai}/${s}` : s;
+  }
+
+  /**
+   * Keyword Planner: xin gợi ý từ khoá từ vài từ gốc.
+   *
+   * KHÔNG dùng truyVan vì đây là endpoint khác hẳn: `:generateKeywordIdeas`
+   * trên chính customer, không phải googleAds:search. Nó cũng trả `results`
+   * kèm `nextPageToken` nên phân trang y như truyVan.
+   *
+   * CHỈ ĐỌC — không mutate, không đụng cấu hình hay tiền tài khoản.
+   */
+  async yTuongTuKhoa(seeds: string[], gioiHanTrang = 5): Promise<any[]> {
+    const url =
+      `https://googleads.googleapis.com/${this.version}` +
+      `/customers/${this.customerId}:generateKeywordIdeas`;
+
+    const results: any[] = [];
+    let pageToken: string | undefined;
+    let trang = 0;
+
+    do {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: await this.header(),
+        body: JSON.stringify({
+          keywordSeed: { keywords: seeds },
+          geoTargetConstants: [this.geoVietNam],
+          language: this.ngonNguViet,
+          keywordPlanNetwork: "GOOGLE_SEARCH",
+          includeAdultKeywords: false,
+          ...(pageToken ? { pageToken } : {}),
+        }),
+      });
+
+      const data: any = await res.json().catch(() => ({}));
+      if (!res.ok) this.nemLoi(res.status, data);
+
+      results.push(...(data.results || []));
+      pageToken = data.nextPageToken;
+      trang += 1;
+
+      if (trang >= gioiHanTrang) break;
+    } while (pageToken);
+
+    return results;
   }
 
   /** Gọi một mutate service, ví dụ `adGroupCriteria:mutate`. */
