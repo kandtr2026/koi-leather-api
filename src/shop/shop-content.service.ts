@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 
 /**
@@ -11,6 +11,8 @@ import { PrismaService } from "../prisma/prisma.service";
  */
 @Injectable()
 export class ShopContentService {
+  private readonly logger = new Logger(ShopContentService.name);
+
   constructor(private prisma: PrismaService) {}
 
   private mapPost(p: any) {
@@ -203,16 +205,87 @@ export class ShopContentService {
   }) {
     const parts = [input.message?.trim()].filter(Boolean) as string[];
     if (input.productName) parts.push(`(Sản phẩm: ${input.productName})`);
+    const message = parts.length ? parts.join(" ") : null;
     await this.prisma.leads.create({
       data: {
         name: input.name,
         phone: input.phone,
-        message: parts.length ? parts.join(" ") : null,
+        message,
         source: "koifront",
         status: "new",
       },
     });
+
+    // Báo email cho chủ shop. Cố tình ĐỢI (await) trước khi trả về: trên Vercel
+    // serverless, fire-and-forget sau khi response xong dễ bị đóng hàm giữa
+    // chừng nên tin không kịp gửi. notifyNewLead KHÔNG bao giờ throw — lead đã
+    // ghi thành công thì khách phải thấy "đã nhận" dù mail có lỗi.
+    await this.notifyNewLead({
+      name: input.name,
+      phone: input.phone,
+      message,
+    });
+
     return { ok: true };
+  }
+
+  /**
+   * Gửi email báo có khách để lại form (nguồn koifront), qua HTTP API của Resend
+   * — không thêm dependency, chạy được trên serverless. Cần 2 biến môi trường:
+   *   · RESEND_API_KEY      — key từ resend.com
+   *   · LEAD_NOTIFY_EMAIL   — nơi nhận báo (vd kandtr@gmail.com)
+   * Tuỳ chọn LEAD_NOTIFY_FROM (mặc định địa chỉ test onboarding@resend.dev, chỉ
+   * gửi được tới chính email đăng ký Resend — đủ để bắt đầu, sau verify domain
+   * koileather.com thì đổi sang địa chỉ thương hiệu).
+   *
+   * Chưa cấu hình đủ env thì im lặng bỏ qua. Mọi lỗi mạng/API chỉ ghi log, KHÔNG
+   * ném ra ngoài để không ảnh hưởng việc ghi lead.
+   */
+  private async notifyNewLead(lead: {
+    name: string;
+    phone: string;
+    message: string | null;
+  }): Promise<void> {
+    const apiKey = process.env.RESEND_API_KEY;
+    const to = process.env.LEAD_NOTIFY_EMAIL;
+    if (!apiKey || !to) return;
+
+    const from =
+      process.env.LEAD_NOTIFY_FROM || "KOI Leather <onboarding@resend.dev>";
+    const dong = [
+      `Tên: ${lead.name}`,
+      `Điện thoại: ${lead.phone}`,
+      lead.message ? `Nội dung: ${lead.message}` : null,
+      "",
+      "Nguồn: koifront (form liên hệ koileather.com)",
+    ].filter((x) => x !== null);
+
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          subject: `🔔 Khách để lại liên hệ: ${lead.name} — ${lead.phone}`,
+          text: dong.join("\n"),
+        }),
+        // Không để form treo vì Resend chậm/kẹt.
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) {
+        this.logger.warn(
+          `Gửi email báo lead thất bại: ${res.status} ${await res
+            .text()
+            .catch(() => "")}`,
+        );
+      }
+    } catch (err) {
+      this.logger.warn(`Gửi email báo lead lỗi: ${String(err)}`);
+    }
   }
 
   // ----- sitemap -----
