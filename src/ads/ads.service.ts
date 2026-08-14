@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { randomInt } from "node:crypto";
+import { Prisma } from "@prisma/client";
+import { randomInt, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { dauNgayVN } from "../common/ngay-vn";
 import { GoogleAdsClient } from "./google-ads.client";
@@ -136,6 +137,23 @@ const HAN_DON_RAC_NGAY = 120;
  */
 const LECH_GIO = "+0700";
 const LECH_GIO_PHUT = 7 * 60;
+
+/**
+ * Google giới hạn ~20 từ khoá gốc cho mỗi lần generateKeywordIdeas.
+ *
+ * Quá số này Google từ chối CẢ request (không cắt hộ), nên phải tự cắt trước
+ * khi gọi. Cắt an toàn còn hơn để cả lượt hỏng vì một seed thừa.
+ */
+const GIOI_HAN_SEED = 20;
+
+/**
+ * Ngưỡng "nhiều bấm" để gợi ý một cụm tìm kiếm nên thêm thành từ khoá.
+ *
+ * Shop nhỏ, lưu lượng thấp: 5 cú bấm trong 30 ngày mà chưa xử lý là đủ tín hiệu
+ * để chủ shop ngó tới. Đây chỉ là GỢI Ý, người quyết vẫn là chủ shop — nên đặt
+ * thấp để không bỏ sót còn hơn đặt cao rồi im lặng.
+ */
+const NGUONG_NHIEU_BAM = 5;
 
 @Injectable()
 export class AdsService {
@@ -877,6 +895,314 @@ export class AdsService {
   }
 
   /**
+   * Import hiện trạng: hút TOÀN BỘ từ khoá/negative đang chạy trên Google Ads về
+   * sổ tay, làm điểm mốc cho việc coi heoiu là gốc đồng bộ (Phase 0).
+   *
+   * VÌ SAO CHỈ ĐỌC + GHI DB CỦA MÌNH, KHÔNG MUTATE ADS: đây là bước nền, rủi ro
+   * thấp, không đụng tiền. Nó KÉO cấu trúc hiện có về để từ đó về sau tool có
+   * bản đối chiếu; đường ĐẨY xuống Ads là các phase sau.
+   *
+   * IDEMPOTENT theo `adsResourceName` (đã có @@unique): chạy lại nhiều lần không
+   * đẻ dòng trùng — mỗi criterion bên Ads ứng đúng một dòng, lần sau chỉ cập
+   * nhật lại cấu trúc/trạng thái. KHÔNG đụng `ghiChu` (ghi chú tay của chủ shop)
+   * ở nhánh update, chỉ ghi các cột cấu trúc + đồng bộ.
+   *
+   * KHÔNG động tới dòng nguon='tool' (adsResourceName NULL): khoá upsert là
+   * resource name nên chúng nằm ngoài phạm vi hàm này. Việc bind một dòng sổ tay
+   * cũ với một criterion thật là chuyện của reconcile (Phase 4), không phải import.
+   */
+  async importTuKhoaTuAds(): Promise<{
+    daNoi: boolean;
+    thieuBien: string[];
+    tong: number;
+    themMoi: number;
+    capNhat: number;
+    keyword: number;
+    negative: number;
+  }> {
+    if (!this.ads.daCauHinh()) {
+      return {
+        daNoi: false,
+        thieuBien: this.ads.bienConThieu(),
+        tong: 0,
+        themMoi: 0,
+        capNhat: 0,
+        keyword: 0,
+        negative: 0,
+      };
+    }
+
+    const cid = this.ads.maTaiKhoan();
+
+    // Hai lượt đọc độc lập, chạy SONG SONG (đều gọi ra Internet nên xếp hàng chỉ
+    // tổ cộng dồn độ trễ):
+    //
+    //  1. keyword_view — mọi ad_group_criterion kiểu KEYWORD, gồm CẢ negative
+    //     mức ad group (negative=true). KHÔNG có segments.date để lấy cả từ chưa
+    //     phát sinh lượt. Lọc REMOVED để bỏ criterion đã xoá.
+    //  2. campaign_criterion — negative mức campaign (type KEYWORD, negative).
+    //     keyword_view KHÔNG chứa negative mức campaign nên phải query riêng.
+    const [rowsAdGroup, rowsCampaign] = await Promise.all([
+      this.ads.truyVan(`
+        SELECT
+          ad_group_criterion.criterion_id,
+          ad_group_criterion.resource_name,
+          ad_group_criterion.keyword.text,
+          ad_group_criterion.keyword.match_type,
+          ad_group_criterion.negative,
+          ad_group_criterion.status,
+          campaign.id,
+          campaign.name,
+          ad_group.id,
+          ad_group.name
+        FROM keyword_view
+        WHERE ad_group_criterion.status != 'REMOVED'
+      `),
+      this.ads.truyVan(`
+        SELECT
+          campaign_criterion.criterion_id,
+          campaign_criterion.resource_name,
+          campaign_criterion.keyword.text,
+          campaign_criterion.keyword.match_type,
+          campaign_criterion.negative,
+          campaign_criterion.status,
+          campaign.id,
+          campaign.name
+        FROM campaign_criterion
+        WHERE campaign_criterion.type = 'KEYWORD'
+          AND campaign_criterion.negative = TRUE
+          AND campaign_criterion.status != 'REMOVED'
+      `),
+    ]);
+
+    // Chuẩn hoá cả hai nguồn về một khuôn chung trước khi upsert.
+    type DongNhap = {
+      adsResourceName: string;
+      tuKhoa: string;
+      loai: string;
+      loaiKhop: string | null;
+      trangThai: string;
+      chienDich: string | null;
+      campaignId: string | null;
+      adGroupId: string | null;
+      phamViNegative: string | null;
+    };
+
+    const dsNhap: DongNhap[] = [];
+
+    for (const r of rowsAdGroup) {
+      const agc = r.adGroupCriterion ?? {};
+      const kw = agc.keyword ?? {};
+      const text = String(kw.text ?? "").trim();
+      if (!text) continue; // keyword_view chỉ có KEYWORD nên hiếm, nhưng phòng xa.
+
+      const adGroupId = r.adGroup?.id != null ? String(r.adGroup.id) : null;
+      const criterionId =
+        agc.criterionId != null ? String(agc.criterionId) : null;
+      const rn =
+        agc.resourceName ||
+        (adGroupId && criterionId
+          ? `customers/${cid}/adGroupCriteria/${adGroupId}~${criterionId}`
+          : null);
+      if (!rn) continue; // Không dựng nổi khoá thì bỏ, tránh upsert mù.
+
+      const negative = Boolean(agc.negative);
+      dsNhap.push({
+        adsResourceName: rn,
+        tuKhoa: text,
+        loai: negative ? "negative" : "keyword",
+        loaiKhop: this.matchTypeThuong(kw.matchType),
+        trangThai: this.trangThaiTuAds(agc.status),
+        chienDich: r.campaign?.name ?? null,
+        campaignId: r.campaign?.id != null ? String(r.campaign.id) : null,
+        adGroupId,
+        phamViNegative: negative ? "adgroup" : null,
+      });
+    }
+
+    for (const r of rowsCampaign) {
+      const cc = r.campaignCriterion ?? {};
+      const kw = cc.keyword ?? {};
+      const text = String(kw.text ?? "").trim();
+      if (!text) continue;
+
+      const campaignId = r.campaign?.id != null ? String(r.campaign.id) : null;
+      const criterionId =
+        cc.criterionId != null ? String(cc.criterionId) : null;
+      const rn =
+        cc.resourceName ||
+        (campaignId && criterionId
+          ? `customers/${cid}/campaignCriteria/${campaignId}~${criterionId}`
+          : null);
+      if (!rn) continue;
+
+      dsNhap.push({
+        adsResourceName: rn,
+        tuKhoa: text,
+        loai: "negative", // query đã lọc negative=TRUE.
+        loaiKhop: this.matchTypeThuong(kw.matchType),
+        trangThai: this.trangThaiTuAds(cc.status),
+        chienDich: r.campaign?.name ?? null,
+        campaignId,
+        adGroupId: null, // negative mức campaign không thuộc ad group nào.
+        phamViNegative: "campaign",
+      });
+    }
+
+    // Đếm thêm-mới vs cập-nhật cho báo cáo (và để tiêu chí "chạy 2 lần số dòng
+    // không đổi" kiểm được): nạp trước tập resource name đã có. Chia LÔ để không
+    // bắn một câu IN với hàng chục nghìn tham số — chạm trần tham số Postgres và
+    // chậm. Tài khoản thật có thể có ~3970 keyword + ~17675 negative.
+    const daCo = new Set<string>();
+    const CO_LO_DOC = 1000;
+    for (let i = 0; i < dsNhap.length; i += CO_LO_DOC) {
+      const lo = dsNhap.slice(i, i + CO_LO_DOC);
+      const ton = await this.prisma.koiAdKeyword.findMany({
+        where: { adsResourceName: { in: lo.map((d) => d.adsResourceName) } },
+        select: { adsResourceName: true },
+      });
+      for (const t of ton) if (t.adsResourceName) daCo.add(t.adsResourceName);
+    }
+
+    const now = new Date();
+
+    // BULK UPSERT theo LÔ thay vì gọi upsert() tuần tự cho từng dòng. Với ~21k
+    // dòng, 21k round-trip tuần tự vượt trần 30s của serverless -> function bị
+    // Vercel giết giữa chừng ("Task timed out after 30 seconds"). Một câu
+    // INSERT ... ON CONFLICT cho mỗi lô ~500 dòng gom lại còn vài chục câu, xong
+    // trong vài giây.
+    //
+    // id: cột TEXT NOT NULL KHÔNG có DB-default (uuid vốn do Prisma client sinh,
+    // raw SQL thì không có) -> tự sinh randomUUID() cho mỗi dòng; khi ON CONFLICT
+    // thì id mới bị bỏ, không đổi id cũ. taoLuc có DEFAULT CURRENT_TIMESTAMP nên
+    // bỏ qua ở INSERT; capNhatLuc phải set now() ở nhánh UPDATE vì @updatedAt là
+    // client-side, raw SQL không tự đụng. KHÔNG đụng ghiChu ở UPDATE -> giữ ghi
+    // chú tay của chủ shop (INSERT không nêu cột ghiChu nên dòng mới nhận NULL).
+    const CO_LO_GHI = 500;
+    for (let i = 0; i < dsNhap.length; i += CO_LO_GHI) {
+      const lo = dsNhap.slice(i, i + CO_LO_GHI);
+      const hang = lo.map(
+        (d) => Prisma.sql`(${randomUUID()}, ${d.adsResourceName}, ${d.tuKhoa}, ${d.loai}, ${d.loaiKhop}, ${d.trangThai}, ${d.chienDich}, ${d.campaignId}, ${d.adGroupId}, ${d.phamViNegative}, 'da_day', ${null}, ${now}, 'imported')`,
+      );
+      await this.prisma.$executeRaw(Prisma.sql`
+        INSERT INTO "koi_free_style"."koi_ad_keywords"
+          ("id", "adsResourceName", "tuKhoa", "loai", "loaiKhop", "trangThai",
+           "chienDich", "campaignId", "adGroupId", "phamViNegative",
+           "trangThaiDongBo", "loiDongBo", "dongBoLuc", "nguon")
+        VALUES ${Prisma.join(hang)}
+        ON CONFLICT ("adsResourceName") DO UPDATE SET
+          "tuKhoa"          = EXCLUDED."tuKhoa",
+          "loai"            = EXCLUDED."loai",
+          "loaiKhop"        = EXCLUDED."loaiKhop",
+          "trangThai"       = EXCLUDED."trangThai",
+          "chienDich"       = EXCLUDED."chienDich",
+          "campaignId"      = EXCLUDED."campaignId",
+          "adGroupId"       = EXCLUDED."adGroupId",
+          "phamViNegative"  = EXCLUDED."phamViNegative",
+          "trangThaiDongBo" = EXCLUDED."trangThaiDongBo",
+          "loiDongBo"       = EXCLUDED."loiDongBo",
+          "dongBoLuc"       = EXCLUDED."dongBoLuc",
+          "nguon"           = EXCLUDED."nguon",
+          "capNhatLuc"      = ${now}
+      `);
+    }
+
+    let themMoi = 0;
+    let capNhat = 0;
+    for (const d of dsNhap) {
+      if (daCo.has(d.adsResourceName)) capNhat += 1;
+      else themMoi += 1;
+    }
+
+    return {
+      daNoi: true,
+      thieuBien: [],
+      tong: dsNhap.length,
+      themMoi,
+      capNhat,
+      keyword: dsNhap.filter((d) => d.loai === "keyword").length,
+      negative: dsNhap.filter((d) => d.loai === "negative").length,
+    };
+  }
+
+  /**
+   * Chuẩn hoá match type của Ads về chữ thường sổ tay dùng: broad|phrase|exact.
+   * Trả null cho UNSPECIFIED/UNKNOWN/rỗng để không nhét giá trị rác vào loaiKhop.
+   */
+  private matchTypeThuong(raw: unknown): string | null {
+    const s = String(raw ?? "").toLowerCase();
+    return s === "broad" || s === "phrase" || s === "exact" ? s : null;
+  }
+
+  /** ENABLED -> active; còn lại (PAUSED...) -> paused. REMOVED đã lọc từ GAQL. */
+  private trangThaiTuAds(raw: unknown): string {
+    return String(raw ?? "").toUpperCase() === "ENABLED" ? "active" : "paused";
+  }
+
+  // ─── Chuẩn hoá số liệu Google Ads ────────────────────────────────────────
+  //
+  // Năm hàm dưới đây giải cùng một bài: số liệu Ads API cho từ khoá ít dữ liệu
+  // rất hay vắng mặt (null/undefined), và nhiều trường là đơn vị micro hoặc
+  // phân số 0–1. Ép về đúng kiểu Front cần — và QUAN TRỌNG NHẤT là không bao
+  // giờ để lọt NaN ra JSON: NaN vừa không serialize gọn, vừa làm Front không
+  // phân biệt được "chưa có dữ liệu" với "tính lỗi". Vắng dữ liệu trả null
+  // (Front hiện "—"), tuyệt đối không quy về 0.
+
+  /** Số thật hoặc null. Chuỗi rỗng, undefined, hay parse ra NaN đều thành null. */
+  private so(v: unknown): number | null {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /** Micro → đơn vị gốc (chia 1.000.000). Vắng dữ liệu trả null, không phải 0. */
+  private micro(v: unknown): number | null {
+    const n = this.so(v);
+    return n === null ? null : n / 1_000_000;
+  }
+
+  /** Phân số 0–1 → phần trăm (nhân 100). Vắng dữ liệu trả null. */
+  private phanTram(v: unknown): number | null {
+    const n = this.so(v);
+    return n === null ? null : n * 100;
+  }
+
+  /**
+   * Bucket chất lượng của Google (ENUM) → nhãn tiếng Việt gọn.
+   *
+   * creative_quality_score / post_click_quality_score / search_predicted_ctr
+   * KHÔNG trả số mà trả một trong: UNSPECIFIED / UNKNOWN / BELOW_AVERAGE /
+   * AVERAGE / ABOVE_AVERAGE. UNSPECIFIED và UNKNOWN nghĩa là "chưa đủ dữ liệu"
+   * → trả null để Front hiện "—", không bịa ra một mức nào.
+   */
+  private nhanChatLuong(v: unknown): string | null {
+    switch (v) {
+      case "BELOW_AVERAGE":
+        return "dưới TB";
+      case "AVERAGE":
+        return "Trung bình";
+      case "ABOVE_AVERAGE":
+        return "trên TB";
+      default:
+        return null;
+    }
+  }
+
+  /** Mức cạnh tranh của Keyword Planner (ENUM) → nhãn tiếng Việt. */
+  private nhanCanhTranh(v: unknown): string | null {
+    switch (v) {
+      case "LOW":
+        return "thấp";
+      case "MEDIUM":
+        return "trung bình";
+      case "HIGH":
+        return "cao";
+      default:
+        return null;
+    }
+  }
+
+  /**
    * Kéo từ khoá THẬT đang chạy trên Google Ads về, kèm số liệu 30 ngày.
    *
    * Khác `danhSachTuKhoa()`: hàm kia đọc sổ tay trong DB của mình, hàm này đọc
@@ -900,6 +1226,20 @@ export class AdsService {
       hienThi: number;
       cuBam: number;
       chiPhi: number;
+      ctr: number | null;
+      cpcTrungBinh: number | null;
+      cuChuyenDoi: number | null;
+      cuChuyenDoiTatCa: number | null;
+      giaTriChuyenDoi: number | null;
+      giaMoiChuyenDoi: number | null;
+      tyLeChuyenDoi: number | null;
+      tyLeHienThi: number | null;
+      matViHang: number | null;
+      topTuyetDoi: number | null;
+      diemChatLuong: number | null;
+      chatLuongQuangCao: string | null;
+      chatLuongTrangDich: string | null;
+      ctrKyVong: string | null;
       ghiChuCuaToi: string | null;
     }>;
   }> {
@@ -913,26 +1253,45 @@ export class AdsService {
     // metrics.cost_micros là micro đơn vị tiền — chia 1.000.000 mới ra đồng.
     // Quên chia là bảng hiện chi phí gấp một triệu lần, con số vô lý tới mức dễ
     // phát hiện, nhưng vẫn nên nói rõ ở đây.
-    const rows = await this.ads.truyVan(`
-      SELECT
-        ad_group_criterion.keyword.text,
-        ad_group_criterion.keyword.match_type,
-        ad_group_criterion.status,
-        ad_group_criterion.negative,
-        campaign.name,
-        ad_group.name,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros
-      FROM keyword_view
-      WHERE segments.date DURING LAST_30_DAYS
-        AND ad_group_criterion.status != 'REMOVED'
-      ORDER BY metrics.cost_micros DESC
-    `);
+    // Hai lượt đọc độc lập — chạy SONG SONG: truyVan gọi ra Internet (chậm),
+    // sổ tay đọc DB (nhanh). Xếp hàng chỉ tổ cộng thêm độ trễ của cái nhanh vào
+    // sau cái chậm mà chẳng được gì.
+    const [rows, soTay] = await Promise.all([
+      this.ads.truyVan(`
+        SELECT
+          ad_group_criterion.keyword.text,
+          ad_group_criterion.keyword.match_type,
+          ad_group_criterion.status,
+          ad_group_criterion.negative,
+          ad_group_criterion.quality_info.quality_score,
+          ad_group_criterion.quality_info.creative_quality_score,
+          ad_group_criterion.quality_info.post_click_quality_score,
+          ad_group_criterion.quality_info.search_predicted_ctr,
+          campaign.name,
+          ad_group.name,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.ctr,
+          metrics.average_cpc,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.all_conversions,
+          metrics.conversions_value,
+          metrics.cost_per_conversion,
+          metrics.conversions_from_interactions_rate,
+          metrics.search_impression_share,
+          metrics.search_rank_lost_impression_share,
+          metrics.absolute_top_impression_percentage
+        FROM keyword_view
+        WHERE segments.date DURING LAST_30_DAYS
+          AND ad_group_criterion.status != 'REMOVED'
+        ORDER BY metrics.cost_micros DESC
+      `),
+      // Ghép ghi chú của sổ tay vào từ khoá thật, so theo tuKhoa không phân biệt
+      // hoa thường — chủ shop gõ "Ví Da" trong sổ tay còn Google trả "ví da".
+      this.prisma.koiAdKeyword.findMany(),
+    ]);
 
-    // Ghép ghi chú của sổ tay vào từ khoá thật, so theo tuKhoa không phân biệt
-    // hoa thường — chủ shop gõ "Ví Da" trong sổ tay còn Google trả "ví da".
-    const soTay = await this.prisma.koiAdKeyword.findMany();
     const ghiChuTheoTu = new Map<string, string>();
     for (const d of soTay) {
       if (d.ghiChu) ghiChuTheoTu.set(d.tuKhoa.trim().toLowerCase(), d.ghiChu);
@@ -944,6 +1303,8 @@ export class AdsService {
       dsTuKhoa: rows.map((r) => {
         const kw = r.adGroupCriterion?.keyword ?? {};
         const text = kw.text ?? "";
+        const m = r.metrics ?? {};
+        const cl = r.adGroupCriterion?.qualityInfo ?? {};
         return {
           tuKhoa: text,
           // negative=true là từ khoá loại trừ. Google không xếp nó thành một
@@ -955,10 +1316,254 @@ export class AdsService {
           trangThai: String(r.adGroupCriterion?.status ?? "").toLowerCase(),
           chienDich: r.campaign?.name ?? "",
           nhomQuangCao: r.adGroup?.name ?? "",
-          hienThi: Number(r.metrics?.impressions ?? 0),
-          cuBam: Number(r.metrics?.clicks ?? 0),
-          chiPhi: Number(r.metrics?.costMicros ?? 0) / 1_000_000,
+          // impressions/clicks/cost là số đếm luôn có mặt (0 là 0 thật) nên giữ
+          // 0 mặc định như cũ. Các con số bên dưới thì hay vắng cho từ ít dữ
+          // liệu — dùng helper trả null để Front hiện "—".
+          hienThi: Number(m.impressions ?? 0),
+          cuBam: Number(m.clicks ?? 0),
+          chiPhi: Number(m.costMicros ?? 0) / 1_000_000,
+          ctr: this.phanTram(m.ctr),
+          cpcTrungBinh: this.micro(m.averageCpc),
+          // Đọc CẢ hai: conversions là chuyển đổi Primary; nếu action "Zalo Sale"
+          // bị đặt Secondary thì nó KHÔNG vào conversions, chỉ vào allConversions.
+          // Trả riêng cả hai để Front chọn con số đúng thay vì backend đoán hộ.
+          cuChuyenDoi: this.so(m.conversions),
+          cuChuyenDoiTatCa: this.so(m.allConversions),
+          giaTriChuyenDoi: this.so(m.conversionsValue),
+          giaMoiChuyenDoi: this.micro(m.costPerConversion),
+          tyLeChuyenDoi: this.phanTram(m.conversionsFromInteractionsRate),
+          tyLeHienThi: this.phanTram(m.searchImpressionShare),
+          // Search lost IS (budget) CHỈ có ở cấp chiến dịch, không lấy được ở
+          // keyword_view — chọn vào là Google trả 503 "metric incompatible".
+          // Muốn cảnh báo "hết ngân sách" thì phải query riêng ở campaign.
+          matViHang: this.phanTram(m.searchRankLostImpressionShare),
+          topTuyetDoi: this.phanTram(m.absoluteTopImpressionPercentage),
+          diemChatLuong: this.so(cl.qualityScore),
+          chatLuongQuangCao: this.nhanChatLuong(cl.creativeQualityScore),
+          chatLuongTrangDich: this.nhanChatLuong(cl.postClickQualityScore),
+          ctrKyVong: this.nhanChatLuong(cl.searchPredictedCtr),
           ghiChuCuaToi: ghiChuTheoTu.get(text.trim().toLowerCase()) ?? null,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Cụm từ tìm kiếm THẬT khách gõ vào Google, kèm số liệu 30 ngày.
+   *
+   * Khác tuKhoaThat ở bản chất: từ khoá là thứ TA đặt giá thầu; search term là
+   * thứ KHÁCH thực sự gõ khi quảng cáo hiện ra. Đây là mỏ để (a) thấy cụm nào
+   * nên thêm thành từ khoá, (b) thấy cụm nào đang đốt tiền mà không ra khách để
+   * chặn bớt.
+   *
+   * search_term_view.status của Google: ADDED (đã là từ khoá) / EXCLUDED (đã
+   * loại trừ) / ADDED_EXCLUDED (vừa thêm vừa loại trừ ở tầng khác) / NONE hoặc
+   * UNKNOWN (chưa xử lý — nhóm cần soi). Chỉ gợi ý cho nhóm CHƯA XỬ LÝ; nhóm đã
+   * xử lý để null cho khỏi giục chủ shop làm lại việc đã làm.
+   *
+   * Trả cùng khuôn { daNoi, thieuBien, dsSearchTerm } với tuKhoaThat để Front
+   * xử lý "chưa nối Google Ads" y một kiểu ở mọi màn.
+   */
+  async searchTermsThat(): Promise<{
+    daNoi: boolean;
+    thieuBien: string[];
+    dsSearchTerm: Array<{
+      searchTerm: string;
+      trangThai: string;
+      tuKhoaKhop: string;
+      loaiKhop: string;
+      chienDich: string;
+      nhomQuangCao: string;
+      hienThi: number;
+      cuBam: number;
+      chiPhi: number;
+      cuChuyenDoi: number | null;
+      giaTriChuyenDoi: number | null;
+      goiY: string | null;
+    }>;
+  }> {
+    if (!this.ads.daCauHinh()) {
+      return { daNoi: false, thieuBien: this.ads.bienConThieu(), dsSearchTerm: [] };
+    }
+
+    const rows = await this.ads.truyVan(`
+      SELECT
+        search_term_view.search_term,
+        search_term_view.status,
+        segments.keyword.info.text,
+        segments.search_term_match_type,
+        campaign.name,
+        ad_group.name,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value
+      FROM search_term_view
+      WHERE segments.date DURING LAST_30_DAYS
+      ORDER BY metrics.cost_micros DESC
+    `);
+
+    // Tài khoản có gắn theo dõi chuyển đổi hay không: nếu KHÔNG cụm nào trả về
+    // số chuyển đổi (đều null) thì coi như chưa gắn — lúc đó "0 đơn" là "chưa
+    // đo được" chứ không phải "không ra khách", nên không được bắn nhãn đỏ "nên
+    // loại trừ". Cùng nguyên tắc với coCotSo() bên panel Heoiu, chỉ khác là xét
+    // trên cả tập thay vì từng dòng.
+    const coDuLieuChuyenDoi = rows.some(
+      (r) => this.so(r.metrics?.conversions) !== null,
+    );
+
+    return {
+      daNoi: true,
+      thieuBien: [],
+      dsSearchTerm: rows.map((r) => {
+        const status = String(r.searchTermView?.status ?? "").toUpperCase();
+        const cuBam = Number(r.metrics?.clicks ?? 0);
+        const chiPhi = Number(r.metrics?.costMicros ?? 0) / 1_000_000;
+        const cuChuyenDoi = this.so(r.metrics?.conversions);
+        return {
+          searchTerm: r.searchTermView?.searchTerm ?? "",
+          trangThai: this.nhanTrangThaiSearchTerm(status),
+          tuKhoaKhop: r.segments?.keyword?.info?.text ?? "",
+          loaiKhop: String(r.segments?.searchTermMatchType ?? "").toLowerCase(),
+          chienDich: r.campaign?.name ?? "",
+          nhomQuangCao: r.adGroup?.name ?? "",
+          hienThi: Number(r.metrics?.impressions ?? 0),
+          cuBam,
+          chiPhi,
+          cuChuyenDoi,
+          giaTriChuyenDoi: this.so(r.metrics?.conversionsValue),
+          goiY: this.goiYSearchTerm(
+            status,
+            cuBam,
+            chiPhi,
+            cuChuyenDoi,
+            coDuLieuChuyenDoi,
+          ),
+        };
+      }),
+    };
+  }
+
+  /** search_term_view.status (ENUM) → nhãn tiếng Việt. */
+  private nhanTrangThaiSearchTerm(status: string): string {
+    switch (status) {
+      case "ADDED":
+        return "đã thêm";
+      case "EXCLUDED":
+        return "đã loại trừ";
+      case "ADDED_EXCLUDED":
+        return "đã thêm & loại trừ";
+      default:
+        // NONE / UNKNOWN / UNSPECIFIED
+        return "chưa xử lý";
+    }
+  }
+
+  /**
+   * Gợi ý hành động cho một cụm tìm kiếm. CHỈ gợi ý cho cụm CHƯA XỬ LÝ.
+   *
+   *  · "nên thêm": đã ra chuyển đổi — bằng chứng rõ nhất cụm này đáng đặt giá
+   *    thầu riêng. (Hoặc: chưa gắn theo dõi chuyển đổi mà kéo được kha khá bấm —
+   *    gợi ý NHẸ, tạm tin theo lượt bấm.)
+   *  · "xem lại": có theo dõi chuyển đổi, cụm hút NHIỀU bấm và tốn tiền nhưng 0
+   *    đơn — đang hút người mà không ra khách, cần soi lại trang đích / ý định
+   *    tìm kiếm trước khi quyết thêm hay chặn.
+   *  · "nên loại trừ": có theo dõi chuyển đổi, tốn tiền mà 0 đơn và ít bấm —
+   *    tiền rơi vào cụm không ra khách, nên cân nhắc chặn.
+   *  · null: không đủ tín hiệu để khuyên, hoặc đã xử lý rồi.
+   *
+   * coDuLieuChuyenDoi = cả tập có ít nhất một cụm đọc được số chuyển đổi. Khi
+   * FALSE (tài khoản chưa gắn theo dõi chuyển đổi) thì "0 đơn" là "chưa đo được"
+   * chứ không phải "không ra khách" — KHÔNG được bắn nhãn mạnh "xem lại"/"nên
+   * loại trừ", vì đó là vu oan cho cụm khi ta còn chưa đo. Đây chính là cái bẫy
+   * mà gate coCotSo() bên panel Heoiu dựng ra để tránh.
+   *
+   * Đây là GỢI Ý cho người đọc, không phải lệnh tự động — hàm này không đụng gì
+   * tới tài khoản Ads.
+   */
+  private goiYSearchTerm(
+    status: string,
+    cuBam: number,
+    chiPhi: number,
+    cuChuyenDoi: number | null,
+    coDuLieuChuyenDoi: boolean,
+  ): string | null {
+    const daXuLy =
+      status === "ADDED" || status === "EXCLUDED" || status === "ADDED_EXCLUDED";
+    if (daXuLy) return null;
+
+    // Có đơn thật thì luôn đáng thêm, bất kể có/chưa gắn theo dõi trên cả tài
+    // khoản (một cụm ra đơn tự nó đã là bằng chứng theo dõi chạy).
+    if ((cuChuyenDoi ?? 0) > 0) return "nên thêm";
+
+    // Chưa đo được chuyển đổi: chỉ dám gợi ý nhẹ theo lượt bấm, tuyệt đối không
+    // kết luận lãng phí.
+    if (!coDuLieuChuyenDoi) {
+      return cuBam >= NGUONG_NHIEU_BAM ? "nên thêm" : null;
+    }
+
+    // Có theo dõi mà cụm này 0 đơn: phân biệt "hút bấm nhưng phí" với "ít bấm
+    // lại phí" — hai cái cần hành động khác nhau.
+    if (chiPhi > 0 && cuBam >= NGUONG_NHIEU_BAM) return "xem lại";
+    if (chiPhi > 0 && cuBam < NGUONG_NHIEU_BAM) return "nên loại trừ";
+    return null;
+  }
+
+  /**
+   * Keyword Planner: gợi ý từ khoá mới từ vài từ gốc, kèm số liệu ước tính.
+   *
+   * Khác tuKhoaThat/searchTermsThat: hai hàm kia đọc số liệu THẬT của tài khoản;
+   * hàm này hỏi Google "với những từ gốc này, còn từ nào đáng chạy nữa" — dữ
+   * liệu tham khảo thị trường, không phải hiệu suất tài khoản mình.
+   *
+   * CHỈ ĐỌC: gọi generateKeywordIdeas, không mutate, không đụng tiền hay cấu
+   * hình tài khoản.
+   *
+   * Trả cùng khuôn { daNoi, thieuBien, dsYTuong } để Front xử lý "chưa nối"
+   * thống nhất với các màn kia.
+   */
+  async yTuongTuKhoa(seeds: string[]): Promise<{
+    daNoi: boolean;
+    thieuBien: string[];
+    dsYTuong: Array<{
+      tuKhoa: string;
+      luongTimKiem: number | null;
+      canhTranh: string | null;
+      chiSoCanhTranh: number | null;
+      giaThauThap: number | null;
+      giaThauCao: number | null;
+    }>;
+  }> {
+    // Làm sạch seed TRƯỚC khi kiểm cấu hình: bỏ chuỗi rỗng/khoảng trắng, gộp
+    // trùng, rồi cắt còn tối đa GIOI_HAN_SEED — Google từ chối cả request nếu
+    // quá ~20 seed/lần.
+    const sach = Array.from(
+      new Set((seeds || []).map((s) => (s ?? "").trim()).filter(Boolean)),
+    ).slice(0, GIOI_HAN_SEED);
+
+    if (!sach.length) {
+      throw new BadRequestException("Cần ít nhất một từ khoá gốc để gợi ý");
+    }
+
+    if (!this.ads.daCauHinh()) {
+      return { daNoi: false, thieuBien: this.ads.bienConThieu(), dsYTuong: [] };
+    }
+
+    const results = await this.ads.yTuongTuKhoa(sach);
+
+    return {
+      daNoi: true,
+      thieuBien: [],
+      dsYTuong: results.map((r) => {
+        const m = r.keywordIdeaMetrics ?? {};
+        return {
+          tuKhoa: r.text ?? "",
+          luongTimKiem: this.so(m.avgMonthlySearches),
+          canhTranh: this.nhanCanhTranh(m.competition),
+          chiSoCanhTranh: this.so(m.competitionIndex),
+          giaThauThap: this.micro(m.lowTopOfPageBidMicros),
+          giaThauCao: this.micro(m.highTopOfPageBidMicros),
         };
       }),
     };

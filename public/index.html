@@ -26,6 +26,10 @@
        ở dưới, lớp đó chỉ để tạo hình chứ không bị hai bộ quét kia nhặt. */
     .admin-link { display: inline-flex; align-items: center; cursor: pointer; transition: all 0.2s; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; }
     .admin-link:hover { background: #e2e8f0; }
+    /* embed=1: tab mở bên trong trang /quan-tri/noi-dung/ — bỏ header và thanh
+       tab để không thành hai thanh tab chồng nhau; cổng đăng nhập vẫn giữ. */
+    html.embed header,
+    html.embed #adminTabs { display: none; }
     .panel { display: none; }
     .panel.active { display: block; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; }
@@ -208,6 +212,7 @@
   </style>
 </head>
 <body>
+<script>try { if (new URLSearchParams(location.search).get('embed') === '1') document.documentElement.classList.add('embed'); } catch (e) {}</script>
 
 <!-- Cổng đăng nhập: hiện mặc định, ẩn khi body.authenticated (xem CSS).
      Thuộc tính sống-còn (che phủ, chắn tương tác, nền đục) để INLINE, không
@@ -289,7 +294,7 @@
   </header>
 
   <!-- Tabs -->
-  <div class="bg-white border-b px-6 py-3 flex gap-2">
+  <div id="adminTabs" class="bg-white border-b px-6 py-3 flex gap-2">
     <button class="tab-btn active" data-tab="products"><i class="fas fa-box mr-2 text-amber-500"></i>Sản phẩm</button>
     <button class="tab-btn" data-tab="prodcats"><i class="fas fa-layer-group mr-2 text-amber-500"></i>Loại sản phẩm</button>
     <button class="tab-btn" data-tab="imgcats"><i class="fas fa-tags mr-2 text-amber-500"></i>Loại ảnh</button>
@@ -299,8 +304,11 @@
          đúng chỗ này; đã gỡ theo yêu cầu vì Heoiu chạy xong, không cần bảng chỉ
          đường nữa. Giữ dòng ghi chú này để lần sau tìm báo cáo không phải mò. -->
     <button class="tab-btn" data-tab="aiedit"><i class="fas fa-wand-magic-sparkles mr-2 text-amber-500"></i>Sửa bằng AI</button>
-    <a class="admin-link" href="/quan-tri/noi-dung/"><i class="fas fa-pen-to-square mr-2 text-amber-500"></i>Sửa nội dung</a>
-
+    <!-- Sửa nội dung nay là TAB NỘI BỘ (panel iframe trỏ vào /quan-tri/noi-dung/)
+         chứ không phải link nhảy trang — toàn bộ các nút trong admin đều xử lý
+         ngay trong trang, không bị giật. Không dùng .admin-link cho thẻ <a>: nó
+         bị applyRoute() quét querySelectorAll('.tab-btn') đè 'active'. -->
+    <button class="tab-btn" data-tab="noidung"><i class="fas fa-pen-to-square mr-2 text-amber-500"></i>Sửa nội dung</button>
   </div>
 
   <!-- Main -->
@@ -513,6 +521,16 @@
 
     </div>
 
+    <!-- ================= SỬA NỘI DUNG ================= -->
+    <!-- Tab nội bộ: cửa sổ đưa vào /quan-tri/noi-dung/?embed=1 của
+         koi-storefront. Không nhảy trang như link cũ; phiên đăng nhập Google
+         chia sẻ qua localStorage ngay cùng origin. -->
+    <div class="panel" id="panel-noidung">
+      <div class="h-[calc(100vh_-_190px)] min-h-[520px] overflow-hidden rounded-xl border bg-white shadow-sm">
+        <iframe src="/quan-tri/noi-dung/?embed=1"
+                class="h-full w-full border-0" title="Sửa nội dung" loading="lazy"></iframe>
+      </div>
+    </div>
 
   </div>
 </div>
@@ -1125,6 +1143,9 @@ const ROUTE_MAP = {
   // /analytics/realtime, /analytics/ads/*, /analytics/leads): heoiu đọc và ghi
   // qua chính chúng, xoá endpoint là chết trang báo cáo.
   '/admin/ai-edit':     { panel: 'aiedit',   label: 'Sửa bằng AI' },
+  // Sửa nội dung là TAB NỘI BỘ (panel iframe /quan-tri/noi-dung/?embed=1) —
+  // chuyển tính năng ngay trong trang thay vì link nhảy trang như cũ.
+  '/admin/noi-dung':    { panel: 'noidung',  label: 'Sửa nội dung' },
 
 };
 const ROUTES = Object.keys(ROUTE_MAP);

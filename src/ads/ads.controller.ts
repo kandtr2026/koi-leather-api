@@ -380,6 +380,64 @@ export class AdsAdminController {
     return this.ads.tuKhoaThat();
   }
 
+  /**
+   * Cụm từ tìm kiếm THẬT khách gõ, kèm số liệu 30 ngày + gợi ý thêm/loại trừ.
+   *
+   * Admin-only y hệt keywords/live: tự kiểm req.user chứ không phó cho guard,
+   * vì PUBLIC_VIEW=1 mở hết phần đọc — mà cụm khách tìm là dữ liệu kinh doanh
+   * nội bộ, lộ ra là đối thủ đọc được cả ý đồ nhắm khách.
+   */
+  @Get("ads/search-terms/live")
+  @ApiOperation({ summary: "Cụm từ khách tìm thật trên Google Ads + số liệu 30 ngày" })
+  async searchTermsThat(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.ads.searchTermsThat();
+  }
+
+  /**
+   * Keyword Planner: gợi ý từ khoá mới từ vài từ gốc.
+   *
+   * GET với ?seed=...&seed=... (lặp lại được nhiều lần) — đọc-only, hợp với GET.
+   * Admin-only như trên. Không có seed hợp lệ thì service ném 400 rõ ràng.
+   *
+   * express gộp query lặp thành mảng, một lần thành chuỗi — chuẩn hoá về mảng
+   * để service làm sạch (bỏ rỗng, gộp trùng, cắt còn tối đa 20 seed).
+   */
+  @Get("ads/keyword-ideas/live")
+  @ApiOperation({ summary: "Gợi ý từ khoá mới từ Keyword Planner (đọc-only)" })
+  async yTuongTuKhoa(
+    @Req() req: Request,
+    @Query("seed") seed?: string | string[],
+  ) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    const seeds = Array.isArray(seed) ? seed : seed ? [seed] : [];
+    return this.ads.yTuongTuKhoa(seeds);
+  }
+
+  /**
+   * Import hiện trạng: hút toàn bộ từ khoá/negative đang chạy trên Google Ads
+   * vào sổ tay (Phase 0). CHỈ ĐỌC Ads + ghi DB của mình, KHÔNG mutate Ads.
+   *
+   * Tự kiểm req.user như các route admin khác: khi heoiu gọi bằng token ghi,
+   * guard đã gắn req.user = { service:"heoiu", chiGhi:true } (truthy) nên qua
+   * được; khi admin gọi bằng Bearer JWT thì req.user là payload. PUBLIC_VIEW chỉ
+   * mở GET nên không liên quan tới POST này, nhưng vẫn tự kiểm cho nhất quán.
+   *
+   * Idempotent: bấm nhiều lần không đẻ dòng trùng (khoá theo adsResourceName).
+   */
+  @Post("ads/keywords/import")
+  @ApiOperation({ summary: "Import từ khoá/negative đang chạy trên Google Ads về sổ tay" })
+  async importTuKhoa(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.ads.importTuKhoaTuAds();
+  }
+
   @Post("ads/keywords")
   @ApiOperation({ summary: "Thêm từ khoá vào sổ tay" })
   async themTuKhoa(

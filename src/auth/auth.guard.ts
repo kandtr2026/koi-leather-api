@@ -38,6 +38,13 @@ const DUONG_TU_CHOI_SERVICE = [
 const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   ["POST", /^\/analytics\/ads\/convert$/],
   ["POST", /^\/analytics\/ads\/keywords$/],
+  // Import hiện trạng Google Ads về sổ tay (Phase 0). CHỈ đọc Ads + ghi DB của
+  // mình, KHÔNG mutate tài khoản quảng cáo — nhưng vẫn là POST có tác dụng phụ
+  // (ghi DB) nên đi qua token ghi, phải nằm trong allowlist này. Chỉ route
+  // import lần này; các route push/reconcile thêm ở phase sau. Đặt TRƯỚC luật
+  // /keywords/:id để đường tĩnh này không bị luật uuid nuốt (thực ra 'import'
+  // không khớp khuôn hex nên vô hại, nhưng để cạnh nhau cho dễ đọc).
+  ["POST", /^\/analytics\/ads\/keywords\/import$/],
   // Từ khoá dùng UUID (`KoiAdKeyword.id String @default(uuid())`), KHÔNG phải
   // số tự tăng. Để `\d+` ở đây là chặn sạch mọi lần sửa từ khoá thật, mà lỗi
   // hiện ra là 401 "không được dùng cho đường dẫn này" — nhìn hệt như token
