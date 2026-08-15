@@ -40,11 +40,13 @@ const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   ["POST", /^\/analytics\/ads\/keywords$/],
   // Import hiện trạng Google Ads về sổ tay (Phase 0). CHỈ đọc Ads + ghi DB của
   // mình, KHÔNG mutate tài khoản quảng cáo — nhưng vẫn là POST có tác dụng phụ
-  // (ghi DB) nên đi qua token ghi, phải nằm trong allowlist này. Chỉ route
-  // import lần này; các route push/reconcile thêm ở phase sau. Đặt TRƯỚC luật
-  // /keywords/:id để đường tĩnh này không bị luật uuid nuốt (thực ra 'import'
-  // không khớp khuôn hex nên vô hại, nhưng để cạnh nhau cho dễ đọc).
+  // (ghi DB) nên đi qua token ghi, phải nằm trong allowlist này. Đặt TRƯỚC luật
+  // /keywords/:id để đường tĩnh không bị luật uuid nuốt.
   ["POST", /^\/analytics\/ads\/keywords\/import$/],
+  // Đẩy 1 từ khoá lên Google Ads (Phase 2). MUTATE tài khoản thật — cẩn thận.
+  // Đặt TRƯỚC luật /keywords/:id/... chung vì push là endpoint riêng.
+  // Khuôn UUID giống PATCH/DELETE bên dưới — cùng bảng KoiAdKeyword.
+  ["POST", /^\/analytics\/ads\/keywords\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/push$/],
   // Từ khoá dùng UUID (`KoiAdKeyword.id String @default(uuid())`), KHÔNG phải
   // số tự tăng. Để `\d+` ở đây là chặn sạch mọi lần sửa từ khoá thật, mà lỗi
   // hiện ra là 401 "không được dùng cho đường dẫn này" — nhìn hệt như token

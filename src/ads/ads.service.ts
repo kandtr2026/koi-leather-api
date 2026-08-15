@@ -1974,4 +1974,152 @@ export class AdsService {
 
     return this.prisma.koiAdKeyword.update({ where: { id }, data });
   }
+
+  /**
+   * Đẩy 1 từ khoá từ sổ tay lên Google Ads — MUTATE tài khoản thật.
+   *
+   * IDEMPOTENT theo hướng: gọi lại sau khi thành công sẽ UPDATE (không tạo dòng
+   * mới), vì đã có adsResourceName. Gọi lại sau khi lỗi sẽ thử lại từ đầu.
+   *
+   * OPTIMISTIC LOCK: set trangThaiDongBo='dang_day' trước khi gọi Ads API. Nếu
+   * trang bấm đúp thì lần hai vào thấy 'dang_day', trả về ngay, không gọi Ads
+   * lần nữa. Sau khi mutate xong mới set 'da_day' hoặc 'loi'.
+   *
+   * CHỈNH SỬA KHÔNG ĐI QUA ĐÂY: suaTuKhoaV2 chỉ ghi sổ tay, không gọi Ads.
+   * Sau khi sửa xong, trangThaiDongBo tự về 'chua_day' (service tự reset), và
+   * người dùng bấm Đẩy lại để đồng bộ. Không tự đẩy sau mỗi lần sửa vì một
+   * lần sửa gồm nhiều cú bấm (thay tên, đổi loại khớp, đổi chiến dịch…); đẩy
+   * giữa chừng vừa tốn quota vừa tạo dữ liệu nửa vời trên Ads.
+   *
+   * SHARED NEGATIVE: chưa triển khai — cần lấy shareSetId trước (một bước gọi
+   * thêm). Trả 400 rõ ràng thay vì để endpoint im lặng không làm gì.
+   */
+  async dayTuKhoa(id: string): Promise<{
+    ok: boolean;
+    trangThaiDongBo: string;
+    adsResourceName: string | null;
+    loiDongBo: string | null;
+  }> {
+    // 1. Tra sổ tay.
+    const k = await this.prisma.koiAdKeyword.findUnique({ where: { id } });
+    if (!k) throw new NotFoundException(`Không tìm thấy từ khoá ${id}`);
+
+    // 2. Chặn đúp: nếu đang đẩy thì trả về ngay, không gọi Ads lần hai.
+    if (k.trangThaiDongBo === "dang_day") {
+      return { ok: false, trangThaiDongBo: "dang_day", adsResourceName: k.adsResourceName, loiDongBo: null };
+    }
+
+    // 3. Validate tối thiểu trước khi đụng Ads API.
+    const loai = k.loai ?? "keyword";
+    const phamVi = k.phamViNegative ?? "adgroup";
+    if (loai === "negative" && phamVi === "shared") {
+      throw new BadRequestException(
+        "Đẩy negative danh sách chung (shared) chưa được triển khai. " +
+          "Đẩy thủ công qua giao diện Google Ads hoặc đổi phạm vi sang adgroup/campaign.",
+      );
+    }
+    if (loai === "keyword" && !k.adGroupId) {
+      throw new BadRequestException("Từ khoá cần adGroupId để đẩy lên ad group.");
+    }
+    if (loai === "negative" && phamVi === "campaign" && !k.campaignId) {
+      throw new BadRequestException("Negative mức campaign cần campaignId.");
+    }
+    if (loai === "negative" && phamVi === "adgroup" && !k.adGroupId) {
+      throw new BadRequestException("Negative mức ad group cần adGroupId.");
+    }
+    if (!this.ads.daCauHinh()) {
+      const thieu = this.ads.bienConThieu().join(", ");
+      throw new BadRequestException(`Chưa cấu hình Google Ads API. Còn thiếu: ${thieu}`);
+    }
+
+    // 4. Optimistic lock.
+    await this.prisma.koiAdKeyword.update({
+      where: { id },
+      data: { trangThaiDongBo: "dang_day", loiDongBo: null },
+    });
+
+    const cid = this.ads.maTaiKhoan();
+    const statusAds = k.trangThai === "paused" ? "PAUSED" : "ENABLED";
+    const MAP_KHOP: Record<string, string> = { broad: "BROAD", phrase: "PHRASE", exact: "EXACT" };
+    const matchType = k.loaiKhop ? (MAP_KHOP[k.loaiKhop] ?? "BROAD") : "BROAD";
+
+    try {
+      let service: string;
+      let operation: unknown;
+
+      if (k.adsResourceName) {
+        // --- CẬP NHẬT trạng thái (resource name đã có) ---
+        if (loai === "negative" && phamVi === "campaign") {
+          service = "campaignCriteria:mutate";
+          operation = {
+            update: { resourceName: k.adsResourceName, status: statusAds },
+            updateMask: "status",
+          };
+        } else {
+          // keyword hoặc negative adgroup
+          service = "adGroupCriteria:mutate";
+          operation = {
+            update: { resourceName: k.adsResourceName, status: statusAds },
+            updateMask: "status",
+          };
+        }
+      } else {
+        // --- TẠO MỚI ---
+        if (loai === "keyword") {
+          service = "adGroupCriteria:mutate";
+          operation = {
+            create: {
+              adGroup: `customers/${cid}/adGroups/${k.adGroupId}`,
+              status: statusAds,
+              keyword: { text: k.tuKhoa, matchType },
+            },
+          };
+        } else if (phamVi === "campaign") {
+          service = "campaignCriteria:mutate";
+          operation = {
+            create: {
+              campaign: `customers/${cid}/campaigns/${k.campaignId}`,
+              negative: true,
+              keyword: { text: k.tuKhoa, matchType },
+            },
+          };
+        } else {
+          // negative adgroup
+          service = "adGroupCriteria:mutate";
+          operation = {
+            create: {
+              adGroup: `customers/${cid}/adGroups/${k.adGroupId}`,
+              negative: true,
+              keyword: { text: k.tuKhoa, matchType },
+            },
+          };
+        }
+      }
+
+      const res = await this.ads.mutate(service, { operations: [operation] });
+
+      // Google Ads trả về { results: [{ resourceName: "..." }] } khi thành công.
+      const rn: string | null = res?.results?.[0]?.resourceName ?? k.adsResourceName ?? null;
+
+      const cap = await this.prisma.koiAdKeyword.update({
+        where: { id },
+        data: { trangThaiDongBo: "da_day", adsResourceName: rn, dongBoLuc: new Date(), loiDongBo: null },
+      });
+
+      return { ok: true, trangThaiDongBo: cap.trangThaiDongBo, adsResourceName: cap.adsResourceName, loiDongBo: null };
+    } catch (err: any) {
+      // Lỗi từ Google Ads (ServiceUnavailableException) hoặc lỗi mạng.
+      const loiDongBo: string = err?.message
+        ? String(err.message).slice(0, 500)
+        : "Lỗi không xác định khi gọi Google Ads API";
+
+      await this.prisma.koiAdKeyword.update({
+        where: { id },
+        data: { trangThaiDongBo: "loi", loiDongBo },
+      });
+
+      // Không ném lại: controller trả về kết quả lỗi rõ ràng thay vì 500.
+      return { ok: false, trangThaiDongBo: "loi", adsResourceName: k.adsResourceName, loiDongBo };
+    }
+  }
 }

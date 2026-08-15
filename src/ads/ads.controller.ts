@@ -509,4 +509,28 @@ export class AdsAdminController {
   async xoaTuKhoa(@Param("id") id: string) {
     return this.ads.xoaTuKhoa(id);
   }
+
+  /**
+   * Đẩy 1 từ khoá lên Google Ads — MUTATE tài khoản thật (Phase 2).
+   *
+   * POST thay vì PATCH: hành động này không chỉ ghi sổ tay mà còn gọi ra Google
+   * Ads API và tạo/cập nhật criterion trên tài khoản đang tiêu tiền. Về mặt REST,
+   * "đẩy" là một hành động (action endpoint), không phải cập nhật thuộc tính.
+   *
+   * :id/push đặt SAU :id trong file nhưng trước trong GHI_CHO_PHEP vì regex khớp
+   * chính xác — "uuid/push" không bao giờ khớp regex uuid trơn, nên thứ tự Express
+   * đăng ký handler mới quan trọng (static route trước dynamic route).
+   *
+   * Tự kiểm req.user như các route ghi khác: token ghi của heoiu có
+   * req.user = { service:"heoiu", chiGhi:true } (truthy) → qua được.
+   */
+  @Post("ads/keywords/:id/push")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Đẩy 1 từ khoá lên Google Ads (MUTATE tài khoản thật)" })
+  async dayTuKhoa(@Param("id") id: string, @Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.ads.dayTuKhoa(id);
+  }
 }
