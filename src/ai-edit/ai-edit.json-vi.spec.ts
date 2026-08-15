@@ -29,25 +29,53 @@ describe("goBoc", () => {
   });
 
   it("null vẫn là null, KHÔNG thành chuỗi rỗng", () => {
-    // Trường trống trong DB là NULL. Đổi nó thành "" là ghi một thẻ meta rỗng
-    // thay vì không ghi thẻ nào, và Google coi hai thứ đó khác nhau.
     expect(goBoc(null)).toBeNull();
     expect(goBoc(undefined)).toBeNull();
   });
 
   it('JSON rỗng "{}" trả về chuỗi rỗng, không trả nguyên văn dấu ngoặc', () => {
-    // Ca này là LỖI THẬT đã bắt được: 7 sản phẩm có description đúng bằng "{}".
-    // Trả nguyên văn thì admin hiện "{}" như thể đó là nội dung, AI được giao
-    // viết lại hai ký tự dấu ngoặc, và bọc lại thành {"vi":"{}"} — nhét dấu
-    // ngoặc vào làm chữ. Site thì đang hiện rỗng cho các dòng đó.
     expect(goBoc("{}")).toBe("");
     expect(goBoc('{"khac":1}')).toBe("");
   });
 
   it("chuỗi mở đầu bằng { nhưng không phải JSON thì trả nguyên văn", () => {
-    // Nội dung thật có thể mở đầu bằng dấu ngoặc mà không phải JSON. Coi nó là
-    // JSON hỏng rồi trả rỗng là làm mất chữ của chủ shop.
     expect(goBoc("{chưa đóng ngoặc")).toBe("{chưa đóng ngoặc");
+  });
+
+  // === Dạng OBJECT — đúng thứ PrismaService trả về ===
+  // LỖI ĐÃ LÊN PRODUCTION: middleware $use trong prisma.service.ts:58 parse sẵn
+  // KoiProduct.name/.description thành object. Bản cũ ép String() ra
+  // "[object Object]" — trang sửa hiện sai, và bocLai() sau đó ghi chữ trần vào
+  // cột JSON vì không nhận ra vỏ. Test cũ không bắt được vì chỉ truyền chuỗi.
+  it("object do middleware: lấy đúng chữ vi, KHÔNG ra [object Object]", () => {
+    expect(goBoc({ vi: "Túi LOOM – Túi xách Da bò Ý" })).toBe(
+      "Túi LOOM – Túi xách Da bò Ý",
+    );
+  });
+
+  it("object: ưu tiên vi trước en", () => {
+    expect(goBoc({ vi: "Ví da", en: "Wallet" })).toBe("Ví da");
+  });
+
+  it("object chỉ có en thì lấy en", () => {
+    expect(goBoc({ en: "Wallet" })).toBe("Wallet");
+  });
+
+  it("object rỗng trả chuỗi rỗng — nhất quán với chuỗi {}", () => {
+    expect(goBoc({})).toBe("");
+    expect(goBoc({ khac: 1 })).toBe("");
+  });
+
+  it("không bao giờ trả về chuỗi [object Object]", () => {
+    for (const v of [
+      { vi: "x" },
+      { en: "y" },
+      {},
+      { khac: 1 },
+      { vi: "<p>html</p>" },
+    ]) {
+      expect(goBoc(v)).not.toContain("[object Object]");
+    }
   });
 });
 
@@ -61,15 +89,12 @@ describe("bocLai", () => {
   });
 
   it("KHÔNG làm mất các khoá khác trong vỏ", () => {
-    // Hiện chưa dòng nào có "en", nhưng thêm về sau thì hàm này không được xoá.
     expect(bocLai('{"vi":"Cũ","en":"Old"}', "Mới")).toBe(
       '{"vi":"Mới","en":"Old"}',
     );
   });
 
   it("vỏ chỉ có en thì sửa en, không tự dựng thêm vi", () => {
-    // Dựng thêm "vi" là để hai bản chõi nhau, mà site đọc vi trước nên bản en
-    // cũ thành vô hình dù không ai sửa nó.
     expect(bocLai('{"en":"Old"}', "New")).toBe('{"en":"New"}');
   });
 
@@ -81,12 +106,30 @@ describe("bocLai", () => {
   it("cũ là null thì ghi chữ trần — bản ghi mới không tự sinh vỏ", () => {
     expect(bocLai(null, "Mới")).toBe("Mới");
   });
+
+  // === Dạng OBJECT (middleware PrismaService) ===
+  it("cũ là object: ghi ra CHUỖI JSON, không ghi chữ trần", () => {
+    // Nếu ghi chữ trần vào cột đang là JSON thì dòng đó khác hình 335 dòng còn lại.
+    expect(bocLai({ vi: "Cũ" }, "Mới")).toBe('{"vi":"Mới"}');
+  });
+
+  it("object: giữ khoá khác", () => {
+    expect(bocLai({ vi: "Cũ", en: "Old" }, "Mới")).toBe(
+      '{"vi":"Mới","en":"Old"}',
+    );
+  });
+
+  it("object chỉ có en thì sửa en", () => {
+    expect(bocLai({ en: "Old" }, "New")).toBe('{"en":"New"}');
+  });
+
+  it("object rỗng thì dựng khoá vi", () => {
+    expect(bocLai({}, "Mới")).toBe('{"vi":"Mới"}');
+  });
 });
 
 describe("bất biến bóc-rồi-bọc", () => {
-  // Đây là bất biến thật sự quan trọng: mỗi lần chủ shop áp dụng một trường,
-  // giá trị đi qua đúng cặp hàm này. Lệch một lần là dữ liệu lệch vĩnh viễn.
-  const CAC_CA = [
+  const CAC_CA: unknown[] = [
     "Chữ trần bình thường",
     '{"vi":"Có vỏ JSON"}',
     '{"vi":"<p>HTML trong vỏ</p>"}',
@@ -95,6 +138,12 @@ describe("bất biến bóc-rồi-bọc", () => {
     "{}",
     "{chưa đóng ngoặc",
     "",
+    // Dạng object — đúng thứ mà product.name/.description đi qua.
+    { vi: "Có vỏ JSON" },
+    { vi: "<p>HTML trong vỏ</p>" },
+    { vi: "Cũ", en: "Old" },
+    { en: "Chỉ có en" },
+    {},
   ];
 
   it.each(CAC_CA)("giữ nguyên thứ site hiện ra: %j", (cu) => {

@@ -569,10 +569,13 @@ model KoiMaterialCategory {
 
 /// Một lượt xem trang trên storefront koileather.com.
 ///
-/// KHÔNG lưu IP thô. visitorHash = băm(IP + trình duyệt + muối + ngày), nên:
+/// Từ 2026-08 có thêm `ip` và `khuVuc` (xem cột). Trước đó thiết kế cố ý không
+/// lưu IP thô: visitorHash = băm(IP + trình duyệt + muối + ngày), nên:
 ///   - đếm được khách riêng biệt TRONG NGÀY
 ///   - sang ngày mới thì cùng một người ra hash khác => không lần được hành vi
 ///     dài ngày, không truy ngược ra danh tính
+/// Số khách riêng vẫn tính bằng visitorHash như cũ — ip là thông tin bổ sung
+/// để loại lượt truy cập nội bộ và xem khách ở đâu, không thay đổi cách đếm.
 model KoiPageView {
   id          String   @id @default(uuid())
   /// Đường dẫn đã chuẩn hoá, bỏ query để /cua-hang/?page=2 không tách dòng riêng
@@ -585,6 +588,12 @@ model KoiPageView {
   device      String
   /// Băm ẩn danh, đổi mỗi ngày. Xem ghi chú ở trên.
   visitorHash String
+  /// IP thô của khách. Cột MỚI từ 2026-08: dòng ghi trước ngày đó null vĩnh
+  /// viễn. Cần để loại IP nội bộ khỏi thống kê — xem ip-noi-bo.ts.
+  ip          String?
+  /// Khu vực dịch từ IP ("Hà Nội", "TP Hồ Chí Minh", "Mỹ"…) — xem geo.ts.
+  /// Dịch MỘT lần lúc ghi, đọc là đọc thẳng cột.
+  khuVuc      String?
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
@@ -626,9 +635,71 @@ model KoiPresence {
   firstSeenAt DateTime @default(now())
   /// Nhịp tim gần nhất. Quá ngưỡng thì coi như đã rời đi.
   lastSeenAt  DateTime @default(now())
+  /// IP của khách, đặt LÚC TẠO dòng (cột mới từ 2026-08). Giữ nguyên khi
+  /// nhịp tim ghi đè — một phiên một IP, không lý do gì phải đổi.
+  ip          String?
+  /// Khu vực dịch từ IP (geo.ts), đặt cùng lúc với ip.
+  khuVuc      String?
 
   @@index([lastSeenAt])
   @@map("koi_presence")
+  @@schema("koi_free_style")
+}
+
+/// Một cú bấm nút liên hệ — Zalo, Messenger, hay Gọi điện — của BẤT KỲ khách nào.
+///
+/// VÌ SAO CẦN BẢNG NÀY. Trước bảng này, cú bấm nút liên hệ chỉ được ghi ở
+/// koi_ad_clicks.contactedAt, mà dòng đó chỉ tồn tại khi khách đến từ quảng cáo
+/// Google (phải có gclid). Khách vào từ Google tự nhiên, từ Facebook, hay gõ
+/// thẳng địa chỉ rồi bấm Zalo thì KHÔNG CÓ DÒNG NÀO Ở ĐÂU CẢ — mà đó là phần
+/// đông khách. Chủ shop mở admin ra chỉ thấy phần khách quảng cáo và tưởng đó là
+/// toàn bộ.
+///
+/// Bảng này ghi MỌI cú bấm, kèm NGUỒN dẫn khách vào. Đó là thứ trả lời được câu
+/// "khách nhắn tin cho mình đến từ đâu" — koi_ad_clicks không lưu nguồn, vì với
+/// nó mọi dòng đều đến từ quảng cáo.
+///
+/// VÌ SAO KHÔNG NHỒI CỜ VÀO koi_page_views. Cùng lý do koi_presence phải tách ra
+/// (xem ghi chú ở model đó): nhồi một loại dòng khác vào bảng lượt xem là mọi
+/// con số cũ — lượt xem, trang/khách, biểu đồ theo ngày — phồng lên và không
+/// còn tin được. Bảng riêng thì bảng lượt xem sạch nguyên.
+///
+/// MỖI CÚ BẤM MỘT DÒNG, KHÔNG GỘP. Khách bấm Zalo ở đầu trang rồi cuộn xuống
+/// bấm tiếp là hai dòng, vì cả hai đều là cú bấm thật. Nên số dòng là SỐ LẦN
+/// liên hệ, không phải số người — muốn số người thì đếm visitorHash riêng biệt.
+/// Đây là chỗ khác hẳn koi_ad_clicks: bên đó buộc phải chốt lần bấm ĐẦU để giữ
+/// mốc giờ cho Google khử trùng lặp, còn bảng này không gửi đi đâu cả.
+model KoiContactClick {
+  id          String   @id @default(uuid())
+  /// zalo | messenger | phone. Chỉ nhận đúng ba giá trị này — đường ghi là
+  /// đường công khai nên phải lọc, không thì ai gửi gì vào cũng nằm trong bảng.
+  channel     String
+  /// Trang khách đang đứng lúc bấm. Đã bỏ query, y hệt KoiPageView.path.
+  path        String
+  /// Nguồn dẫn khách vào, gom nhóm bằng CHÍNH hàm nguon() của lượt xem:
+  /// direct | google | facebook | zalo | instagram | tiktok | search_khac |
+  /// internal | other. Dùng chung hàm là điều kiện bắt buộc — tự phân nhóm lại
+  /// thì bảng nguồn của hai panel đếm theo hai định nghĩa khác nhau.
+  source      String
+  /// Referrer thô, giữ lại để còn truy được khi nhóm ở trên gom vào 'other'.
+  referrer    String?
+  /// mobile | tablet | desktop — đoán từ User-Agent.
+  device      String
+  /// Băm ẩn danh, y hệt KoiPageView.visitorHash: đổi mỗi ngày, không truy ngược
+  /// ra danh tính. Đếm được "số người" trong ngày mà vẫn không lưu IP thô.
+  visitorHash String
+  /// Sản phẩm khách đang xem lúc bấm, nếu nút nằm ở trang sản phẩm.
+  productName String?
+  /// Mã quảng cáo nếu khách này đến từ quảng cáo. Sợi dây đối chiếu với
+  /// koi_ad_clicks, KHÔNG phải khoá ngoại: donRac() bên ads xoá dòng chưa chốt
+  /// sau 120 ngày, có khoá ngoại là nó chặn hoặc xoá lây sang bảng này.
+  adToken     String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([channel])
+  @@index([source])
+  @@map("koi_contact_clicks")
   @@schema("koi_free_style")
 }
 
@@ -700,42 +771,42 @@ model KoiAdClick {
 /// Mỗi dòng là MỘT TRƯỜNG của MỘT bản ghi. Sửa một bài đụng 3 trường thì sinh 3
 /// dòng cùng `batch` — hoàn tác là trả lại cả nhóm, không lẻ từng trường.
 model KoiContentRevision {
-  id        String   @id @default(uuid())
+  id         String    @id @default(uuid())
   /// Nhóm các trường được sửa trong cùng một lần bấm Áp dụng. Hoàn tác đi theo
   /// nhóm: sửa tiêu đề + mô tả rồi chỉ trả lại một cái là ra bản ghi nửa vời.
-  batch     String
+  batch      String
   /// Loại nội dung: post | page | product | category | product_tag | blog_term.
   /// Quyết định bảng nào được ghi khi hoàn tác — xem BAN_DO_LOAI ở ai-edit.service.ts.
-  kind      String
+  kind       String
   /// Khoá chính của bản ghi, LUÔN là chuỗi. Bảng public dùng BigInt, bảng
   /// koi_free_style dùng UUID; nhét cả hai vào một cột thì chuỗi là kiểu duy
   /// nhất chứa được cả hai mà không mất mát.
-  recordId  String
+  recordId   String
   /// Đường dẫn công khai lúc sửa. Chỉ để chủ shop nhận ra mình đã sửa trang nào
   /// khi xem lại danh sách — KHÔNG dùng để tra bản ghi lúc hoàn tác, vì slug có
   /// thể đã đổi từ lúc đó.
-  path      String?
+  path       String?
   /// Tên trường trong DB (title, content, meta_description, description...).
-  field     String
+  field      String
   /// Chữ TRƯỚC khi sửa. null nghĩa là trường đó đang trống — phải phân biệt với
   /// chuỗi rỗng, vì hoàn tác cần trả lại đúng null chứ không phải "".
-  before    String?
+  before     String?
   /// Chữ SAU khi sửa. Giữ lại để đối chiếu: nếu trường hiện tại không còn khớp
   /// `after` thì đã có người sửa tay sau AI, và hoàn tác sẽ đè mất công đó —
   /// ai-edit.service.ts cảnh báo thay vì âm thầm ghi.
-  after     String?
+  after      String?
   /// Nguyên văn câu lệnh chủ shop đã viết. Để biết vì sao chữ ra như vậy, và để
   /// dùng lại câu lệnh đã cho kết quả tốt cho bài khác.
-  prompt    String?
+  prompt     String?
   /// Model đã dùng (ví dụ gpt-4.1-mini). Đổi model là đổi giọng văn — không ghi
   /// lại thì về sau không biết bài nào do model nào viết.
-  model     String?
+  model      String?
   /// Email admin đã bấm. Lấy từ JWT, không phải do phía trình duyệt khai.
-  actor     String?
+  actor      String?
   /// Đã bấm hoàn tác chưa. Giữ dòng lại chứ không xoá: cần biết bản ghi này từng
   /// bị sửa rồi trả lại, nếu không thì lịch sử mất một mắt.
   revertedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   /// Danh sách "sửa gần đây" ở admin xếp theo cột này.
   @@index([createdAt])
@@ -755,30 +826,74 @@ model KoiContentRevision {
 /// koi_ad_clicks để biết từ khoá nào ra khách, từ khoá nào đốt tiền không hiệu quả.
 /// Đây là sổ tay, không phải bản sao của tài khoản Google Ads.
 model KoiAdKeyword {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
 
   /// Nội dung từ khoá, ví dụ "bóp da bò thật" hay "mua ví da koileather".
-  tuKhoa    String
+  tuKhoa String
 
   /// Tên chiến dịch Google Ads. Để trống nếu chỉ có một chiến dịch.
   chienDich String?
 
-  /// Loại khớp: broad | phrase | exact | negative. Null = chưa phân loại.
-  loaiKhop  String?
+  /// Loại khớp. Khi loai='keyword': broad | phrase | exact. Khi loai='negative'
+  /// giữ match type negative riêng (broad/phrase/exact). Null = chưa phân loại.
+  /// Trước đây cột này TRỘN cả 'negative' làm một giá trị — feature đồng bộ tách
+  /// nghĩa "loại" (keyword vs negative) sang cột `loai` bên dưới.
+  loaiKhop String?
 
   /// active = đang chạy, paused = tạm dừng.
-  trangThai String   @default("active")
+  trangThai String @default("active")
 
   /// Ghi chú tối ưu: CPC thực tế, tỷ lệ chuyển đổi, quan sát về lượt xem trang...
-  ghiChu    String?
+  ghiChu String?
 
-  taoLuc     DateTime @default(now())
+  // ─── Đồng bộ Google Ads (feature "heoiu làm gốc → ghi xuống Ads") ─────────
+  // Chín cột dưới đây biến sổ tay thành GỐC cấu hình đẩy được xuống Google Ads.
+  // Mọi cột đều nullable hoặc có default để migration không vỡ dữ liệu sổ tay cũ.
+
+  /// keyword | negative. TÁCH khỏi loaiKhop: một dòng là từ khoá đặt giá thầu
+  /// hay là từ khoá loại trừ — hai thứ đi vào service mutate khác nhau.
+  loai String @default("keyword")
+
+  /// Ad group đích (id số dạng chuỗi). Bắt buộc khi đẩy keyword, hoặc negative
+  /// mức ad group. Null với negative mức campaign.
+  adGroupId String?
+
+  /// Campaign đích (id số dạng chuỗi). Bắt buộc khi đẩy negative mức campaign.
+  campaignId String?
+
+  /// Chỉ cho negative: adgroup | campaign | shared. Quyết định service mutate
+  /// nào ở phase đẩy. Null khi loai='keyword'.
+  phamViNegative String?
+
+  /// chua_day | dang_day | da_day | loi. dang_day là khoá lạc quan chống bấm dồn.
+  trangThaiDongBo String @default("chua_day")
+
+  /// Thông điệp lỗi lần đẩy gần nhất, để hiện tooltip trên panel. Null khi ổn.
+  loiDongBo String?
+
+  /// Resource name bên Ads, ví dụ customers/123/adGroupCriteria/456~789. Khoá
+  /// tham chiếu để sửa/xoá/đối chiếu và để import idempotent (unique bên dưới).
+  adsResourceName String?
+
+  /// Lần đẩy/khớp thành công gần nhất.
+  dongBoLuc DateTime?
+
+  /// tool = tạo trong heoiu | imported = hút từ Ads ở Phase 0. Phục vụ đối chiếu.
+  nguon String @default("tool")
+
+  taoLuc DateTime @default(now())
 
   /// Lần cuối chỉnh sửa — theo dõi ai cập nhật gần nhất khi audit chiến dịch.
   capNhatLuc DateTime @updatedAt
 
+  /// Import idempotent: chạy lại nhiều lần không đẻ trùng. adsResourceName
+  /// nullable — Postgres cho nhiều NULL trong unique index, nên dòng sổ tay tự
+  /// tạo (nguon='tool', resource name null) không đụng ràng buộc này.
+  @@unique([adsResourceName])
   /// Lọc nhanh theo trạng thái — hiện active trước, paused sau.
   @@index([trangThai])
+  /// Nút "đẩy cả lô" quét nhanh dòng chua_day|loi theo cột này.
+  @@index([trangThaiDongBo])
   @@map("koi_ad_keywords")
   @@schema("koi_free_style")
 }

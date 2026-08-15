@@ -158,7 +158,9 @@ export class AiEditResolver {
         nhan: t.nhan,
         // goBoc: name/description của sản phẩm lưu dạng {"vi":"..."}. Hiện thô
         // ra thì chủ shop đọc phải cả dấu ngoặc, và AI sẽ viết lại luôn cái vỏ.
-        giaTri: goBoc(v == null ? null : String(v)),
+        // KHÔNG String(v): PrismaService parse sẵn thành object, ép String() ra
+        // "[object Object]". goBoc nhận unknown.
+        giaTri: goBoc(v),
         html: t.html,
         soKyTuNen: t.soKyTuNen ?? null,
       };

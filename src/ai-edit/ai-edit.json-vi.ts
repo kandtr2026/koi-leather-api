@@ -20,11 +20,40 @@
  *
  * Hình cũ đọc từ GIÁ TRỊ ĐANG NẰM TRONG DB ngay lúc ghi, không tin theo thứ
  * trình duyệt gửi lên — client sửa được, DB thì không.
+ *
+ * VÌ SAO HAI HÀM NÀY NHẬN `unknown`, KHÔNG CHỈ CHUỖI:
+ * PrismaService có middleware $use (prisma.service.ts:58) TỰ PARSE JSON thành
+ * object lúc đọc và tự stringify lúc ghi, cho đúng danh sách JSON_FIELDS — trong
+ * đó có KoiProduct.name và KoiProduct.description, tức hai trường chính của mọi
+ * trang sản phẩm. Nên `prisma.koiProduct.findUnique()` trả về { vi: "..." }
+ * chứ không phải chuỗi '{"vi":"..."}'.
+ *
+ * Ép String() một object như thế ra đúng "[object Object]", và đó là lỗi đã lên
+ * tới production: trang sửa hiện "[object Object]" thay cho tên sản phẩm. Tệ hơn
+ * phần hiện sai: "[object Object]" không mở đầu bằng { nên bocLai() coi là chữ
+ * trần và ghi chữ trần vào cột đang là JSON — đúng cái sai mà cả tệp này sinh ra
+ * để chặn. Test cũ không bắt được vì chúng chỉ truyền chuỗi, và bản quét 2301
+ * trường dùng SQL thô — SQL thô trả chuỗi, middleware trả object.
+ *
+ * Nên nhận `unknown`: đúng cả khi giá trị đi qua PrismaService (object) lẫn khi
+ * đi qua $queryRaw hay các bảng không nằm trong JSON_FIELDS (chuỗi).
  */
 
 /** Bóc lớp JSON nếu có. Chuỗi thường trả về y nguyên. */
-export function goBoc(v: string | null | undefined): string | null {
+export function goBoc(v: unknown): string | null {
   if (v == null) return null;
+
+  // Object do middleware của PrismaService parse sẵn. Đọc thẳng, không String().
+  if (typeof v === "object") {
+    if (Array.isArray(v)) return JSON.stringify(v);
+    const o = v as Record<string, unknown>;
+    const chu = o.vi ?? o.en;
+    if (typeof chu === "string") return chu;
+    // Cùng lý do với nhánh chuỗi bên dưới: object rỗng hay không có khoá chữ
+    // thì site đang hiện rỗng — trả "" cho nhất quán.
+    return "";
+  }
+
   const s = String(v);
   if (!s.trim().startsWith("{")) return s;
   try {
@@ -47,15 +76,23 @@ export function goBoc(v: string | null | undefined): string | null {
 /**
  * Bọc chữ mới theo hình của chữ cũ.
  *
- * `cu` là giá trị đang nằm trong DB. JSON thì trả JSON (giữ nguyên các khoá khác
- * như "en" nếu dòng đó có — hiện chưa dòng nào có, nhưng thêm về sau thì hàm này
- * không được làm mất). Chữ trần thì trả chữ trần.
+ * `cu` là giá trị đang nằm trong DB. JSON (chuỗi hoặc object qua middleware) thì
+ * trả chuỗi JSON (giữ nguyên các khoá khác như "en" nếu dòng đó có). Chữ trần
+ * thì trả chữ trần. Luôn trả CHUỖI — không trả object, để không phụ thuộc vào
+ * middleware khi ghi.
  */
-export function bocLai(
-  cu: string | null | undefined,
-  moi: string | null,
-): string | null {
+export function bocLai(cu: unknown, moi: string | null): string | null {
   if (moi == null) return null;
+
+  // Object (giá trị đã qua middleware PrismaService). Giữ các khoá khác, ghi vào
+  // khoá đang có chữ, trả về chuỗi JSON.
+  if (typeof cu === "object" && cu !== null && !Array.isArray(cu)) {
+    const o = cu as Record<string, unknown>;
+    const khoa =
+      typeof o.vi === "string" ? "vi" : typeof o.en === "string" ? "en" : "vi";
+    return JSON.stringify({ ...o, [khoa]: moi });
+  }
+
   const s = cu == null ? "" : String(cu);
   if (!s.trim().startsWith("{")) return moi;
   try {

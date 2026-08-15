@@ -200,8 +200,11 @@ export class AdsAdminController {
 
   @Get("ads")
   @ApiOperation({ summary: "Danh sách cú bấm quảng cáo" })
-  danhSach(@Query("days") days?: string) {
-    return this.ads.danhSach(Number(days) || 90);
+  // chiTiet=1 (heoiu panel koi-ads) bật phần gọi ra Google Ads API: chi phí kênh
+  // theo kỳ + nối gclid → chữ khách gõ / từ khoá. Các nơi khác không truyền để
+  // giữ phản hồi nhanh (bảng Liên hệ chỉ cần con số tổng).
+  danhSach(@Query("days") days?: string, @Query("chiTiet") chiTiet?: string) {
+    return this.ads.danhSach(Number(days) || 90, chiTiet === "1");
   }
 
   @Get("ads/lookup")
@@ -364,6 +367,100 @@ export class AdsAdminController {
     return this.ads.danhSachTuKhoa();
   }
 
+  /**
+   * Từ khoá THẬT đang chạy trên Google Ads, kèm số liệu 30 ngày.
+   *
+   * Route riêng chứ không gộp vào GET ads/keywords ở trên: cái kia đọc DB, chỉ
+   * mất vài mili giây và không bao giờ hỏng. Cái này gọi ra ngoài Internet, có
+   * thể chậm hoặc lỗi. Gộp lại thì Google Ads sập là sổ tay cũng không xem được.
+   */
+  @Get("ads/keywords/live")
+  @ApiOperation({ summary: "Từ khoá thật trên Google Ads + số liệu 30 ngày" })
+  async tuKhoaThat(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.ads.tuKhoaThat();
+  }
+
+  /**
+   * Cụm từ tìm kiếm THẬT khách gõ, kèm số liệu 30 ngày + gợi ý thêm/loại trừ.
+   *
+   * Admin-only y hệt keywords/live: tự kiểm req.user chứ không phó cho guard,
+   * vì PUBLIC_VIEW=1 mở hết phần đọc — mà cụm khách tìm là dữ liệu kinh doanh
+   * nội bộ, lộ ra là đối thủ đọc được cả ý đồ nhắm khách.
+   */
+  @Get("ads/search-terms/live")
+  @ApiOperation({ summary: "Cụm từ khách tìm thật trên Google Ads + số liệu 30 ngày" })
+  async searchTermsThat(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.ads.searchTermsThat();
+  }
+
+  /**
+   * Keyword Planner: gợi ý từ khoá mới từ vài từ gốc.
+   *
+   * GET với ?seed=...&seed=... (lặp lại được nhiều lần) — đọc-only, hợp với GET.
+   * Admin-only như trên. Không có seed hợp lệ thì service ném 400 rõ ràng.
+   *
+   * express gộp query lặp thành mảng, một lần thành chuỗi — chuẩn hoá về mảng
+   * để service làm sạch (bỏ rỗng, gộp trùng, cắt còn tối đa 20 seed).
+   */
+  @Get("ads/keyword-ideas/live")
+  @ApiOperation({ summary: "Gợi ý từ khoá mới từ Keyword Planner (đọc-only)" })
+  async yTuongTuKhoa(
+    @Req() req: Request,
+    @Query("seed") seed?: string | string[],
+  ) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    const seeds = Array.isArray(seed) ? seed : seed ? [seed] : [];
+    return this.ads.yTuongTuKhoa(seeds);
+  }
+
+  /**
+   * Cấu trúc tài khoản: danh sách campaign (ENABLED) + ad group (ENABLED) con
+   * để heoiu dựng picker chọn đích khi thêm/sửa từ khoá (Phase 1a).
+   *
+   * Admin-only như các route đọc Ads khác.
+   */
+  @Get("ads/structure")
+  @ApiOperation({ summary: "Danh sách campaign + ad group ENABLED để làm picker chọn đích" })
+  async layStructure(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.ads.layStructure();
+  }
+
+  /**
+   * Import hiện trạng: hút toàn bộ từ khoá/negative đang chạy trên Google Ads
+   * vào sổ tay (Phase 0). CHỈ ĐỌC Ads + ghi DB của mình, KHÔNG mutate Ads.
+   *
+   * Tự kiểm req.user như các route admin khác: khi heoiu gọi bằng token ghi,
+   * guard đã gắn req.user = { service:"heoiu", chiGhi:true } (truthy) nên qua
+   * được; khi admin gọi bằng Bearer JWT thì req.user là payload. PUBLIC_VIEW chỉ
+   * mở GET nên không liên quan tới POST này, nhưng vẫn tự kiểm cho nhất quán.
+   *
+   * Idempotent: bấm nhiều lần không đẻ dòng trùng (khoá theo adsResourceName).
+   */
+  @Post("ads/keywords/import")
+  @ApiOperation({ summary: "Import từ khoá/negative đang chạy trên Google Ads về sổ tay" })
+  async importTuKhoa(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.ads.importTuKhoaTuAds();
+  }
+
+  /**
+   * Thêm từ khoá vào sổ tay (Phase 1b: nhận thêm loai, adGroupId, campaignId,
+   * phamViNegative). Dùng themTuKhoaV2 thay themTuKhoa cũ — khuôn mới validate
+   * đầy đủ, loaiKhop không còn nhận 'negative' (đã tách sang cột loai).
+   */
   @Post("ads/keywords")
   @ApiOperation({ summary: "Thêm từ khoá vào sổ tay" })
   async themTuKhoa(
@@ -374,15 +471,18 @@ export class AdsAdminController {
       loaiKhop?: string;
       trangThai?: string;
       ghiChu?: string;
+      loai?: string;
+      adGroupId?: string;
+      campaignId?: string;
+      phamViNegative?: string;
     },
   ) {
-    return this.ads.themTuKhoa(body);
+    return this.ads.themTuKhoaV2(body);
   }
 
   /**
-   * PATCH chứ không PUT: giao diện cho sửa từng ô một (đổi trạng thái nhanh
-   * active/paused ngay trên bảng), gửi cả bản ghi mỗi lần bấm là dễ ghi đè mất
-   * ghi chú người khác vừa nhập.
+   * PATCH chứ không PUT: giao diện cho sửa từng ô một. Phase 1b: nhận thêm
+   * loai, adGroupId, campaignId, phamViNegative — dùng suaTuKhoaV2.
    */
   @Patch("ads/keywords/:id")
   @ApiOperation({ summary: "Sửa từ khoá trong sổ tay" })
@@ -395,14 +495,42 @@ export class AdsAdminController {
       loaiKhop?: string | null;
       trangThai?: string;
       ghiChu?: string | null;
+      loai?: string;
+      adGroupId?: string | null;
+      campaignId?: string | null;
+      phamViNegative?: string | null;
     },
   ) {
-    return this.ads.suaTuKhoa(id, body);
+    return this.ads.suaTuKhoaV2(id, body);
   }
 
   @Delete("ads/keywords/:id")
   @ApiOperation({ summary: "Xoá từ khoá khỏi sổ tay" })
   async xoaTuKhoa(@Param("id") id: string) {
     return this.ads.xoaTuKhoa(id);
+  }
+
+  /**
+   * Đẩy 1 từ khoá lên Google Ads — MUTATE tài khoản thật (Phase 2).
+   *
+   * POST thay vì PATCH: hành động này không chỉ ghi sổ tay mà còn gọi ra Google
+   * Ads API và tạo/cập nhật criterion trên tài khoản đang tiêu tiền. Về mặt REST,
+   * "đẩy" là một hành động (action endpoint), không phải cập nhật thuộc tính.
+   *
+   * :id/push đặt SAU :id trong file nhưng trước trong GHI_CHO_PHEP vì regex khớp
+   * chính xác — "uuid/push" không bao giờ khớp regex uuid trơn, nên thứ tự Express
+   * đăng ký handler mới quan trọng (static route trước dynamic route).
+   *
+   * Tự kiểm req.user như các route ghi khác: token ghi của heoiu có
+   * req.user = { service:"heoiu", chiGhi:true } (truthy) → qua được.
+   */
+  @Post("ads/keywords/:id/push")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Đẩy 1 từ khoá lên Google Ads (MUTATE tài khoản thật)" })
+  async dayTuKhoa(@Param("id") id: string, @Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.ads.dayTuKhoa(id);
   }
 }

@@ -33,11 +33,17 @@ export class AiEditWriter {
    *
    * Đọc lại ngay trước khi ghi, không dùng lại dữ liệu của bước xem trước: giữa
    * hai bước có thể đã có người sửa tay trong admin, hoặc chủ shop mở hai tab.
+   *
+   * TRẢ GIÁ TRỊ THÔ, KHÔNG ÉP String(): middleware của PrismaService
+   * (prisma.service.ts:58) parse sẵn KoiProduct.name và .description thành
+   * object. String(object) ra "[object Object]" — mất hết chữ, và bocLai() sau
+   * đó không nhận ra vỏ JSON nên ghi chữ trần vào cột JSON. Giá trị này đi thẳng
+   * vào goBoc()/bocLai(), cả hai nhận unknown.
    */
   async docHienTai(
     kind: LoaiNoiDung,
     id: string,
-  ): Promise<Record<string, string | null>> {
+  ): Promise<Record<string, unknown>> {
     const cot = TRUONG_CHO_PHEP[kind].map((t) => t.ten);
     const chon = Object.fromEntries(cot.map((c) => [c, true]));
 
@@ -87,9 +93,7 @@ export class AiEditWriter {
       );
     }
 
-    return Object.fromEntries(
-      cot.map((c) => [c, row![c] == null ? null : String(row![c])]),
-    );
+    return Object.fromEntries(cot.map((c) => [c, row![c] ?? null]));
   }
 
   /**
@@ -112,7 +116,7 @@ export class AiEditWriter {
     tx: ClientGhi,
     kind: LoaiNoiDung,
     id: string,
-    hienTai: Record<string, string | null>,
+    hienTai: Record<string, unknown>,
     thayDoi: MotThayDoi[],
   ): Promise<void> {
     const chophep = new Set(TRUONG_CHO_PHEP[kind].map((t) => t.ten));
