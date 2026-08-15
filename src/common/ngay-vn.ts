@@ -48,3 +48,32 @@ export function gioHienTaiVN(): number {
   const troi = Math.floor((Date.now() - +dauNgayVN(0)) / 3_600_000);
   return Math.min(Math.max(troi, 0), 23);
 }
+
+/**
+ * Ngày (hôm nay - luiNgay) theo đồng hồ Việt Nam, dạng chuỗi "YYYY-MM-DD".
+ *
+ * Dùng cho mệnh đề GAQL `segments.date BETWEEN ...` — câu truy vấn gửi sang
+ * Google Ads phải là NGÀY LỊCH dạng chuỗi. KHÔNG dùng toISOString().slice(0,10):
+ * dauNgayVN() trả Date mang giá trị UTC (00:00 VN = 17:00 UTC hôm trước) nên
+ * cắt chuỗi ISO sẽ lệch đúng một ngày.
+ */
+export function ngayVNString(luiNgay = 0): string {
+  return ngayVNCuaDate(new Date(Date.now() - luiNgay * 24 * 60 * 60 * 1000));
+}
+
+/**
+ * Ngày lịch Việt Nam của một Date bất kỳ, dạng chuỗi "YYYY-MM-DD".
+ *
+ * Tách khỏi ngayVNString vì có chỗ cần ngày của một thời điểm CỤ THỂ (ví dụ
+ * clickedAt của cú bấm) chứ không phải của "hôm nay trừ N ngày".
+ */
+export function ngayVNCuaDate(d: Date): string {
+  const p = new Intl.DateTimeFormat("en-GB", {
+    timeZone: MUI_GIO,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const lay = (k: string) => (p.find((x) => x.type === k) || {}).value || "";
+  return `${lay("year")}-${lay("month")}-${lay("day")}`;
+}

@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { Prisma } from "@prisma/client";
 import { randomInt, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
-import { dauNgayVN } from "../common/ngay-vn";
+import { dauNgayVN, ngayVNCuaDate, ngayVNString } from "../common/ngay-vn";
 import { GoogleAdsClient } from "./google-ads.client";
 
 /**
@@ -155,6 +155,16 @@ const GIOI_HAN_SEED = 20;
  */
 const NGUONG_NHIEU_BAM = 5;
 
+/**
+ * Chỉ gclid khớp khuôn này mới được nhét vào câu GAQL click_view.
+ *
+ * gclid đi vào DB từ ?gclid= trên URL (input công khai, bị slice 512 ký tự).
+ * Gclid THẬT của Google là base64url — chỉ chữ số, chữ cái và . _ - ~. Lọc
+ * trắng trước khi nội suy: một gclid rác chứa nháy đơn / xuống dòng / dấu ngoặc
+ * có thể phá vỡ chuỗi literal và làm hỏng cả lô 20 gclid.
+ */
+const GCLID_HOP_LE = /^[A-Za-z0-9._~-]+$/;
+
 @Injectable()
 export class AdsService {
   constructor(
@@ -298,8 +308,19 @@ export class AdsService {
    * Đếm bằng count() của cơ sở dữ liệu chứ không phải filter() trên `rows`:
    * `rows` bị chặn `take: 500`, nên khi lưu lượng lớn hơn thì mọi con số lặng lẽ
    * dừng ở 500 mà không có gì báo.
+   *
+   * `chiTiet` = true (heoiu truyền chiTiet=1) bật phần GỌI RA GOOGLE ADS API:
+   *   · `chiPhi` — tổng tiền Google tự ghi nhận cho kênh trong kỳ, để thẻ "Chi
+   *     phí" cấp kênh không còn là lỗ hổng so với Meta Ads.
+   *   · Nối gclid → từ khoá TRÚNG (click_view.keyword_info.text) cho 20 dòng
+   *     đầu — mối nối lead ↔ từ khoá mà báo cáo tổng không có. Chữ khách GÕ
+   *     theo từng cú bấm thì Google không trả (xem nguonGocCuaClick).
+   * Chỉ khi chiTiet mới làm việc này vì nó chậm (cold start + token + GAQL);
+   * bảng Liên hệ gọi danhSach() thường để lấy con số nhanh, không trả giá đó.
+   * Cả hai phần đều tự hạ về null khi chưa cấu hình Ads API hoặc Google từ
+   * chối — không được phép làm hỏng toàn bộ phản hồi vì một phần làm giàu.
    */
-  async danhSach(days = 90): Promise<unknown> {
+  async danhSach(days = 90, chiTiet = false): Promise<unknown> {
     // Math.trunc trước khi kẹp: `?days=7.9` mà không cắt phần thập phân thì
     // xuống tới dauNgayVN(6.9), và hàm đó trừ `luiNgay * 86_400_000` nên mốc rơi
     // vào 02:24 sáng chứ không phải 00:00. Cả tệp này cắt theo NGÀY LỊCH, một
@@ -370,6 +391,27 @@ export class AdsService {
         }),
       ]);
 
+    // ----- Phần làm giàu gọi ra Google Ads API (chỉ khi chiTiet) -----
+    //
+    // Hai việc chạy SONG SONG bằng allSettled: một cái hỏng (Google từ chối,
+    // token chết) chỉ mất phần đó — chi phí về null, cột từ khoá về "—" —
+    // còn toàn bộ bảng vẫn trả về bình thường.
+    let chiPhi: number | null = null;
+    let nguonGoc: Map<string, string | null> = new Map();
+    if (chiTiet && this.ads && this.ads.daCauHinh()) {
+      // Chỉ nối cho 20 dòng đầu: đúng số dòng panel heoiu đang hiển thị. Nối cả
+      // 500 dòng là vài chục câu GAQL — chậm không cần thiết mà đa số dòng chẳng
+      // ai xem.
+      const [cp, nn] = await Promise.allSettled([
+        this.chiPhiKenh(soNgay),
+        rows.length
+          ? this.nguonGocCuaClick(rows.slice(0, 20))
+          : Promise.resolve(new Map<string, string | null>()),
+      ]);
+      if (cp.status === "fulfilled") chiPhi = cp.value;
+      if (nn.status === "fulfilled") nguonGoc = nn.value;
+    }
+
     return {
       days: soNgay,
       from: tu.toISOString(),
@@ -379,6 +421,10 @@ export class AdsService {
       daXuat,
       soDonCoTien,
       doanhThu: (tongTien._sum.value ?? 0n).toString(),
+      // Chi phí kênh theo kỳ, đọc từ Google Ads (metrics.cost_micros). null =
+      // chưa nối Ads API, hoặc Google từ chối — Front hiện "—" chứ không bịa
+      // số 0, vì 0 nghĩa là "không tiêu đồng nào", khác hẳn "không đọc được".
+      chiPhi,
       items: rows.map((r) => ({
         token: r.token,
         // Cắt gclid khi hiện: chuỗi 100 ký tự làm vỡ bảng, mà admin không bao
@@ -397,8 +443,127 @@ export class AdsService {
         note: r.note,
         exportedAt: r.exportedAt,
         conLaiNgay: this.conLaiNgay(r.clickedAt),
+        // Mối nối lead ↔ từ khoá: từ khoá trúng cú bấm, do Google trả ngược
+        // theo gclid. null = không tra được (quá 90 ngày, Google giấu, gclid
+        // không hợp lệ, hoặc chưa bật chiTiet).
+        tuKhoa: nguonGoc.get(r.gclid || "") ?? null,
       })),
     };
+  }
+
+  /**
+   * Tổng chi phí kênh Google Ads trong kỳ, đọc từ Google Ads API.
+   *
+   * KHÔNG đếm từ koi_ad_clicks: bảng đó chỉ có cú bấm có mã Google, còn đây là
+   * tiền Google TỰ ghi nhận cho toàn kênh trong khoảng ngày — đúng con số chủ
+   * shop trả. Hai nguồn khác nhau nên số có thể lệch với tổng click trong bảng;
+   * đã nói rõ trên panel.
+   *
+   * metrics.cost_micros là micro của đồng tiền tài khoản — chia 1.000.000 mới
+   * ra đồng. Dùng BETWEEN hai ngày lịch VN vì DURING chỉ có hằng số cố định
+   * (LAST_7/14/30/90_DAYS), không cắt được kỳ tuỳ ý như 1 hay 365 ngày.
+   *
+   * Ném lỗi nếu Google từ chối — chỗ gọi tự hạ về null để panel vẫn chạy.
+   */
+  private async chiPhiKenh(soNgay: number): Promise<number> {
+    const rows = await this.ads.truyVan(`
+      SELECT metrics.cost_micros
+      FROM campaign
+      WHERE segments.date BETWEEN '${ngayVNString(soNgay - 1)}' AND '${ngayVNString(0)}'
+    `);
+    let tong = 0;
+    for (const r of rows) tong += Number(r.metrics?.costMicros ?? 0);
+    return Math.round(tong / 1_000_000);
+  }
+
+  /**
+   * Tra ngược từ gclid sang từ khoá trúng qua click_view.
+   *
+   * Đây là mối nối lead ↔ từ khoá mà các báo cáo tổng không có: search_term_view
+   * chỉ cho biết CỤM NÀO ra bao nhiêu đơn, không nói ĐƠN CỤ THỂ này tới từ đâu.
+   * click_view trả từ khoá trúng (keyword_info.text) cho TỪNG gclid — nối thẳng
+   * vào dòng koi_ad_clicks mang đúng gclid đó.
+   *
+   * Chữ khách THỰC SỰ GÕ thì Google không trả theo từng cú bấm — click_view
+   * KHÔNG có field search_term (v23). Muốn xem chữ khách gõ phải đọc báo cáo
+   * tổng search_term_view, chính là panel "Khách gõ gì" của heoiu.
+   *
+   * Ba ràng buộc của click_view phải tôn trọng:
+   *   · Mỗi câu truy vấn phải giới hạn đúng MỘT ngày (`segments.date = '...'`)
+   *     — Google từ chối hẳn câu có khoảng ngày. Nên nhóm gclid theo ngày lịch
+   *     VN của clickedAt rồi hỏi từng ngày.
+   *   · Chỉ tra được 90 ngày gần nhất — cú bấm cũ hơn hiện "—".
+   *   · gclid phải qua whitelist GCLID_HOP_LE trước khi nhét vào câu IN — nó vốn
+   *     là input công khai từ URL, một chuỗi rác có thể phá hỏng cả lô.
+   *
+   * Múi giờ tài khoản Ads có thể lệch VN: cú bấm sáng sớm VN rơi vào HÔM QUA
+   * theo đồng hồ Google. Những gclid chưa tra được thì hỏi lại MỘT lần ở ngày
+   * liền trước rồi bỏ qua — không vòng thêm để số câu không bùng nổ.
+   *
+   * Một ngày bị Google từ chối thì bỏ qua NGÀY ĐÓ, không làm mất kết quả các
+   * ngày khác — cùng nguyên tắc "một phần hỏng không hỏng toàn bộ" ở danhSach.
+   */
+  private async nguonGocCuaClick(
+    rows: Array<{ gclid: string | null; clickedAt: Date }>,
+  ): Promise<Map<string, string | null>> {
+    const theoNgay = new Map<string, string[]>();
+    for (const r of rows) {
+      const g = r.gclid;
+      if (!g || !GCLID_HOP_LE.test(g)) continue;
+      const ngay = ngayVNCuaDate(r.clickedAt);
+      const ds = theoNgay.get(ngay);
+      if (ds) ds.push(g);
+      else theoNgay.set(ngay, [g]);
+    }
+
+    // 20 dòng đầu trong kỳ bận thường chỉ trải 1-3 ngày; cắt ở 8 ngày gần nhất
+    // để khỏi bắn hàng chục câu GAQL song song (serverless có trần thời gian).
+    const cacNgay = [...theoNgay.keys()].sort().slice(-8);
+    const map = new Map<string, string | null>();
+    const CO_LO = 20;
+
+    const cau = (gclids: string[], ngay: string) => `
+      SELECT click_view.gclid, click_view.keyword_info.text
+      FROM click_view
+      WHERE click_view.gclid IN (${gclids.map((g) => `'${g}'`).join(", ")})
+        AND segments.date = '${ngay}'
+    `;
+    // Ghi kết quả vào map, trả về những gclid của lô chưa tra được.
+    const ghi = (rowsCv: any[], lo: string[]): string[] => {
+      const daThay = new Set<string>();
+      for (const r of rowsCv) {
+        const cv = r.clickView ?? {};
+        if (!cv.gclid) continue;
+        const g = String(cv.gclid);
+        daThay.add(g);
+        map.set(g, cv.keywordInfo?.text ? String(cv.keywordInfo.text) : null);
+      }
+      return lo.filter((g) => !daThay.has(g));
+    };
+    const ngayTruoc = (ngay: string): string => {
+      const d = new Date(ngay + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate() - 1);
+      return d.toISOString().slice(0, 10);
+    };
+
+    await Promise.all(
+      cacNgay.map(async (ngay) => {
+        try {
+          const ds = theoNgay.get(ngay) || [];
+          for (let i = 0; i < ds.length; i += CO_LO) {
+            const lo = ds.slice(i, i + CO_LO);
+            const conThieu = ghi(await this.ads.truyVan(cau(lo, ngay)), lo);
+            if (conThieu.length) {
+              const truoc = ngayTruoc(ngay);
+              ghi(await this.ads.truyVan(cau(conThieu, truoc)), conThieu);
+            }
+          }
+        } catch {
+          // Ngày này bị Google từ chối — bỏ qua nó, giữ kết quả các ngày khác.
+        }
+      }),
+    );
+    return map;
   }
 
   /** Tra một mã — dùng cho ô tìm kiếm khi chủ shop cầm mã từ hộp thoại Zalo. */

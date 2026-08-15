@@ -200,8 +200,11 @@ export class AdsAdminController {
 
   @Get("ads")
   @ApiOperation({ summary: "Danh sách cú bấm quảng cáo" })
-  danhSach(@Query("days") days?: string) {
-    return this.ads.danhSach(Number(days) || 90);
+  // chiTiet=1 (heoiu panel koi-ads) bật phần gọi ra Google Ads API: chi phí kênh
+  // theo kỳ + nối gclid → chữ khách gõ / từ khoá. Các nơi khác không truyền để
+  // giữ phản hồi nhanh (bảng Liên hệ chỉ cần con số tổng).
+  danhSach(@Query("days") days?: string, @Query("chiTiet") chiTiet?: string) {
+    return this.ads.danhSach(Number(days) || 90, chiTiet === "1");
   }
 
   @Get("ads/lookup")

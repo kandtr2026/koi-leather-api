@@ -164,4 +164,38 @@ describe("danhSach cắt kỳ theo đúng cột thời gian", () => {
     expect(kq.doanhThu).toBe("0");
     expect(() => JSON.stringify(kq)).not.toThrow();
   });
+
+  it("mỗi dòng trả về có tuKhoa null khi không chiTiet", async () => {
+    const p = prismaGia();
+    p.koiAdClick.findMany = () =>
+      Promise.resolve([
+        {
+          token: "AAAAAA",
+          gclid: null,
+          gbraid: null,
+          wbraid: null,
+          landingPath: "/",
+          productName: null,
+          channel: null,
+          clickedAt: new Date(),
+          contactedAt: null,
+          convertedAt: null,
+          value: null,
+          note: null,
+          exportedAt: null,
+        },
+      ] as any) as any;
+    const kq: any = await dichVu(p).danhSach(1);
+    expect(kq.items).toHaveLength(1);
+    expect(kq.items[0].tuKhoa).toBeNull();
+    expect(() => JSON.stringify(kq)).not.toThrow();
+  });
+
+  it("chiTiet=1 với client rỗng vẫn chạy êm, chiPhi null, items rỗng", async () => {
+    const p = prismaGia();
+    const kq: any = await dichVu(p).danhSach(1, true);
+    expect(kq.chiPhi).toBeNull();
+    expect(kq.items).toEqual([]);
+    expect(() => JSON.stringify(kq)).not.toThrow();
+  });
 });
