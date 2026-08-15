@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
+import * as path from "node:path";
 import { PrismaService } from "../prisma/prisma.service";
 import { MUI_GIO, dauNgayVN, gioHienTaiVN } from "../common/ngay-vn";
 import { gomHanhVi, type HanhViRa, type LuotTho } from "./hanh-vi";
@@ -10,11 +12,17 @@ import {
   type CuBamTho,
   type KenhLienHeRa,
 } from "./kenh-lien-he";
+import { docIpNoiBo, gopIpNoiBo, laIpNoiBo, type IpNoiBo } from "./ip-noi-bo";
+import { khuVuc } from "./geo";
+import { gomKhachIp, type LuotKhachIp } from "./khach-ip";
 
 /**
  * Theo dõi lưu lượng truy cập storefront.
  *
- * QUYỀN RIÊNG TƯ: không lưu IP thô ở bất cứ đâu. Xem ghi chú ở visitorHash().
+ * QUYỀN RIÊNG TƯ: từ 2026-08 lưu IP thô ở cột `ip` để chủ shop loại lượt
+ * truy cập nội bộ ra khỏi thống kê và xem khách ở đâu (xem ip-noi-bo.ts và
+ * migration add_visitor_ip_region). Trước đó thiết kế cố ý không lưu — xem
+ * visitorHash().
  */
 
 /** Muối cho hàm băm. */
@@ -67,6 +75,37 @@ const HAN_DON_RAC_MS = 24 * 60 * 60 * 1000;
  * thừa sức cho một hạn 24 giờ, kể cả ngày vắng khách.
  */
 const TI_LE_DON_RAC = 0.02;
+
+/**
+ * Đọc danh sách IP nội bộ trong file data/ip-noi-bo.txt (nơi thêm thủ công).
+ *
+ * File thiếu / không đọc được thì trả null — gopIpNoiBo() chỉ còn lại nguồn
+ * biến môi trường, không lỗi. doc là tham số để test được không cần filesystem.
+ */
+export function docFileIpNoiBo(
+  cwd: string,
+  doc: (duongDan: string) => string,
+): string | null {
+  try {
+    return doc(path.join(cwd, "data", "ip-noi-bo.txt"));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * IP nội bộ loại ngay lúc ghi — xem ip-noi-bo.ts.
+ *
+ * Danh sách gộp từ HAI nguồn, đọc một lần lúc khởi động:
+ *   - biến môi trường ANALYTICS_IP_NOI_BO (khai trên Vercel)
+ *   - file data/ip-noi-bo.txt (thêm thủ công trong repo)
+ * Đổi danh sách phải deploy lại. Ví dụ: "1.2.3.4, 10.0.0.0/8" (IP chủ shop,
+ * wifi nhà).
+ */
+const IP_NOI_BO: readonly IpNoiBo[] = gopIpNoiBo(
+  process.env.ANALYTICS_IP_NOI_BO,
+  docFileIpNoiBo(process.cwd(), (f) => readFileSync(f, "utf8")),
+);
 
 /**
  * Trần số dòng lượt xem thô mà hanhVi() kéo về một lần.
@@ -211,13 +250,23 @@ export class AnalyticsService {
       return { tracked: false, reason: "bot" };
     }
 
+    // IP nội bộ loại NGAY LÚC GHI, cùng chỗ với lọc bot: không tạo dòng nào,
+    // không tạo dòng hiện diện — mọi con số sau đó (lượt xem, khách, phiên,
+    // realtime) tự sạch mà không phải sửa từng truy vấn.
+    if (laIpNoiBo(input.ip, IP_NOI_BO)) {
+      return { tracked: false, reason: "noi-bo" };
+    }
+
     const path = this.chuanHoa(input.path);
     const source = this.nguon(input.referrer ?? null, input.host);
     const device = this.thietBi(ua);
     const visitorHash = this.visitorHash(input.ip, ua);
+    // Dịch vùng MỘT lần lúc ghi (geo.ts), đọc sau chỉ đọc cột — khỏi nợ một
+    // lần tra cứu cho từng lần mở panel.
+    const vung = khuVuc(input.ip);
 
     // Hiện diện cập nhật cho CẢ nhịp tim lẫn lượt xem thật.
-    await this.capNhatHienDien({ visitorHash, path, source, device });
+    await this.capNhatHienDien({ visitorHash, path, source, device, ip: input.ip, vung });
 
     this.donRacHienDien();
 
@@ -230,6 +279,8 @@ export class AnalyticsService {
         source,
         device,
         visitorHash,
+        ip: input.ip,
+        khuVuc: vung,
       },
     });
     return { tracked: true };
@@ -270,6 +321,12 @@ export class AnalyticsService {
     const ua = (input.ua || "").slice(0, 400);
     if (this.laBot(ua)) {
       return { tracked: false, reason: "bot" };
+    }
+
+    // Cùng luật với lượt xem: cú bấm của chính chủ shop (IP nội bộ) không
+    // được tính vào "khách liên hệ" — xem ghi chú IP_NOI_BO.
+    if (laIpNoiBo(input.ip, IP_NOI_BO)) {
+      return { tracked: false, reason: "noi-bo" };
     }
 
     await this.prisma.koiContactClick.create({
@@ -315,6 +372,8 @@ export class AnalyticsService {
     path: string;
     source: string;
     device: string;
+    ip: string;
+    vung: string | null;
   }) {
     const now = new Date();
     await this.prisma.koiPresence.upsert({
@@ -324,6 +383,10 @@ export class AnalyticsService {
         path: d.path,
         source: d.source,
         device: d.device,
+        // IP và vùng chỉ đặt LÚC TẠO dòng (một phiên một IP), không đè khi
+        // nhịp tim cập nhật — giống source.
+        ip: d.ip,
+        khuVuc: d.vung,
         firstSeenAt: now,
         lastSeenAt: now,
       },
@@ -331,7 +394,7 @@ export class AnalyticsService {
         path: d.path,
         device: d.device,
         lastSeenAt: now,
-        // source: cố ý KHÔNG đụng tới. Xem ghi chú trên.
+        // source / ip / khuVuc: cố ý KHÔNG đụng tới. Xem ghi chú trên.
       },
     });
   }
@@ -405,6 +468,70 @@ export class AnalyticsService {
       devices: [...theoThietBi.entries()]
         .map(([device, khach]) => ({ device, khach }))
         .sort((a, b) => b.khach - a.khach),
+      // Từng khách đang online kèm IP và khu vực — cho tab "IP khách" của panel
+      // nhìn thẳng ai đang đứng ở đâu. Đường CHỈ ADMIN nên phơi IP không sao.
+      visitors: dangOnline.map((k) => ({
+        ip: k.ip ?? null,
+        khuVuc: k.khuVuc ?? null,
+        path: k.path,
+        source: k.source,
+        device: k.device,
+        lastSeenAt: k.lastSeenAt.toISOString(),
+      })),
+    };
+  }
+
+  /**
+   * Khách gần đây kèm IP và khu vực — dữ liệu cho tab "IP khách" của Heoiu.
+   *
+   * Gom theo visitorHash (một dòng một khách TRONG NGÀY — hash đổi mỗi ngày,
+   * xem visitorHash()), lấy nguồn/trang của lượt ĐẦU. Chi tiết ở khach-ip.ts.
+   *
+   * Chỉ lấy dòng có ip (từ 2026-08): dòng cũ không có gì để xem trong tab này.
+   */
+  async visitors(days = 7, limit = 50) {
+    // Kẹp lại y hệt controller — cố ý trùng, vì hàm này công khai còn gọi từ
+    // test và từ chỗ khác, không dựa vào cửa controller để an toàn.
+    const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 7), 1), 90);
+    const gioiHan = Math.min(Math.max(Math.trunc(Number(limit) || 50), 1), 200);
+    const tu = this.dauNgayVN(soNgay - 1);
+
+    // Lấy MỚI NHẤT trước (khác hanhVi lấy cũ trước): nếu chạm trần thì phần
+    // mất là phần CŨ — tab này để xem khách GẦN ĐÂY, cắt đầu kỳ là đúng thứ.
+    const dong = await this.prisma.koiPageView.findMany({
+      where: { createdAt: { gte: tu }, ip: { not: null } },
+      orderBy: { createdAt: "desc" },
+      take: TRAN_LUOT_HANH_VI,
+      select: {
+        visitorHash: true,
+        ip: true,
+        khuVuc: true,
+        path: true,
+        source: true,
+        device: true,
+        createdAt: true,
+      },
+    });
+
+    const luot: LuotKhachIp[] = dong.map((r) => ({
+      visitorHash: r.visitorHash,
+      ip: r.ip,
+      khuVuc: r.khuVuc,
+      path: r.path,
+      source: r.source,
+      device: r.device,
+      luc: +r.createdAt,
+    }));
+
+    return {
+      days: soNgay,
+      limit: gioiHan,
+      // Biên ngày theo LỊCH VIỆT NAM — xem ghi chú ở hanhVi().
+      from: this.ngayVN(tu),
+      den: this.ngayVN(new Date()),
+      // True khi kéo về chạm trần: phần mất là phần CŨ NHẤT (ORDER BY desc).
+      daCat: dong.length >= TRAN_LUOT_HANH_VI,
+      list: gomKhachIp(luot, gioiHan),
     };
   }
 

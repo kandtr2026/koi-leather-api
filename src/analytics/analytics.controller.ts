@@ -151,6 +151,24 @@ export class AnalyticsController {
   }
 
   /**
+   * Khách gần đây kèm IP và khu vực — tab "IP khách" của panel Heoiu.
+   *
+   * Nằm ở /analytics (chỉ admin) chứ KHÔNG phải /shop là điều kiện bắt buộc,
+   * cùng lý do với /leads ở dưới: đường này phơi IP THÔ của khách, cho qua
+   * auth.guard là phơi cho cả internet.
+   *
+   * Kẹp `days` và `limit` như hanh-vi; service kẹp lại y hệt một lần nữa —
+   * cố ý trùng, vì service là hàm công khai còn gọi từ chỗ khác và từ test.
+   */
+  @Get("visitors")
+  @ApiOperation({ summary: "Khách gần đây kèm IP và khu vực (chỉ admin)" })
+  visitors(@Query("days") days?: string, @Query("limit") limit?: string) {
+    const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 7), 1), 90);
+    const gioiHan = Math.min(Math.max(Math.trunc(Number(limit) || 50), 1), 200);
+    return this.analytics.visitors(soNgay, gioiHan);
+  }
+
+  /**
    * Kênh liên hệ: khách bấm Zalo / Messenger / Gọi điện, và đến từ đâu.
    *
    * Không tự kiểm req.user, đi theo tiền lệ GET /analytics/ads: số ở đây là số

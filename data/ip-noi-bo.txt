@@ -1,0 +1,15 @@
+# Danh sách IP nội bộ — thêm thủ công ở đây.
+#
+# Mỗi dòng một mục, phân cách được bằng phẩy / khoảng trắng / chấm phẩy.
+# Mỗi mục là:
+#   - IP đơn:   "113.161.92.19"
+#   - dải CIDR: "113.161.0.0/16"
+# Nội dung sau dấu # là chú thích, bỏ qua.
+#
+# Sửa xong file này thì DEPLOY LẠI backend (vercel deploy --prod) — danh sách
+# được đọc một lần lúc khởi động. File này gộp CHUNG với biến môi trường
+# ANALYTICS_IP_NOI_BO trên Vercel; đặt ở đâu cũng được, không cần trùng.
+
+113.161.0.0/16   # may test nha (VNPT, IP dong)
+115.78.0.0/16    # may test nha (Viettel, IP dong)
+118.70.0.0/24    # van phong

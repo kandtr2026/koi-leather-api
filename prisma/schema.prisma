@@ -569,10 +569,13 @@ model KoiMaterialCategory {
 
 /// Một lượt xem trang trên storefront koileather.com.
 ///
-/// KHÔNG lưu IP thô. visitorHash = băm(IP + trình duyệt + muối + ngày), nên:
+/// Từ 2026-08 có thêm `ip` và `khuVuc` (xem cột). Trước đó thiết kế cố ý không
+/// lưu IP thô: visitorHash = băm(IP + trình duyệt + muối + ngày), nên:
 ///   - đếm được khách riêng biệt TRONG NGÀY
 ///   - sang ngày mới thì cùng một người ra hash khác => không lần được hành vi
 ///     dài ngày, không truy ngược ra danh tính
+/// Số khách riêng vẫn tính bằng visitorHash như cũ — ip là thông tin bổ sung
+/// để loại lượt truy cập nội bộ và xem khách ở đâu, không thay đổi cách đếm.
 model KoiPageView {
   id          String   @id @default(uuid())
   /// Đường dẫn đã chuẩn hoá, bỏ query để /cua-hang/?page=2 không tách dòng riêng
@@ -585,6 +588,12 @@ model KoiPageView {
   device      String
   /// Băm ẩn danh, đổi mỗi ngày. Xem ghi chú ở trên.
   visitorHash String
+  /// IP thô của khách. Cột MỚI từ 2026-08: dòng ghi trước ngày đó null vĩnh
+  /// viễn. Cần để loại IP nội bộ khỏi thống kê — xem ip-noi-bo.ts.
+  ip          String?
+  /// Khu vực dịch từ IP ("Hà Nội", "TP Hồ Chí Minh", "Mỹ"…) — xem geo.ts.
+  /// Dịch MỘT lần lúc ghi, đọc là đọc thẳng cột.
+  khuVuc      String?
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
@@ -626,6 +635,11 @@ model KoiPresence {
   firstSeenAt DateTime @default(now())
   /// Nhịp tim gần nhất. Quá ngưỡng thì coi như đã rời đi.
   lastSeenAt  DateTime @default(now())
+  /// IP của khách, đặt LÚC TẠO dòng (cột mới từ 2026-08). Giữ nguyên khi
+  /// nhịp tim ghi đè — một phiên một IP, không lý do gì phải đổi.
+  ip          String?
+  /// Khu vực dịch từ IP (geo.ts), đặt cùng lúc với ip.
+  khuVuc      String?
 
   @@index([lastSeenAt])
   @@map("koi_presence")
