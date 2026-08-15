@@ -31,6 +31,28 @@ export class OpenAiClient {
     return process.env.OPENAI_API_KEY?.trim() || "";
   }
 
+  /**
+   * Hạn chờ OpenAI, tính bằng mili-giây.
+   *
+   * PHẢI NHỎ HƠN maxDuration TRONG vercel.json (đang là 60 giây).
+   *
+   * Vì sao phải nhỏ hơn: nếu để hạn này lớn hơn giới hạn của nền tảng thì Vercel
+   * cắt hàm TRƯỚC, nên nhánh AbortError bên dưới không bao giờ chạy và chủ shop
+   * nhận về lỗi 504 trống rỗng thay vì câu giải thích có hướng xử lý.
+   *
+   * Để 50 giây là chừa 10 giây cho phần còn lại của một lượt: khởi động lạnh,
+   * đọc bản ghi từ DB trước khi gọi, rồi dựng bảng so sánh trả về sau khi gọi.
+   *
+   * Đổi maxDuration trong vercel.json thì phải đổi cả số này — hoặc đặt
+   * OPENAI_TIMEOUT_MS trên Vercel để chỉnh không cần deploy. Số vượt quá 58 giây
+   * bị kẹp lại, vì quá đó là Vercel cắt trước và mất câu báo lỗi tử tế.
+   */
+  private get hanChoMs(): number {
+    const n = Number(process.env.OPENAI_TIMEOUT_MS || "");
+    if (!Number.isFinite(n) || n <= 0) return 50_000;
+    return Math.min(n, 58_000);
+  }
+
   daCoKey(): boolean {
     return Boolean(this.key);
   }
@@ -62,16 +84,11 @@ export class OpenAiClient {
       );
     }
 
-    // PHẢI NHỎ HƠN maxDuration TRONG vercel.json (đang là 30 giây).
-    //
-    // Đây là con số đã đo, không phải chọn bừa: nếu để timeout lớn hơn giới hạn
-    // của nền tảng thì Vercel cắt hàm TRƯỚC, nên nhánh AbortError bên dưới không
-    // bao giờ chạy và chủ shop nhận về lỗi 504 trống rỗng thay vì câu giải thích.
-    // Để 25 giây là còn 5 giây cho phần trả lời kịp đi ra.
-    //
-    // Đổi maxDuration trong vercel.json thì phải đổi cả số này.
+    // Hạn chờ đọc ở getter hanChoMs — xem giải thích ở đó về ràng buộc với
+    // maxDuration trong vercel.json.
+    const hanCho = this.hanChoMs;
     const dungSau = new AbortController();
-    const hen = setTimeout(() => dungSau.abort(), 25_000);
+    const hen = setTimeout(() => dungSau.abort(), hanCho);
 
     let res: Response;
     try {
@@ -96,7 +113,7 @@ export class OpenAiClient {
       const loi = e as Error;
       if (loi.name === "AbortError") {
         throw new ServiceUnavailableException(
-          "OpenAI trả lời quá lâu (hơn 25 giây). Chọn ít phần hơn trong một lượt — sửa riêng thân bài, rồi sửa riêng các thẻ SEO.",
+          `OpenAI trả lời quá lâu (hơn ${Math.round(hanCho / 1000)} giây). Chọn ít phần hơn trong một lượt — sửa riêng thân bài, rồi sửa riêng các thẻ SEO.`,
         );
       }
       throw new BadGatewayException(`Không gọi được OpenAI: ${loi.message}`);

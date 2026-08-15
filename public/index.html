@@ -1279,9 +1279,10 @@ async function api(path, options = {}) {
 
   const controller = new AbortController();
   // timeoutMs: cho phép một lượt gọi tự đặt hạn riêng. Cần cho /ai-edit/generate:
-  // máy chủ tự bỏ cuộc với OpenAI ở 25 giây rồi mới dựng câu báo lỗi, nên nếu
-  // trình duyệt cũng cắt ở 25 giây thì nó bỏ ngang ĐÚNG LÚC câu đó đang đi ra, và
-  // chủ shop thấy "Failed to fetch" thay vì lời giải thích.
+  // máy chủ tự bỏ cuộc với OpenAI ở 50 giây rồi mới dựng câu báo lỗi, nên nếu
+  // trình duyệt cắt sớm hơn thì nó bỏ ngang ĐÚNG LÚC câu đó đang đi ra, và chủ
+  // shop thấy "Failed to fetch" thay vì lời giải thích. Lượt gọi nào chờ AI thì
+  // phải tự đặt timeoutMs dài hơn hạn của máy chủ.
   const hanCho = options.timeoutMs || (method === 'GET' ? 12000 : 25000);
   const timeout = setTimeout(() => controller.abort(), hanCho);
 
@@ -5514,14 +5515,15 @@ async function aiXemTruoc() {
   const btn = document.getElementById('aiBtnXemTruoc');
   const cu = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>AI đang viết... (tối đa 25 giây)';
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>AI đang viết... (tối đa 50 giây)';
 
   try {
     const kq = await api('/analytics/ai-edit/generate', {
       method: 'POST',
-      // 40 giây: dài hơn cả hạn 25 giây của máy chủ với OpenAI VÀ hạn 30 giây
-      // Vercel cắt hàm, để lỗi thật từ máy chủ luôn tới được đây.
-      timeoutMs: 40000,
+      // 70 giây: dài hơn cả hạn 50 giây của máy chủ với OpenAI VÀ hạn 60 giây
+      // Vercel cắt hàm, để lỗi thật từ máy chủ luôn tới được đây. Trình duyệt cắt
+      // trước máy chủ thì chủ shop thấy "Failed to fetch" thay vì câu chỉ cách xử lý.
+      timeoutMs: 70000,
       body: JSON.stringify({ link: document.getElementById('aiLink').value.trim(), yeuCau: yeuCau, truongChon: chon }),
     });
     aiDeNghi = kq;
