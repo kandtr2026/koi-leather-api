@@ -26,6 +26,7 @@ function adsGia(over: Record<string, any> = {}) {
     bienConThieu: jest.fn(() => []),
     truyVan: jest.fn(async () => [] as any[]),
     yTuongTuKhoa: jest.fn(async () => [] as any[]),
+    maTaiKhoan: jest.fn(() => "1234567890"),
     ...over,
   };
 }
@@ -96,7 +97,7 @@ describe("tuKhoaThat() — từ khoá thật + số liệu 30 ngày", () => {
           searchPredictedCtr: "BELOW_AVERAGE",
         },
       },
-      campaign: { name: "Chiến dịch A" },
+      campaign: { name: "Chiến dịch A", id: 777 },
       adGroup: { name: "Nhóm 1" },
       metrics: {
         impressions: 1000,
@@ -119,6 +120,7 @@ describe("tuKhoaThat() — từ khoá thật + số liệu 30 ngày", () => {
 
     expect(kq.daNoi).toBe(true);
     expect(kq.thieuBien).toEqual([]);
+    expect(kq.ocid).toBe("1234567890");
     expect(ads.truyVan).toHaveBeenCalledTimes(1);
 
     const it0 = kq.dsTuKhoa[0];
@@ -126,6 +128,7 @@ describe("tuKhoaThat() — từ khoá thật + số liệu 30 ngày", () => {
     expect(it0.loaiKhop).toBe("phrase");
     expect(it0.trangThai).toBe("enabled");
     expect(it0.chienDich).toBe("Chiến dịch A");
+    expect(it0.chienDichId).toBe("777");
     expect(it0.nhomQuangCao).toBe("Nhóm 1");
 
     // Đếm — giữ nguyên số thật.
@@ -199,6 +202,9 @@ describe("tuKhoaThat() — từ khoá thật + số liệu 30 ngày", () => {
     expect(it0.chatLuongQuangCao).toBeNull();
     expect(it0.chatLuongTrangDich).toBeNull();
     expect(it0.ctrKyVong).toBeNull();
+
+    // Chiến dịch vắng id → null để Heoiu không dựng link sâu bừa.
+    expect(it0.chienDichId).toBeNull();
 
     // Soát tổng quát: không cột nào là NaN.
     khongCoNaN(it0, COT_SO_TU_KHOA);
@@ -305,7 +311,7 @@ describe("searchTermsThat() — cụm khách tìm thật + gợi ý", () => {
       keyword: { info: { text: "ví da" } },
       searchTermMatchType: "BROAD",
     },
-    campaign: { name: "CD" },
+    campaign: { name: "CD", id: 777 },
     adGroup: { name: "Nhóm" },
     metrics: { impressions: 100, clicks: 1, costMicros: 1_000_000, conversions: 0 },
     ...over,
@@ -321,6 +327,28 @@ describe("searchTermsThat() — cụm khách tìm thật + gợi ý", () => {
     expect(kq.thieuBien).toEqual(["GOOGLE_ADS_REFRESH_TOKEN"]);
     expect(kq.dsSearchTerm).toEqual([]);
     expect(ads.truyVan).not.toHaveBeenCalled();
+  });
+
+  it("trả ocid + chienDichId mỗi dòng để Heoiu dựng link sâu mở chiến dịch", async () => {
+    const ads = adsGia({
+      truyVan: jest.fn(async () => [dongSearchTerm(), dongSearchTerm()]),
+    });
+    const kq: any = await dichVu(ads).searchTermsThat();
+
+    // ocid là mã tài khoản (ads.google.com/aw/campaigns?ocid=...&campaignId=...)
+    expect(kq.ocid).toBe("1234567890");
+    // campaign.id phải về dạng chuỗi y như tuKhoaThat.
+    expect(kq.dsSearchTerm[0].chienDichId).toBe("777");
+    expect(kq.dsSearchTerm[1].chienDichId).toBe("777");
+  });
+
+  it("campaign VẮNG id → chienDichId null (không bịa link sâu)", async () => {
+    const ads = adsGia({
+      truyVan: jest.fn(async () => [dongSearchTerm({ campaign: { name: "CD" } })]),
+    });
+    const kq: any = await dichVu(ads).searchTermsThat();
+    expect(kq.ocid).toBe("1234567890");
+    expect(kq.dsSearchTerm[0].chienDichId).toBeNull();
   });
 
   it("map trạng thái ENUM → nhãn tiếng Việt", async () => {

@@ -1382,11 +1382,15 @@ export class AdsService {
   async tuKhoaThat(): Promise<{
     daNoi: boolean;
     thieuBien: string[];
+    // Mã tài khoản Ads (ocid) để Heoiu dựng link sâu mở chiến dịch trên giao
+    // diện Google Ads: ads.google.com/aw/campaigns?ocid=...&campaignId=...
+    ocid: string | null;
     dsTuKhoa: Array<{
       tuKhoa: string;
       loaiKhop: string;
       trangThai: string;
       chienDich: string;
+      chienDichId: string | null;
       nhomQuangCao: string;
       hienThi: number;
       cuBam: number;
@@ -1409,7 +1413,7 @@ export class AdsService {
     }>;
   }> {
     if (!this.ads.daCauHinh()) {
-      return { daNoi: false, thieuBien: this.ads.bienConThieu(), dsTuKhoa: [] };
+      return { daNoi: false, thieuBien: this.ads.bienConThieu(), ocid: null, dsTuKhoa: [] };
     }
 
     // LAST_30_DAYS thay vì ALL_TIME: từ khoá tắt từ năm ngoái kéo về chỉ làm
@@ -1433,6 +1437,7 @@ export class AdsService {
           ad_group_criterion.quality_info.post_click_quality_score,
           ad_group_criterion.quality_info.search_predicted_ctr,
           campaign.name,
+          campaign.id,
           ad_group.name,
           metrics.impressions,
           metrics.clicks,
@@ -1465,6 +1470,7 @@ export class AdsService {
     return {
       daNoi: true,
       thieuBien: [],
+      ocid: this.ads.maTaiKhoan() || null,
       dsTuKhoa: rows.map((r) => {
         const kw = r.adGroupCriterion?.keyword ?? {};
         const text = kw.text ?? "";
@@ -1480,6 +1486,8 @@ export class AdsService {
             : String(kw.matchType ?? "").toLowerCase(),
           trangThai: String(r.adGroupCriterion?.status ?? "").toLowerCase(),
           chienDich: r.campaign?.name ?? "",
+          // Id chiến dịch để Heoiu dựng link sâu vào đúng chiến dịch trên Ads.
+          chienDichId: r.campaign?.id != null ? String(r.campaign.id) : null,
           nhomQuangCao: r.adGroup?.name ?? "",
           // impressions/clicks/cost là số đếm luôn có mặt (0 là 0 thật) nên giữ
           // 0 mặc định như cũ. Các con số bên dưới thì hay vắng cho từ ít dữ
@@ -1532,12 +1540,18 @@ export class AdsService {
   async searchTermsThat(): Promise<{
     daNoi: boolean;
     thieuBien: string[];
+    // Mã tài khoản Ads (ocid) để Heoiu dựng link sâu mở chiến dịch trên giao
+    // diện Google Ads: ads.google.com/aw/campaigns?ocid=...&campaignId=...
+    ocid: string | null;
     dsSearchTerm: Array<{
       searchTerm: string;
       trangThai: string;
       tuKhoaKhop: string;
       loaiKhop: string;
       chienDich: string;
+      // campaign.id của dòng này (string) — Heoiu dựng link mở đúng chiến dịch.
+      // Vắng → null để Heoiu không bịa link.
+      chienDichId: string | null;
       nhomQuangCao: string;
       hienThi: number;
       cuBam: number;
@@ -1548,7 +1562,12 @@ export class AdsService {
     }>;
   }> {
     if (!this.ads.daCauHinh()) {
-      return { daNoi: false, thieuBien: this.ads.bienConThieu(), dsSearchTerm: [] };
+      return {
+        daNoi: false,
+        thieuBien: this.ads.bienConThieu(),
+        ocid: null,
+        dsSearchTerm: [],
+      };
     }
 
     const rows = await this.ads.truyVan(`
@@ -1558,6 +1577,7 @@ export class AdsService {
         segments.keyword.info.text,
         segments.search_term_match_type,
         campaign.name,
+        campaign.id,
         ad_group.name,
         metrics.impressions,
         metrics.clicks,
@@ -1581,6 +1601,7 @@ export class AdsService {
     return {
       daNoi: true,
       thieuBien: [],
+      ocid: this.ads.maTaiKhoan() || null,
       dsSearchTerm: rows.map((r) => {
         const status = String(r.searchTermView?.status ?? "").toUpperCase();
         const cuBam = Number(r.metrics?.clicks ?? 0);
@@ -1592,6 +1613,7 @@ export class AdsService {
           tuKhoaKhop: r.segments?.keyword?.info?.text ?? "",
           loaiKhop: String(r.segments?.searchTermMatchType ?? "").toLowerCase(),
           chienDich: r.campaign?.name ?? "",
+          chienDichId: r.campaign?.id ? String(r.campaign.id) : null,
           nhomQuangCao: r.adGroup?.name ?? "",
           hienThi: Number(r.metrics?.impressions ?? 0),
           cuBam,
@@ -1732,5 +1754,224 @@ export class AdsService {
         };
       }),
     };
+  }
+
+  /**
+   * Cấu trúc tài khoản: danh sách campaign + ad group để làm picker trên heoiu.
+   *
+   * CHỈ LẤY CAMPAIGN ĐANG BẬT (ENABLED) vì chủ shop chỉ cần đẩy từ khoá vào
+   * nơi đang chạy — campaign PAUSED/REMOVED không liên quan.
+   *
+   * Trả khuôn { daNoi, thieuBien, dsCampaign } để heoiu xử lý "chưa nối" như
+   * mọi route Ads khác. Mỗi campaign kèm danh sách ad group con của nó (chỉ
+   * ENABLED) để picker có thể chọn campaign → ad group trong hai bước.
+   *
+   * KHÔNG trả metrics: mục đích duy nhất là cung cấp id + name để chủ shop
+   * biết đang đẩy từ khoá vào nhóm nào. Nhẹ, nhanh, không cần segment.
+   */
+  async layStructure(): Promise<{
+    daNoi: boolean;
+    thieuBien: string[];
+    dsCampaign: Array<{
+      id: string;
+      ten: string;
+      dsAdGroup: Array<{ id: string; ten: string }>;
+    }>;
+  }> {
+    if (!this.ads.daCauHinh()) {
+      return { daNoi: false, thieuBien: this.ads.bienConThieu(), dsCampaign: [] };
+    }
+
+    // Một câu GAQL join campaign + ad_group: trả mỗi ad group một dòng, kèm
+    // campaign cha. Lọc ENABLED ở cả hai mức để không điền picker toàn nhóm
+    // chết. ORDER BY campaign.name, ad_group.name để picker hiển thị gọn.
+    const rows = await this.ads.truyVan(`
+      SELECT
+        campaign.id,
+        campaign.name,
+        ad_group.id,
+        ad_group.name
+      FROM ad_group
+      WHERE campaign.status = 'ENABLED'
+        AND ad_group.status = 'ENABLED'
+      ORDER BY campaign.name, ad_group.name
+    `);
+
+    // Gom ad group theo campaign cha. Dùng Map<campaignId, campaign> để gom
+    // đúng thứ tự xuất hiện (rows đã sorted by campaign.name từ GAQL).
+    const map = new Map<string, { id: string; ten: string; dsAdGroup: Array<{ id: string; ten: string }> }>();
+    for (const r of rows) {
+      const cid = r.campaign?.id != null ? String(r.campaign.id) : null;
+      const cten = r.campaign?.name ?? "";
+      const agid = r.adGroup?.id != null ? String(r.adGroup.id) : null;
+      const agten = r.adGroup?.name ?? "";
+      if (!cid || !agid) continue;
+      if (!map.has(cid)) map.set(cid, { id: cid, ten: cten, dsAdGroup: [] });
+      map.get(cid)!.dsAdGroup.push({ id: agid, ten: agten });
+    }
+
+    return { daNoi: true, thieuBien: [], dsCampaign: [...map.values()] };
+  }
+
+  /**
+   * Mở rộng themTuKhoa nhận 4 cột đồng bộ mới: loai, adGroupId, campaignId,
+   * phamViNegative. Validate và ghi chính xác vào Prisma.
+   *
+   * Tách hàm riêng thay vì inline trong controller để logic validate luôn khớp
+   * với suaTuKhoa dưới đây (hai nơi đều kiểm LOAI_HOP_LE, PHAM_VI, v.v.).
+   */
+  async themTuKhoaV2(input: {
+    tuKhoa: string;
+    chienDich?: string;
+    loaiKhop?: string;
+    trangThai?: string;
+    ghiChu?: string;
+    loai?: string;
+    adGroupId?: string;
+    campaignId?: string;
+    phamViNegative?: string;
+  }) {
+    const tuKhoa = input.tuKhoa.trim();
+    if (!tuKhoa) throw new BadRequestException("Từ khoá không được để trống");
+
+    const loai = (input.loai ?? "keyword").trim();
+    const LOAI_HOP_LE = ["keyword", "negative"];
+    if (!LOAI_HOP_LE.includes(loai)) {
+      throw new BadRequestException(`loai không hợp lệ: ${loai}`);
+    }
+
+    const loaiKhop = input.loaiKhop?.trim() || null;
+    const MATCH_HOP_LE = ["broad", "phrase", "exact"];
+    if (loaiKhop && !MATCH_HOP_LE.includes(loaiKhop)) {
+      throw new BadRequestException(`Loại khớp không hợp lệ: ${loaiKhop}`);
+    }
+
+    const trangThai = input.trangThai?.trim() || "active";
+    const TRANG_THAI_HOP_LE = ["active", "paused"];
+    if (!TRANG_THAI_HOP_LE.includes(trangThai)) {
+      throw new BadRequestException(`Trạng thái không hợp lệ: ${trangThai}`);
+    }
+
+    const adGroupId = input.adGroupId?.trim() || null;
+    const campaignId = input.campaignId?.trim() || null;
+
+    const phamViNegative = input.phamViNegative?.trim() || null;
+    const PHAM_VI_HOP_LE = ["adgroup", "campaign", "shared"];
+    if (phamViNegative && !PHAM_VI_HOP_LE.includes(phamViNegative)) {
+      throw new BadRequestException(`phamViNegative không hợp lệ: ${phamViNegative}`);
+    }
+
+    // Negative mức campaign cần campaignId; keyword và negative mức adgroup cần adGroupId.
+    if (loai === "negative" && phamViNegative === "campaign" && !campaignId) {
+      throw new BadRequestException("Negative mức campaign cần campaignId");
+    }
+
+    const chienDich = input.chienDich?.trim() || null;
+
+    // Chặn trùng lặp (theo tuKhoa + chienDich + loaiKhop như cũ — loai không
+    // vào key vì một từ không nên vừa là keyword vừa là negative trong cùng chiến dịch).
+    const trung = await this.prisma.koiAdKeyword.findFirst({
+      where: { tuKhoa, chienDich, loaiKhop },
+    });
+    if (trung) throw new BadRequestException("Từ khoá này đã tồn tại trong sổ tay");
+
+    return this.prisma.koiAdKeyword.create({
+      data: {
+        tuKhoa,
+        chienDich,
+        loaiKhop,
+        trangThai,
+        ghiChu: input.ghiChu?.trim().slice(0, 500) || null,
+        loai,
+        adGroupId,
+        campaignId,
+        phamViNegative,
+      },
+    });
+  }
+
+  /**
+   * Mở rộng suaTuKhoa nhận 4 cột đồng bộ mới.
+   */
+  async suaTuKhoaV2(
+    id: string,
+    input: {
+      tuKhoa?: string;
+      chienDich?: string | null;
+      loaiKhop?: string | null;
+      trangThai?: string;
+      ghiChu?: string | null;
+      loai?: string;
+      adGroupId?: string | null;
+      campaignId?: string | null;
+      phamViNegative?: string | null;
+    },
+  ) {
+    const ton = await this.prisma.koiAdKeyword.findUnique({ where: { id } });
+    if (!ton) throw new NotFoundException("Không tìm thấy từ khoá");
+
+    const data: Record<string, unknown> = {};
+
+    if (input.tuKhoa !== undefined) {
+      const tuKhoa = input.tuKhoa.trim();
+      if (!tuKhoa) throw new BadRequestException("Từ khoá không được để trống");
+      data.tuKhoa = tuKhoa;
+    }
+
+    if (input.chienDich !== undefined) {
+      data.chienDich = input.chienDich?.trim() || null;
+    }
+
+    if (input.loaiKhop !== undefined) {
+      const MATCH_HOP_LE = ["broad", "phrase", "exact"];
+      if (input.loaiKhop && !MATCH_HOP_LE.includes(input.loaiKhop)) {
+        throw new BadRequestException(`Loại khớp không hợp lệ: ${input.loaiKhop}`);
+      }
+      data.loaiKhop = input.loaiKhop || null;
+    }
+
+    if (input.trangThai !== undefined) {
+      const TRANG_THAI_HOP_LE = ["active", "paused"];
+      if (!TRANG_THAI_HOP_LE.includes(input.trangThai)) {
+        throw new BadRequestException(`Trạng thái không hợp lệ: ${input.trangThai}`);
+      }
+      data.trangThai = input.trangThai;
+    }
+
+    if (input.ghiChu !== undefined) {
+      data.ghiChu = input.ghiChu?.trim().slice(0, 500) || null;
+    }
+
+    if (input.loai !== undefined) {
+      const LOAI_HOP_LE = ["keyword", "negative"];
+      if (!LOAI_HOP_LE.includes(input.loai)) {
+        throw new BadRequestException(`loai không hợp lệ: ${input.loai}`);
+      }
+      data.loai = input.loai;
+    }
+
+    if (input.adGroupId !== undefined) {
+      data.adGroupId = input.adGroupId?.trim() || null;
+    }
+
+    if (input.campaignId !== undefined) {
+      data.campaignId = input.campaignId?.trim() || null;
+    }
+
+    if (input.phamViNegative !== undefined) {
+      const PHAM_VI_HOP_LE = ["adgroup", "campaign", "shared"];
+      if (input.phamViNegative && !PHAM_VI_HOP_LE.includes(input.phamViNegative)) {
+        throw new BadRequestException(`phamViNegative không hợp lệ: ${input.phamViNegative}`);
+      }
+      data.phamViNegative = input.phamViNegative || null;
+    }
+
+    // Khi sửa trangThaiDongBo về chua_day (người dùng tự reset để đẩy lại):
+    // xoá loiDongBo cũ đi cho sạch.
+    if (data.trangThaiDongBo === "chua_day") {
+      data.loiDongBo = null;
+    }
+
+    return this.prisma.koiAdKeyword.update({ where: { id }, data });
   }
 }
