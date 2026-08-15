@@ -272,13 +272,10 @@ export class AiEditService {
     const nhan: MotThayDoi[] = [];
 
     for (const td of input.thayDoi) {
-      const dangCo = hienTai[td.truong] ?? null;
-      const bocDangCo = dangCo == null ? null : dangCo;
-
       // So với chữ chủ shop ĐÃ THẤY lúc xem trước, sau khi bóc vỏ JSON hai bên
       // cho cùng hệ quy chiếu. Lệch = có người khác vừa sửa trường này. Ghi đè
       // là xoá mất công của họ mà không ai hay, nên bỏ qua và báo lại.
-      const dangCoSach = goBoc(bocDangCo);
+      const dangCoSach = goBoc(hienTai[td.truong]);
       const mongDoi = td.truoc == null ? null : td.truoc;
       if ((dangCoSach ?? "") !== (mongDoi ?? "")) {
         boQua.push(
@@ -369,7 +366,7 @@ export class AiEditService {
         boQua.push(`${d.field}: đã hoàn tác trước đó.`);
         continue;
       }
-      const dangCo = goBoc(hienTai[d.field] ?? null);
+      const dangCo = goBoc(hienTai[d.field]);
       // Nếu chữ hiện tại không còn là chữ AI đã ghi, tức sau đó có người sửa
       // tay. Hoàn tác lúc đó là xoá bản sửa tay của họ. Mặc định không làm; chủ
       // shop muốn thì bấm lại với buoc = true.
