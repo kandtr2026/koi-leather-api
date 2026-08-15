@@ -1,13 +1,16 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { COLOR_FAMILY_LABEL } from "../common/enums";
 import { PrismaService } from "../prisma/prisma.service";
 import { goBoc } from "./ai-edit.json-vi";
 import {
   BanGhiDaTra,
   LoaiNoiDung,
+  NguCanh,
   TEN_BANG,
   TRUONG_CHO_PHEP,
 } from "./ai-edit.types";
@@ -96,6 +99,8 @@ export interface KetQuaTra extends BanGhiDaTra {
 
 @Injectable()
 export class AiEditResolver {
+  private readonly log = new Logger(AiEditResolver.name);
+
   constructor(private prisma: PrismaService) {}
 
   /**
@@ -174,6 +179,187 @@ export class AiEditResolver {
   }
 
   /**
+   * Số ảnh gửi cho AI xem. Đặt qua AI_EDIT_SO_ANH.
+   *
+   * Vì sao phải có trần: mỗi tấm ảnh là thêm token VÀ thêm giây chờ, mà cả lượt
+   * gọi chỉ có 50 giây trước khi openai.client tự bỏ cuộc. 3 tấm là đủ thấy hình
+   * dáng, chất da và một góc chi tiết; tấm thứ mười không thêm được gì mà lượt
+   * nào cũng phải trả tiền cho nó.
+   *
+   * 0 = không gửi ảnh nào (tắt vision, vẫn giữ phần ngữ cảnh chữ). Đây là số ĐẶT
+   * CÓ Ý, nên phải phân biệt được với "biến chưa đặt" — xem bên dưới.
+   */
+  private soAnhGuiAi(): number {
+    // Đọc chuỗi thô rồi mới đổi số. KHÔNG viết Number(process.env.X || ""):
+    // Number("") ra 0 chứ không phải NaN, nên biến chưa đặt sẽ lọt qua mọi kiểm
+    // tra và hàm trả về 0 — tức KHÔNG GỬI ẢNH NÀO trong khi mặc định phải là 3.
+    // Đã dính đúng lỗi này: chạy thử trên dữ liệu thật thấy sản phẩm có 4 ảnh mà
+    // số ảnh gửi đi là 0, và không có thông báo lỗi nào để lần ra.
+    const tho = process.env.AI_EDIT_SO_ANH?.trim();
+    if (!tho) return 3;
+    const n = Number(tho);
+    if (!Number.isFinite(n) || n < 0) return 3;
+    return Math.min(Math.floor(n), 8);
+  }
+
+  /**
+   * Đọc ngữ cảnh của một sản phẩm: danh mục, loại da, màu, ảnh, bản ghi SEO.
+   *
+   * Chạy SAU khi đã có sản phẩm, bằng các truy vấn riêng thay vì `include` lồng
+   * trong findUnique. Lý do là DB đi qua pgbouncer với connection_limit=1
+   * (prisma.service.ts): include nhiều bảng một lượt sinh câu JOIN lớn, còn ở đây
+   * mấy truy vấn nhỏ có chỉ mục sẵn (@@index([productId])) thì nhẹ và đọc dễ hơn.
+   *
+   * Lỗi ở đây KHÔNG được làm sập cả lượt tra: ngữ cảnh là phần làm chữ tốt hơn,
+   * không phải phần bắt buộc để sửa được chữ. Bên gọi bắt lỗi và đi tiếp với null.
+   */
+  private async nguCanhSanPham(sp: {
+    id: string;
+    categoryId: string | null;
+    materialCategoryId: string | null;
+    colorFamily: string | null;
+    productType: string;
+    hasVariants: boolean;
+  }): Promise<NguCanh> {
+    const soAnh = this.soAnhGuiAi();
+
+    const [dmChinh, dmPhu, daChinh, daPhu, mauPhu, anh, tongSoAnh, seo] =
+      await Promise.all([
+        sp.categoryId
+          ? this.prisma.koiCategory.findUnique({
+              where: { id: sp.categoryId },
+              select: { name: true },
+            })
+          : Promise.resolve(null),
+        this.prisma.koiProductCategory.findMany({
+          where: { productId: sp.id },
+          select: { category: { select: { name: true } } },
+        }),
+        sp.materialCategoryId
+          ? this.prisma.koiMaterialCategory.findUnique({
+              where: { id: sp.materialCategoryId },
+              select: { name: true, description: true },
+            })
+          : Promise.resolve(null),
+        this.prisma.koiProductMaterialCategory.findMany({
+          where: { productId: sp.id },
+          orderBy: { sortOrder: "asc" },
+          select: {
+            materialCategory: { select: { name: true, description: true } },
+          },
+        }),
+        this.prisma.koiProductColor.findMany({
+          where: { productId: sp.id },
+          orderBy: { sortOrder: "asc" },
+          select: { colorFamily: true },
+        }),
+        // isPrimary desc rồi displayOrder asc: ảnh chính phải là tấm đầu tiên AI
+        // nhìn thấy, vì nếu chỉ gửi được vài tấm thì đó là tấm đáng gửi nhất.
+        soAnh > 0
+          ? this.prisma.koiProductImage.findMany({
+              where: { productId: sp.id },
+              orderBy: [{ isPrimary: "desc" }, { displayOrder: "asc" }],
+              take: soAnh,
+              select: {
+                url: true,
+                thumbnailUrl: true,
+                altText: true,
+                imageType: true,
+                isPrimary: true,
+              },
+            })
+          : Promise.resolve([]),
+        this.prisma.koiProductImage.count({ where: { productId: sp.id } }),
+        // Bảng này dùng chung cho nhiều loại thực thể (đã kiểm: entityType có giá
+        // trị "PRODUCT"), nên phải lọc CẢ entityType chứ không chỉ entityId. Chỉ
+        // lọc entityId thì đúng cho tới ngày một danh mục và một sản phẩm tình cờ
+        // trùng id — và lúc đó AI đọc thẻ SEO của trang khác mà không ai biết.
+        this.prisma.koiSEORecord.findFirst({
+          where: { entityId: sp.id, entityType: "PRODUCT" },
+          select: {
+            ogTitle: true,
+            ogDescription: true,
+            noIndex: true,
+            jsonLd: true,
+          },
+        }),
+      ]);
+
+    // Danh mục chính lên đầu, rồi danh mục phụ, bỏ trùng. goBoc vì tên có thể là
+    // JSON hai thứ tiếng ở một số dòng — trả chuỗi trần thì goBoc cho lại y nguyên.
+    const danhMuc: string[] = [];
+    const themDm = (v: unknown) => {
+      const s = goBoc(v)?.trim();
+      if (s && !danhMuc.includes(s)) danhMuc.push(s);
+    };
+    themDm(dmChinh?.name);
+    dmPhu.forEach((d) => themDm(d.category?.name));
+
+    const loaiDa: NguCanh["loaiDa"] = [];
+    const themDa = (ten: unknown, moTa: unknown) => {
+      const t = goBoc(ten)?.trim();
+      if (!t || loaiDa.some((x) => x.ten === t)) return;
+      loaiDa.push({ ten: t, moTa: goBoc(moTa)?.trim() || null });
+    };
+    themDa(daChinh?.name, daChinh?.description);
+    daPhu.forEach((d) =>
+      themDa(d.materialCategory?.name, d.materialCategory?.description),
+    );
+
+    // colorFamily trong DB là MÃ, không phải tên đọc được: "VANG_BO", "XANH_LA",
+    // "NAU_DAM". Đưa nguyên mã vào prompt là AI viết ra chữ "màu VANG_BO" trong
+    // mô tả bán hàng. Đổi sang nhãn tiếng Việt bằng đúng bảng mà cửa hàng và
+    // admin đang dùng (COLOR_FAMILY_LABEL), để chữ AI viết khớp với chữ khách
+    // thấy trên thanh lọc. Mã lạ không có trong bảng thì giữ nguyên — thà hiện mã
+    // còn hơn bỏ mất một màu có thật.
+    const mau: string[] = [];
+    const themMau = (v: string | null) => {
+      const s = (v || "").trim();
+      if (!s) return;
+      const nhan = COLOR_FAMILY_LABEL[s] || s;
+      if (!mau.includes(nhan)) mau.push(nhan);
+    };
+    themMau(sp.colorFamily);
+    mauPhu.forEach((m) => themMau(m.colorFamily));
+
+    // jsonLd qua middleware PrismaService là object đã parse. "{}" hay object rỗng
+    // đều tính là CHƯA có JSON-LD.
+    const coJsonLd = (() => {
+      const v = seo?.jsonLd as unknown;
+      if (v == null) return false;
+      if (typeof v === "object") return Object.keys(v).length > 0;
+      const s = String(v).trim();
+      return s !== "" && s !== "{}";
+    })();
+
+    return {
+      danhMuc,
+      loaiDa,
+      mau,
+      loaiSanPham: sp.productType || null,
+      coBienThe: sp.hasVariants,
+      anh: anh.map((a) => ({
+        url: a.url,
+        // thumbnailUrl để trống ở một số dòng cũ — lùi về url để ô xem trước
+        // không thành ảnh hỏng.
+        urlNho: a.thumbnailUrl?.trim() || a.url,
+        altText: a.altText,
+        imageType: a.imageType,
+        isPrimary: a.isPrimary,
+      })),
+      tongSoAnh,
+      seo: seo
+        ? {
+            ogTitle: goBoc(seo.ogTitle),
+            ogDescription: goBoc(seo.ogDescription),
+            noIndex: seo.noIndex,
+            coJsonLd,
+          }
+        : null,
+    };
+  }
+
+  /**
    * Tra link ra bản ghi. Ném NotFoundException nếu không có gì khớp — chủ shop
    * cần biết ngay, không phải nhận về một khung trống.
    */
@@ -221,6 +407,16 @@ export class AiEditResolver {
         ),
         soLanDaSua: await this.demLanDaSua("product", sp.id),
         canhBao,
+        // Ngữ cảnh là phần LÀM CHỮ TỐT HƠN, không phải phần bắt buộc để sửa chữ.
+        // Nên nó không được quyền làm sập lượt tra: một bảng nối lỗi, một cột đổi
+        // tên, và chủ shop mất luôn khả năng sửa nội dung — đổi lấy thứ chỉ là bổ
+        // trợ. Lỗi thì đi tiếp với null và ghi log để còn lần ra.
+        nguCanh: await this.nguCanhSanPham(sp).catch((e: Error) => {
+          this.log.warn(
+            `Không đọc được ngữ cảnh sản phẩm ${sp.slug}: ${e.message}`,
+          );
+          return null;
+        }),
       };
     }
 

@@ -38,6 +38,79 @@ export interface TruongChu {
   soKyTuNen?: number | null;
 }
 
+/**
+ * Một tấm ảnh gửi cho AI xem.
+ *
+ * `url` là ảnh GỐC trên Cloudinary. Việc thu nhỏ để tiết kiệm token nằm ở
+ * openai.client.ts, không làm ở đây: resolver trả dữ liệu thật, còn thu nhỏ bao
+ * nhiêu là chuyện của bên gọi AI và đổi được không cần sửa tầng dữ liệu.
+ */
+export interface AnhSanPham {
+  url: string;
+  /**
+   * Bản nhỏ có sẵn, để admin vẽ ô xem trước 40px.
+   *
+   * Vì sao cần cột riêng chứ không thu nhỏ trên URL như phía gửi cho AI: cách thu
+   * nhỏ đó chỉ chạy cho Cloudinary, mà 2169/3269 tấm nằm trên Supabase Storage và
+   * ở đó URL giữ nguyên. Không có cột này thì admin tải ảnh 230KB về vẽ trong ô
+   * 40px, nhân với số ảnh mỗi lần tra link.
+   *
+   * Với ảnh Cloudinary đây là tệp bản nhỏ đã tạo sẵn lúc tải lên (~57KB). Với ảnh
+   * Supabase nó bằng chính `url` — không tệ hơn hiện tại, và tự tốt lên nếu về sau
+   * có sinh bản nhỏ cho chúng.
+   */
+  urlNho: string;
+  /**
+   * Chữ thay ảnh. Trên dữ liệu thật nó theo MẪU SẴN
+   * ("Tên - Loại da - Màu - KOI Leather"), tức mô tả định danh chứ không mô tả
+   * những gì thực sự nhìn thấy trong ảnh. Nên nó hữu ích để xác nhận loại da và
+   * màu, nhưng KHÔNG thay được việc cho model nhìn ảnh.
+   */
+  altText: string | null;
+  /** STUDIO, LIFESTYLE, DETAIL… Ảnh DETAIL là chỗ thấy đường chỉ và khoá. */
+  imageType: string;
+  isPrimary: boolean;
+}
+
+/**
+ * NGỮ CẢNH: những gì đã biết chắc về bản ghi, ngoài mấy ô chữ sửa được.
+ *
+ * VÌ SAO CÓ TỆP DỮ LIỆU RIÊNG CHO VIỆC NÀY: quy tắc xương sống của công cụ là
+ * "không bịa". Trước đây AI chỉ nhận 4 ô chữ, nên khi chủ shop viết "dựa vào
+ * hình ảnh sản phẩm mà nâng SEO" thì nó KHÔNG có ảnh nào và phần nào nó nói về
+ * ảnh đều là tự nghĩ ra. Cách chữa đúng không phải là nới quy tắc, mà là ĐƯA
+ * THÊM SỰ THẬT vào rồi cho phép dùng ĐÚNG những sự thật đó.
+ *
+ * Mọi trường ở đây đọc từ DB. Không suy diễn, không mặc định, không điền bừa —
+ * trường nào DB trống thì để trống và prompt sẽ không nhắc tới nó.
+ */
+export interface NguCanh {
+  /** Danh mục chính trước, rồi các danh mục phụ từ bảng nối. */
+  danhMuc: string[];
+  /** Loại da. Nhiều được: thân Epsom + lót Swift là một sản phẩm hai loại da. */
+  loaiDa: Array<{ ten: string; moTa: string | null }>;
+  /** Nhóm màu chuẩn (dùng để lọc ở cửa hàng), không phải mã hex. */
+  mau: string[];
+  /** productType trong DB — WALLET, BAG… */
+  loaiSanPham: string | null;
+  /**
+   * Có biến thể hay không, và khoảng giá. KHÔNG gồm con số giá: prompt cấm viết
+   * số vào chữ, vì giá đổi theo thời gian mà câu chữ thì nằm lại trong DB.
+   */
+  coBienThe: boolean;
+  /** Ảnh, đã xếp ảnh chính lên đầu. */
+  anh: AnhSanPham[];
+  /** Tổng số ảnh trong DB, kể cả phần không gửi cho AI. */
+  tongSoAnh: number;
+  /** Bản ghi SEO riêng (koi_seo_records), nếu có. */
+  seo: {
+    ogTitle: string | null;
+    ogDescription: string | null;
+    noIndex: boolean;
+    coJsonLd: boolean;
+  } | null;
+}
+
 export interface BanGhiDaTra {
   kind: LoaiNoiDung;
   /** Khoá chính, luôn ép về chuỗi (bảng public dùng BigInt, koi dùng UUID). */
@@ -52,6 +125,12 @@ export interface BanGhiDaTra {
   truong: TruongChu[];
   /** Số lần AI đã sửa bản ghi này trước đây. Admin cảnh báo nếu > 0. */
   soLanDaSua: number;
+  /**
+   * Ngữ cảnh. null với bài viết, trang tĩnh, tag — những loại không có danh mục,
+   * loại da hay ảnh sản phẩm để đọc. Bên gọi phải chịu được null, đừng giả định
+   * loại nào cũng có.
+   */
+  nguCanh?: NguCanh | null;
 }
 
 /**

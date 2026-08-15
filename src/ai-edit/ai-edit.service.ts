@@ -5,7 +5,7 @@ import { AiEditResolver, KetQuaTra } from "./ai-edit.resolver";
 import { AiEditWriter, MotThayDoi } from "./ai-edit.writer";
 import { OpenAiClient } from "./openai.client";
 import { goBoc } from "./ai-edit.json-vi";
-import { LoaiNoiDung, TRUONG_CHO_PHEP } from "./ai-edit.types";
+import { LoaiNoiDung, NguCanh, TRUONG_CHO_PHEP } from "./ai-edit.types";
 
 export interface KetQuaSinh {
   kind: LoaiNoiDung;
@@ -15,6 +15,19 @@ export interface KetQuaSinh {
   model: string;
   soToken: number | null;
   canhBao: string[];
+  /**
+   * AI đã dựa vào những gì. Trả về để chủ shop KIỂM ĐƯỢC, không phải để trang trí:
+   * chữ mới nhắc tới loại da mà ô này trống thì đó là AI bịa, thấy ngay.
+   * Số ảnh là số ảnh model THẬT SỰ nhận — không phải số ảnh mình định gửi, vì có
+   * đường lui gọi lại không kèm ảnh khi model không đọc được ảnh.
+   */
+  daDua: {
+    danhMuc: string[];
+    loaiDa: string[];
+    mau: string[];
+    soAnhDaXem: number;
+    coBanGhiSeo: boolean;
+  } | null;
   /** Từng trường: chữ cũ và chữ AI đề nghị. Chưa ghi gì vào DB ở bước này. */
   thayDoi: Array<{
     truong: string;
@@ -66,22 +79,68 @@ export class AiEditService {
    *  · TRẢ ĐỦ KHOÁ: thiếu khoá thì bên dưới hiểu là "không đổi trường đó", nên
    *    dặn rõ trả lại y nguyên nếu không cần sửa, để phân biệt được hai ý.
    */
-  private loiDan(kind: LoaiNoiDung, coHtml: boolean): string {
+  private loiDan(
+    kind: LoaiNoiDung,
+    coHtml: boolean,
+    coNguCanh: boolean,
+    coAnh: boolean,
+  ): string {
     const dong = [
       "Bạn là người biên tập nội dung cho một xưởng đồ da thủ công Việt Nam (KOI Leather).",
       "Nhiệm vụ: viết lại câu chữ theo đúng yêu cầu của chủ xưởng, giữ nguyên ý nghĩa và mọi thông tin thật.",
       "",
       "QUY TẮC BẮT BUỘC:",
-      "1. Viết bằng tiếng Việt tự nhiên, có dấu đầy đủ.",
-      "2. KHÔNG bịa thêm thông tin không có trong bản gốc: không thêm kích thước, chất liệu, giá, thời gian bảo hành, cam kết, con số hay tên riêng nào mới.",
-      "3. Giữ nguyên mọi số liệu, tên chất liệu và tên riêng đã có trong bản gốc.",
-      "4. Giữ nguyên chính xác mọi đường dẫn (href, src) — không sửa một ký tự nào trong URL.",
-      "5. Trường nào bạn thấy đã ổn thì trả lại ĐÚNG NGUYÊN VĂN bản gốc, không được bỏ khoá đó.",
-      "6. Không thêm lời bình, không thêm phần mở đầu hay kết thúc ngoài nội dung được yêu cầu.",
     ];
+
+    // Tự đánh số. Không viết số cứng vào từng câu, vì số khối quy tắc thay đổi
+    // theo bốn công tắc (ngữ cảnh, ảnh, HTML, loại nội dung): đánh tay là sẽ có
+    // ngày prompt ra "1, 2, 6, 7" khi một khối bị tắt. Model đọc dãy số nhảy cóc
+    // thì hiểu là mình bị thiếu quy tắc, và bắt đầu tự suy diễn phần khuyết.
+    let dem = 0;
+    const quyTac = (...cau: string[]) => {
+      for (const c of cau) dong.push(`${++dem}. ${c}`);
+    };
+
+    quyTac("Viết bằng tiếng Việt tự nhiên, có dấu đầy đủ.");
+
+    // Quy tắc 2 là lớp chống bịa — xương sống của cả công cụ. Khi có khối SỰ THẬT
+    // thì phải nới ĐÚNG một khoảng: được dùng thông tin trong khối đó, ngoài ra
+    // vẫn cấm. Viết mơ hồ ở đây là mất luôn lớp bảo vệ, vì model sẽ hiểu rộng ra
+    // thành "được thêm thông tin hợp lý" — mà hàng thủ công thì bịa "da bò Ý" cho
+    // món làm bằng da dê là nói sai với khách thật.
+    if (coNguCanh) {
+      quyTac(
+        "CHỈ được dùng thông tin từ hai nguồn: bản gốc, và khối SỰ THẬT VỀ SẢN PHẨM bên dưới. Ngoài hai nguồn đó thì KHÔNG được thêm gì: không bịa kích thước, giá, thời gian bảo hành, cam kết, số liệu hay tên riêng mới.",
+        "Khối SỰ THẬT là dữ liệu đọc từ hệ thống của xưởng, tin được. Hãy dùng nó để câu chữ đúng và cụ thể hơn — nêu đúng loại da, đúng danh mục. Riêng dòng nào trong khối có ghi chú giới hạn thì phải tôn trọng đúng ghi chú đó.",
+        "Nhưng KHÔNG nhồi hết mọi thứ trong khối SỰ THẬT vào bài. Chỉ đưa vào những gì làm câu chữ tự nhiên hơn với người đọc. Nhồi từ khoá làm hỏng cả trải nghiệm đọc lẫn SEO.",
+        "TUYỆT ĐỐI không viết con số giá vào chữ, dù có biết. Giá đổi theo thời gian, còn câu chữ thì nằm lại trong cơ sở dữ liệu.",
+      );
+    } else {
+      quyTac(
+        "KHÔNG bịa thêm thông tin không có trong bản gốc: không thêm kích thước, chất liệu, giá, thời gian bảo hành, cam kết, con số hay tên riêng nào mới.",
+      );
+    }
+
+    if (coAnh) {
+      // Nói rõ ảnh là ảnh CỦA SẢN PHẨM NÀY. Không dặn thì model có lúc mô tả ảnh
+      // như một tấm hình rời, sinh ra câu kiểu "trong hình có thể thấy…" — đó là
+      // giọng của người bình ảnh, không phải chữ trên trang bán hàng.
+      quyTac(
+        "Kèm theo là ẢNH THẬT của chính sản phẩm này. Được phép dựa vào những gì NHÌN THẤY RÕ trong ảnh: kiểu dáng, bố cục, đường chỉ, khoá và phụ kiện, vân da, sắc màu.",
+        "Ảnh chỉ dùng để tả cho đúng và sinh động. KHÔNG suy ra từ ảnh những thứ ảnh không chứng minh được: không đoán kích thước, không đoán tên loại da, không đoán giá hay xuất xứ.",
+        'Viết như người đang giới thiệu món hàng, KHÔNG viết như người đang bình ảnh. Không dùng các cụm "trong ảnh", "như hình", "có thể thấy".',
+      );
+    }
+
+    quyTac(
+      "Giữ nguyên mọi số liệu, tên chất liệu và tên riêng đã có trong bản gốc.",
+      "Giữ nguyên chính xác mọi đường dẫn (href, src) — không sửa một ký tự nào trong URL.",
+      "Trường nào bạn thấy đã ổn thì trả lại ĐÚNG NGUYÊN VĂN bản gốc, không được bỏ khoá đó.",
+      "Không thêm lời bình, không thêm phần mở đầu hay kết thúc ngoài nội dung được yêu cầu.",
+    );
     if (coHtml) {
-      dong.push(
-        "7. Có trường là HTML. Giữ nguyên cấu trúc thẻ (<p>, <strong>, <ul>, <li>, <a>, <h2>…): chỉ thay chữ bên trong thẻ, không xoá thẻ, không thêm thẻ lạ, không trả về Markdown.",
+      quyTac(
+        "Có trường là HTML. Giữ nguyên cấu trúc thẻ (<p>, <strong>, <ul>, <li>, <a>, <h2>…): chỉ thay chữ bên trong thẻ, không xoá thẻ, không thêm thẻ lạ, không trả về Markdown.",
       );
     }
     dong.push(
@@ -89,6 +148,82 @@ export class AiEditService {
       `Trả về DUY NHẤT một đối tượng JSON, khoá là tên trường được yêu cầu, giá trị là chuỗi nội dung mới. Không kèm giải thích, không kèm khối mã.`,
     );
     return dong.join("\n");
+  }
+
+  /**
+   * Khối SỰ THẬT trong prompt.
+   *
+   * Chỉ in ra trường nào THẬT SỰ CÓ trong DB. Không in "danh mục: (không có)" —
+   * dòng như thế vô ích với model, mà lại tốn token và loãng phần đáng đọc. Trống
+   * thì im lặng.
+   */
+  private khoiSuThat(nc: NguCanh): string {
+    const dong: string[] = [];
+
+    if (nc.danhMuc.length) {
+      dong.push(`- Danh mục: ${nc.danhMuc.join(", ")}`);
+    }
+    if (nc.loaiDa.length) {
+      // Kèm mô tả loại da khi có: đó là chỗ ghi đặc tính thật của da (vân, độ
+      // mềm, cách lên màu) — đúng thứ làm câu chữ cụ thể mà không phải bịa.
+      const ke = nc.loaiDa
+        .map((d) => (d.moTa ? `${d.ten} (${d.moTa})` : d.ten))
+        .join("; ");
+      dong.push(`- Loại da: ${ke}`);
+    }
+    // GỌI ĐÚNG TÊN: đây là NHÓM MÀU để lọc ở cửa hàng, không phải tên màu của sản
+    // phẩm. COLOR_FAMILIES gom mọi sắc về ~13 nhóm (enums.ts), nên một món tên
+    // "DarkBlue" có thể nằm nhóm "Đen" — gặp thật trong dữ liệu shop. Ghi "Màu:
+    // Đen" rồi bảo là tin được thì AI viết "màu đen" cho món DarkBlue, tức mình
+    // vừa tự tay đưa một thông tin sai vào chỗ trước đây nó không dám bịa.
+    if (nc.mau.length) {
+      dong.push(
+        `- Nhóm màu dùng để lọc ở cửa hàng: ${nc.mau.join(", ")} (là nhóm gộp, KHÔNG phải tên màu chính xác của sản phẩm — tên màu đúng nằm trong tên sản phẩm, hãy theo tên sản phẩm)`,
+      );
+    }
+    if (nc.loaiSanPham) dong.push(`- Kiểu sản phẩm: ${nc.loaiSanPham}`);
+    if (nc.coBienThe) {
+      dong.push("- Sản phẩm có nhiều biến thể (nhiều lựa chọn cho khách).");
+    }
+
+    if (nc.seo) {
+      if (nc.seo.ogTitle) dong.push(`- Tiêu đề chia sẻ (OG): ${nc.seo.ogTitle}`);
+      if (nc.seo.ogDescription) {
+        dong.push(`- Mô tả chia sẻ (OG): ${nc.seo.ogDescription}`);
+      }
+      // noIndex đáng nói ra: trang không được Google đánh chỉ mục thì viết chữ
+      // chuẩn SEO cho nó là công cốc, và model nên biết bối cảnh đó.
+      if (nc.seo.noIndex) {
+        dong.push(
+          "- LƯU Ý: trang này đang đặt noIndex, Google không đánh chỉ mục.",
+        );
+      }
+    }
+
+    if (nc.tongSoAnh) {
+      const soGui = nc.anh.length;
+      dong.push(
+        soGui
+          ? `- Sản phẩm có ${nc.tongSoAnh} ảnh; ${soGui} ảnh đại diện được gửi kèm bên dưới để bạn xem.`
+          : `- Sản phẩm có ${nc.tongSoAnh} ảnh (không gửi kèm lượt này).`,
+      );
+      // Alt text hiện theo MẪU SẴN (tên - loại da - màu - KOI Leather), tức nó
+      // xác nhận loại da và màu chứ không tả nội dung ảnh. Nói rõ để model không
+      // coi alt text là mô tả ảnh rồi viết lại y nguyên cái mẫu đó ra bài.
+      const alt = nc.anh
+        .map((a) => a.altText?.trim())
+        .filter((s): s is string => Boolean(s));
+      if (alt.length) {
+        dong.push(
+          `- Chữ thay ảnh hiện tại (theo mẫu sẵn của hệ thống, KHÔNG phải mô tả nội dung ảnh): ${alt.join(" | ")}`,
+        );
+      }
+    }
+
+    if (!dong.length) return "";
+    return ["SỰ THẬT VỀ SẢN PHẨM (dữ liệu hệ thống, tin được):", ...dong].join(
+      "\n",
+    );
   }
 
   private soTokenToiDa(): number {
@@ -137,7 +272,16 @@ export class AiEditService {
     }
 
     const coHtml = canGui.some((t) => t.html);
-    const heThong = this.loiDan(banGhi.kind, coHtml);
+
+    const nc = banGhi.nguCanh ?? null;
+    const suThat = nc ? this.khoiSuThat(nc) : "";
+    const anhGui = nc?.anh.map((a) => a.url) ?? [];
+    const heThong = this.loiDan(
+      banGhi.kind,
+      coHtml,
+      Boolean(suThat),
+      anhGui.length > 0,
+    );
 
     const moTaTruong = canGui
       .map((t) => {
@@ -151,12 +295,15 @@ export class AiEditService {
       canGui.map((t) => [t.ten, t.giaTri ?? ""]),
     );
 
+    // Khối SỰ THẬT đứng TRƯỚC nội dung hiện tại và SAU yêu cầu của chủ xưởng:
+    // model đọc yêu cầu, biết mình có gì trong tay, rồi mới tới chữ cần sửa.
     const nguoiDung = [
       `Trang đang sửa: ${banGhi.path}`,
       `Loại nội dung: ${banGhi.kind}`,
       "",
       "YÊU CẦU CỦA CHỦ XƯỞNG:",
       nhiemVu,
+      ...(suThat ? ["", suThat] : []),
       "",
       "CÁC TRƯỜNG CẦN TRẢ VỀ:",
       moTaTruong,
@@ -165,10 +312,11 @@ export class AiEditService {
       JSON.stringify(banGoc, null, 2),
     ].join("\n");
 
-    const { dulieu, model, soToken } = await this.gpt.sinhJson(
+    const { dulieu, model, soToken, soAnhDaXem } = await this.gpt.sinhJson(
       heThong,
       nguoiDung,
       this.soTokenToiDa(),
+      anhGui,
     );
 
     if (
@@ -240,6 +388,15 @@ export class AiEditService {
       model,
       soToken,
       canhBao: banGhi.canhBao,
+      daDua: nc
+        ? {
+            danhMuc: nc.danhMuc,
+            loaiDa: nc.loaiDa.map((d) => d.ten),
+            mau: nc.mau,
+            soAnhDaXem,
+            coBanGhiSeo: Boolean(nc.seo),
+          }
+        : null,
       thayDoi,
     };
   }

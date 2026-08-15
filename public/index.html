@@ -5449,6 +5449,68 @@ async function aiKhoiTao() {
   aiLichSu();
 }
 
+/**
+ * Khung "AI sẽ dựa vào" dưới thẻ bản ghi.
+ *
+ * Vì sao đáng có chỗ trên giao diện: quy tắc của công cụ là AI không được bịa,
+ * nhưng chủ shop không có cách nào kiểm nếu không thấy AI biết những gì. Hiện ra
+ * thì chữ mới nhắc tới loại da mà đây trống là biết ngay nó tự nghĩ — và ngược
+ * lại, ô này trống chính là dấu hiệu cần đi điền dữ liệu sản phẩm cho đủ.
+ *
+ * Ảnh hiện thumbnail thật, vì "3 ảnh" không nói được là ĐÚNG 3 ảnh nào.
+ */
+function aiVeNguCanh(nc) {
+  if (!nc) return '';
+
+  const the = [];
+  if ((nc.danhMuc || []).length) the.push({ nhan: 'Danh mục', giaTri: nc.danhMuc.join(', '), mau: 'bg-sky-100 text-sky-800' });
+  if ((nc.loaiDa || []).length) the.push({ nhan: 'Loại da', giaTri: nc.loaiDa.map(function (d) { return d.ten; }).join(', '), mau: 'bg-amber-100 text-amber-900' });
+  if ((nc.mau || []).length) the.push({ nhan: 'Màu', giaTri: nc.mau.join(', '), mau: 'bg-violet-100 text-violet-800' });
+  if (nc.loaiSanPham) the.push({ nhan: 'Kiểu', giaTri: nc.loaiSanPham, mau: 'bg-slate-200 text-slate-700' });
+  if (nc.seo) the.push({ nhan: 'Bản ghi SEO', giaTri: nc.seo.noIndex ? 'có · đang noIndex' : 'có', mau: nc.seo.noIndex ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800' });
+
+  const anh = nc.anh || [];
+  if (!the.length && !anh.length) {
+    return '<div class="mt-2 rounded border border-dashed border-gray-300 px-2.5 py-2 text-[12px] text-gray-500">'
+      + '<i class="fas fa-circle-info mr-1"></i>Sản phẩm này chưa có danh mục, loại da hay ảnh trong hệ thống — '
+      + 'AI chỉ dựa được vào chữ đang có. Điền các thông tin đó ở thẻ Sản phẩm thì chữ sẽ cụ thể hơn.</div>';
+  }
+
+  let h = '<div class="mt-2 rounded border border-indigo-200 bg-indigo-50/50 px-2.5 py-2">'
+    + '<div class="text-[11px] uppercase tracking-wide text-indigo-900/70 font-medium mb-1.5">'
+    + '<i class="fas fa-database mr-1"></i>AI sẽ dựa vào</div>'
+    + '<div class="flex flex-wrap gap-1.5">';
+  the.forEach(function (t) {
+    h += '<span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ' + t.mau + '">'
+       + '<b class="font-medium opacity-70">' + esc(t.nhan) + ':</b>' + esc(t.giaTri) + '</span>';
+  });
+  h += '</div>';
+
+  if (anh.length) {
+    h += '<div class="flex items-center gap-1.5 mt-2">';
+    anh.forEach(function (a) {
+      // urlNho là bản nhỏ máy chủ đã chọn sẵn (xem AnhSanPham trong
+      // ai-edit.types.ts). Với ảnh Cloudinary còn thu nhỏ thêm được ngay trên URL
+      // cho vừa khung 40px; ảnh ở nơi khác thì dùng nguyên urlNho.
+      const nho = a.urlNho || a.url || '';
+      const ve = nho.indexOf('/image/upload/') >= 0
+        ? nho.replace('/image/upload/', '/image/upload/w_80,h_80,c_fill,q_auto/')
+        : nho;
+      h += '<img src="' + escAttr(ve) + '" alt="' + escAttr(a.altText || '') + '" loading="lazy"'
+         + ' class="w-10 h-10 rounded object-cover border border-indigo-200" title="' + escAttr(a.altText || a.imageType || '') + '">';
+    });
+    const con = (nc.tongSoAnh || 0) - anh.length;
+    h += '<span class="text-[11px] text-indigo-900/60 ml-0.5">'
+       + anh.length + ' ảnh AI được xem' + (con > 0 ? ' · còn ' + con + ' ảnh không gửi' : '') + '</span>';
+    h += '</div>';
+  } else if (nc.tongSoAnh) {
+    h += '<div class="text-[11px] text-gray-500 mt-1.5">Có ' + nc.tongSoAnh + ' ảnh nhưng lượt này không gửi ảnh nào cho AI.</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
 async function aiTraLink() {
   const link = document.getElementById('aiLink').value.trim();
   if (!link) { toast('Dán link trang cần sửa'); return; }
@@ -5480,6 +5542,11 @@ async function aiTraLink() {
       h += '<div class="mt-2 rounded border border-amber-300 bg-amber-50 px-2.5 py-2 text-[12px] text-amber-900">'
          + '<i class="fas fa-triangle-exclamation mr-1"></i>' + esc(c) + '</div>';
     });
+
+    // NGỮ CẢNH: những gì AI được biết ngoài mấy ô chữ. Hiện ra để chủ shop kiểm
+    // được — chữ mới nhắc tới loại da mà ô này trống thì đó là AI bịa.
+    h += aiVeNguCanh(b.nguCanh);
+
     box.innerHTML = h;
 
     // Danh sách trường, tick sẵn những trường ĐANG CÓ CHỮ. Trường trống không
@@ -5515,7 +5582,13 @@ async function aiXemTruoc() {
   const btn = document.getElementById('aiBtnXemTruoc');
   const cu = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>AI đang viết... (tối đa 50 giây)';
+  // Nói rõ có xem ảnh hay không: lượt kèm ảnh chậm hơn hẳn (OpenAI phải tải từng
+  // ảnh về trước khi viết), nên chờ lâu mà biết vì sao thì khác với chờ lâu không
+  // hiểu chuyện gì đang xảy ra.
+  const soAnh = (aiBanGhi.nguCanh && aiBanGhi.nguCanh.anh) ? aiBanGhi.nguCanh.anh.length : 0;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>AI đang '
+    + (soAnh ? 'xem ' + soAnh + ' ảnh và viết' : 'viết')
+    + '... (tối đa 50 giây)';
 
   try {
     const kq = await api('/analytics/ai-edit/generate', {
@@ -5538,9 +5611,28 @@ async function aiXemTruoc() {
 
 function aiVeSoSanh(kq) {
   const coDoi = kq.thayDoi.filter(function (t) { return !t.khongDoi; });
-  document.getElementById('aiKetQuaTom').innerHTML =
-    '<b>' + coDoi.length + '</b> phần có chữ mới &middot; model <code>' + esc(kq.model) + '</code>'
+  let tom = '<b>' + coDoi.length + '</b> phần có chữ mới &middot; model <code>' + esc(kq.model) + '</code>'
     + (kq.soToken ? ' &middot; ' + kq.soToken + ' token' : '');
+
+  // AI ĐÃ DỰA VÀO GÌ, ở ngay cạnh kết quả chứ không chỉ ở khung bản ghi phía
+  // trên. Đây là lúc chủ shop đọc từng câu để quyết định tick hay không, nên cần
+  // thấy ngay: chữ mới tả đường chỉ mà "0 ảnh" thì đó là AI tự nghĩ.
+  //
+  // soAnhDaXem là số ảnh model THẬT SỰ nhận, không phải số ảnh đã gửi — model chỉ
+  // đọc chữ thì máy chủ gọi lại lượt hai không kèm ảnh và số này về 0.
+  const d = kq.daDua;
+  if (d) {
+    const phan = [];
+    phan.push('<i class="fas fa-' + (d.soAnhDaXem ? 'eye' : 'eye-slash') + ' mr-1"></i>'
+      + (d.soAnhDaXem ? 'đã xem <b>' + d.soAnhDaXem + '</b> ảnh' : '<b>không xem ảnh nào</b>'));
+    if ((d.danhMuc || []).length) phan.push('danh mục ' + esc(d.danhMuc.join(', ')));
+    if ((d.loaiDa || []).length) phan.push('da ' + esc(d.loaiDa.join(', ')));
+    if ((d.mau || []).length) phan.push('màu ' + esc(d.mau.join(', ')));
+    if (d.coBanGhiSeo) phan.push('có bản ghi SEO');
+    tom += '<div class="mt-1 text-[11px] text-gray-500">AI dựa vào: ' + phan.join(' &middot; ') + '</div>';
+  }
+
+  document.getElementById('aiKetQuaTom').innerHTML = tom;
 
   document.getElementById('aiSoSanh').innerHTML = kq.thayDoi.map(function (t, i) {
     const id = 'aiap' + i;

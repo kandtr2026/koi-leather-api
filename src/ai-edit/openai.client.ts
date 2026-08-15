@@ -1,6 +1,7 @@
 import {
   BadGatewayException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from "@nestjs/common";
 
@@ -19,6 +20,8 @@ import {
  */
 @Injectable()
 export class OpenAiClient {
+  private readonly log = new Logger(OpenAiClient.name);
+
   /**
    * Model mặc định. Đặt được qua biến môi trường OPENAI_MODEL để đổi không cần
    * deploy — hữu ích khi OpenAI ra model mới hoặc khai tử model cũ.
@@ -62,6 +65,40 @@ export class OpenAiClient {
   }
 
   /**
+   * Thu nhỏ ảnh Cloudinary NGAY TRÊN URL trước khi gửi cho model.
+   *
+   * Ảnh gốc trong thư viện to cỡ 2048px cho màn hình retina. Model không cần tới
+   * mức đó: nó cần thấy hình dáng, chất da, đường chỉ, khoá.
+   *
+   * SỐ ĐO THẬT trên thư viện của shop (5 ảnh ngẫu nhiên, tải về đo dung lượng):
+   *   144KB → 23KB · 271KB → 38KB · 156KB → 28KB · 308KB → 41KB · 311KB → 84KB
+   * Tức nhẹ đi 4–8 lần, mà w_768 vẫn thừa chi tiết để thấy hình dáng, vân da,
+   * đường chỉ và khoá — đúng những thứ model cần nhìn.
+   *
+   * KHÔNG đặt f_jpg. Thư viện đang là webp toàn bộ và OpenAI có nhận webp; ép sang
+   * jpeg chỉ làm ảnh NẶNG THÊM (đo cùng một tấm: 38KB jpeg so với 28KB webp) mà
+   * không đổi được gì.
+   *
+   * ẢNH KHÔNG PHẢI CLOUDINARY THÌ GIỮ NGUYÊN URL — có chủ ý, không phải bỏ sót.
+   * Hai phần ba thư viện (2169/3269 tấm) nằm trên Supabase Storage. Supabase có
+   * endpoint biến đổi ảnh (/render/image/) và nó đang bật, nhưng đã đo rồi KHÔNG
+   * dùng, vì ba lý do:
+   *   · Nó giải mã lại thành jpeg, nên ảnh nhỏ PHỒNG TO ra (đo được 34KB → 42KB).
+   *   · Nó là tính năng theo gói dịch vụ. Ngày nào gói đổi thì URL trả 400, OpenAI
+   *     không tải được ảnh và cả lượt gọi hỏng.
+   *   · Với detail "low" thì token là số cố định bất kể ảnh to nhỏ, nên phần lợi
+   *     duy nhất là vài trăm mili-giây tải về — mà phần tải đó nằm ở phía OpenAI.
+   * Cân lại thì rủi ro lớn hơn cái lợi. Đổi ý thì sửa ở đúng hàm này.
+   */
+  private thuNhoAnh(url: string): string {
+    const moc = "/image/upload/";
+    if (!url.includes("res.cloudinary.com") || !url.includes(moc)) return url;
+    const [dau, ...duoi] = url.split(moc);
+    // q_auto: để Cloudinary tự chọn mức nén theo từng ảnh.
+    return `${dau}${moc}w_768,q_auto/${duoi.join(moc)}`;
+  }
+
+  /**
    * Gọi một lượt sinh chữ và trả về JSON đã phân tích.
    *
    * response_format json_object: buộc model trả JSON hợp lệ thay vì văn xuôi có
@@ -77,7 +114,13 @@ export class OpenAiClient {
     heThong: string,
     nguoiDung: string,
     soTokenToiDa = 8000,
-  ): Promise<{ dulieu: unknown; model: string; soToken: number | null }> {
+    anh: string[] = [],
+  ): Promise<{
+    dulieu: unknown;
+    model: string;
+    soToken: number | null;
+    soAnhDaXem: number;
+  }> {
     if (!this.key) {
       throw new ServiceUnavailableException(
         "Chưa cấu hình OPENAI_API_KEY trên máy chủ. Vào Vercel → project koi-leather-api → Settings → Environment Variables để đặt.",
@@ -90,9 +133,27 @@ export class OpenAiClient {
     const dungSau = new AbortController();
     const hen = setTimeout(() => dungSau.abort(), hanCho);
 
-    let res: Response;
-    try {
-      res = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Ảnh gửi kèm. Chuỗi rỗng/trùng bị loại ở đây thay vì tin bên gọi đã sạch:
+    // một URL rỗng làm OpenAI trả 400 cho CẢ request, tức mất luôn phần chữ.
+    const anhSach = Array.from(
+      new Set(anh.filter((u) => typeof u === "string" && u.trim())),
+    ).map((u) => this.thuNhoAnh(u.trim()));
+
+    // detail "low": OpenAI xử ảnh ở mức thô, tốn ít token và nhanh hơn nhiều.
+    // Đủ cho việc mình cần — nhận ra kiểu dáng, chất da, màu, bố cục. Muốn model
+    // đọc chữ in trên sản phẩm thì mới cần "high", mà đó không phải việc ở đây.
+    const noiDung = anhSach.length
+      ? [
+          { type: "text", text: nguoiDung },
+          ...anhSach.map((url) => ({
+            type: "image_url",
+            image_url: { url, detail: "low" },
+          })),
+        ]
+      : nguoiDung;
+
+    const goi = (keNoiDung: unknown) =>
+      fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -105,10 +166,31 @@ export class OpenAiClient {
           max_completion_tokens: soTokenToiDa,
           messages: [
             { role: "system", content: heThong },
-            { role: "user", content: nguoiDung },
+            { role: "user", content: keNoiDung },
           ],
         }),
       });
+
+    let soAnhDaXem = anhSach.length;
+    let res: Response;
+    try {
+      res = await goi(noiDung);
+
+      // Model không đọc được ảnh thì OpenAI trả 400 và cả lượt mất trắng — kể cả
+      // phần chữ vốn không liên quan gì tới ảnh. Model đặt được qua OPENAI_MODEL
+      // nên chuyện này SẼ xảy ra vào ngày ai đó đổi sang model chỉ có chữ.
+      // Thử lại một lần không kèm ảnh: chủ shop vẫn nhận được chữ mới, kém hơn
+      // nhưng dùng được, thay vì một câu lỗi kỹ thuật.
+      if (!res.ok && res.status === 400 && anhSach.length) {
+        const than = await res.clone().text();
+        if (/image|vision|multimodal|image_url/i.test(than)) {
+          this.log.warn(
+            `Model ${this.model} không nhận ảnh, gọi lại chỉ với chữ. Chi tiết: ${than.slice(0, 200)}`,
+          );
+          soAnhDaXem = 0;
+          res = await goi(nguoiDung);
+        }
+      }
     } catch (e) {
       const loi = e as Error;
       if (loi.name === "AbortError") {
@@ -185,6 +267,7 @@ export class OpenAiClient {
       dulieu,
       model: json.model || this.model,
       soToken: json.usage?.total_tokens ?? null,
+      soAnhDaXem,
     };
   }
 }
