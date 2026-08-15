@@ -422,6 +422,21 @@ export class AdsAdminController {
   }
 
   /**
+   * Cấu trúc tài khoản: danh sách campaign (ENABLED) + ad group (ENABLED) con
+   * để heoiu dựng picker chọn đích khi thêm/sửa từ khoá (Phase 1a).
+   *
+   * Admin-only như các route đọc Ads khác.
+   */
+  @Get("ads/structure")
+  @ApiOperation({ summary: "Danh sách campaign + ad group ENABLED để làm picker chọn đích" })
+  async layStructure(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.ads.layStructure();
+  }
+
+  /**
    * Import hiện trạng: hút toàn bộ từ khoá/negative đang chạy trên Google Ads
    * vào sổ tay (Phase 0). CHỈ ĐỌC Ads + ghi DB của mình, KHÔNG mutate Ads.
    *
@@ -441,6 +456,11 @@ export class AdsAdminController {
     return this.ads.importTuKhoaTuAds();
   }
 
+  /**
+   * Thêm từ khoá vào sổ tay (Phase 1b: nhận thêm loai, adGroupId, campaignId,
+   * phamViNegative). Dùng themTuKhoaV2 thay themTuKhoa cũ — khuôn mới validate
+   * đầy đủ, loaiKhop không còn nhận 'negative' (đã tách sang cột loai).
+   */
   @Post("ads/keywords")
   @ApiOperation({ summary: "Thêm từ khoá vào sổ tay" })
   async themTuKhoa(
@@ -451,15 +471,18 @@ export class AdsAdminController {
       loaiKhop?: string;
       trangThai?: string;
       ghiChu?: string;
+      loai?: string;
+      adGroupId?: string;
+      campaignId?: string;
+      phamViNegative?: string;
     },
   ) {
-    return this.ads.themTuKhoa(body);
+    return this.ads.themTuKhoaV2(body);
   }
 
   /**
-   * PATCH chứ không PUT: giao diện cho sửa từng ô một (đổi trạng thái nhanh
-   * active/paused ngay trên bảng), gửi cả bản ghi mỗi lần bấm là dễ ghi đè mất
-   * ghi chú người khác vừa nhập.
+   * PATCH chứ không PUT: giao diện cho sửa từng ô một. Phase 1b: nhận thêm
+   * loai, adGroupId, campaignId, phamViNegative — dùng suaTuKhoaV2.
    */
   @Patch("ads/keywords/:id")
   @ApiOperation({ summary: "Sửa từ khoá trong sổ tay" })
@@ -472,9 +495,13 @@ export class AdsAdminController {
       loaiKhop?: string | null;
       trangThai?: string;
       ghiChu?: string | null;
+      loai?: string;
+      adGroupId?: string | null;
+      campaignId?: string | null;
+      phamViNegative?: string | null;
     },
   ) {
-    return this.ads.suaTuKhoa(id, body);
+    return this.ads.suaTuKhoaV2(id, body);
   }
 
   @Delete("ads/keywords/:id")
