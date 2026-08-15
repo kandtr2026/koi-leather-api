@@ -4004,27 +4004,57 @@ function applyBulkVariantPrice() {
  * viễn. Endpoint /products/:id/variants ghi cả mảng hoặc rollback cả mảng; khách
  * chỉ nhìn thấy trạng thái trước hoặc sau khi bảng giá hoàn chỉnh.
  */
-async function syncVariants(productId) {
+async function syncVariants(onProgress) {
+  // ── VÌ SAO GỬI TỪNG BIẾN THỂ, KHÔNG GỬI MẢNG ──
+  //
+  // PATCH /products/:id/variants (đường cũ) nhận VariantDto[] và VariantDto.price
+  // là @IsNumber @Min(0) — KHÔNG @IsOptional. Gửi mảng mà một dòng chưa có giá
+  // thì ValidationPipe trả 400 cho cả lượt. Không thể lưu dở dang, phải điền đủ
+  // 28 ô của da-ca-sau mới lưu được lần đầu.
+  //
+  // upsertVariantsTx còn XOÁ mọi biến thể có id không nằm trong mảng gửi lên —
+  // gửi thiếu một dòng là mất dòng đó và mọi lệnh sản xuất trỏ vào nó.
+  //
+  // PATCH /products/variants/:variantId nhận Partial<VariantDto> — price vắng mặt
+  // là "không đổi giá", khác hẳn price = null "xoá giá". Và nó gọi
+  // recomputePriceRange() sau mỗi dòng, nên dải giá tự khớp từng bước.
+  //
+  // Đổi lại: mỗi dòng là một lượt gọi. 28 dòng là 28 lượt. Nên CHỈ gửi dòng
+  // thật sự đổi (so với variantsGoc), và thất bại của một dòng không xoá 27 dòng kia.
   const doiThay = [];
   variantRows.forEach((v, i) => {
     const g = variantsGoc[i];
     if (!g || g.id !== v.id) return;
     const dto = {};
-    if (v.price !== g.price) dto.price = v.price;          // null = xoá giá
+    // Ghi rõ từng trường thay vì Object.assign — cần kiểm soát kỹ cái nào gửi.
+    // price: null = xoá giá (gửi rõ); undefined = không đổi (không gửi). Hai thứ
+    // khác nhau vì Partial<VariantDto> kiểm tra !== undefined để quyết định có ghi.
+    if (v.price !== g.price) dto.price = v.price ?? null;
     if (v.stockStatus !== g.stockStatus) dto.stockStatus = v.stockStatus;
     if (v.title !== g.title) dto.title = v.title || null;
-    if (Object.keys(dto).length) doiThay.push({ i, id: v.id, ...dto });
+    if (Object.keys(dto).length) doiThay.push({ i, id: v.id, dto });
   });
-  if (!doiThay.length) return { daLuu: 0, tong: 0 };
+  if (!doiThay.length) return { daLuu: 0, loi: [], tong: 0 };
 
-  await api('/products/' + productId + '/variants', {
-    method: 'PATCH',
-    body: JSON.stringify({ variants: doiThay.map(({ id, ...dto }) => ({ id, ...dto })) }),
-  });
-  doiThay.forEach(({ i }) => {
-    variantsGoc[i] = JSON.parse(JSON.stringify(variantRows[i]));
-  });
-  return { daLuu: doiThay.length, tong: doiThay.length };
+  let daLuu = 0;
+  const loi = [];
+  for (let k = 0; k < doiThay.length; k++) {
+    const { i, id, dto } = doiThay[k];
+    try {
+      await api('/products/variants/' + id, {
+        method: 'PATCH',
+        body: JSON.stringify(dto),
+      });
+      daLuu++;
+      // Cập nhật bản gốc cho dòng này ngay lập tức: bấm Lưu lại không gửi lại dòng
+      // đã thành công, chỉ gửi phần còn lỗi.
+      variantsGoc[i] = JSON.parse(JSON.stringify(variantRows[i]));
+    } catch (e) {
+      loi.push({ ten: variantRows[i].sku || variantRows[i].title || '?', msg: e.message });
+    }
+    if (onProgress) onProgress((k + 1) / doiThay.length);
+  }
+  return { daLuu, loi, tong: doiThay.length };
 }
 
 // ========== PROCESSING STATE HELPERS ==========
@@ -4199,10 +4229,20 @@ async function saveProduct() {
       // vừa tính xong lại sai — phải sửa rồi lưu lần hai mới đúng.
       if (variantsDirty) {
         setProgress(16, 'Đang lưu giá biến thể...');
-        const kq = await syncVariants(id);
-        // Lưu cả lô đã thành công thì mới tắt dấu chấm vàng. Lỗi sẽ ném vào catch
-        // và transaction rollback toàn bộ, nên không có trạng thái "lưu được vài
-        // dòng" để người bán phải đoán.
+        const kq = await syncVariants(function(tienDo) {
+          setProgress(16 + tienDo * 9, 'Đang lưu giá biến thể...');
+        });
+        if (kq.loi.length) {
+          // Giữ modal mở. variantsGoc đã cập nhật cho phần thành công, nên bấm Lưu
+          // lại chỉ gửi phần còn hỏng.
+          swrCache.clearProductCache();
+          await loadProducts();
+          const dau = kq.loi[0];
+          toast(`Đã lưu ${kq.daLuu}/${kq.tong} biến thể. Lỗi ở ${dau.ten}: ${dau.msg}`);
+          switchProductTab('variants');
+          renderVariants();
+          return;
+        }
         variantsDirty = false;
         document.getElementById('pVarDirtyDot').classList.add('hidden');
         setProgress(25, `Đã lưu ${kq.daLuu} biến thể`);
