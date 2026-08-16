@@ -612,7 +612,7 @@ describe("AdsAdminController — 2 endpoint live mới: admin-only + 400", () =>
 
   it("GET search-terms/live: không req.user → chặn 401, KHÔNG chạm service", async () => {
     const svc = serviceGia();
-    const ctl = new AdsAdminController(svc);
+    const ctl = new AdsAdminController(svc, {} as any); // landingSeo không đụng trong các test này
     await expect(ctl.searchTermsThat(reqAnDanh())).rejects.toThrow(
       UnauthorizedException,
     );
@@ -621,14 +621,14 @@ describe("AdsAdminController — 2 endpoint live mới: admin-only + 400", () =>
 
   it("GET search-terms/live: có admin → gọi service", async () => {
     const svc = serviceGia();
-    const ctl = new AdsAdminController(svc);
+    const ctl = new AdsAdminController(svc, {} as any); // landingSeo không đụng trong các test này
     await ctl.searchTermsThat(reqCoAdmin());
     expect(svc.searchTermsThat).toHaveBeenCalledTimes(1);
   });
 
   it("GET keyword-ideas/live: không req.user → chặn 401, KHÔNG chạm service", async () => {
     const svc = serviceGia();
-    const ctl = new AdsAdminController(svc);
+    const ctl = new AdsAdminController(svc, {} as any); // landingSeo không đụng trong các test này
     await expect(ctl.yTuongTuKhoa(reqAnDanh(), "ví da")).rejects.toThrow(
       UnauthorizedException,
     );
@@ -637,7 +637,7 @@ describe("AdsAdminController — 2 endpoint live mới: admin-only + 400", () =>
 
   it("GET keyword-ideas/live: chuẩn hoá seed (chuỗi/mảng/vắng) trước khi gọi", async () => {
     const svc = serviceGia();
-    const ctl = new AdsAdminController(svc);
+    const ctl = new AdsAdminController(svc, {} as any); // landingSeo không đụng trong các test này
 
     await ctl.yTuongTuKhoa(reqCoAdmin(), "ví da"); // một chuỗi → mảng 1 phần tử
     expect(svc.yTuongTuKhoa).toHaveBeenLastCalledWith(["ví da"]);
@@ -653,7 +653,7 @@ describe("AdsAdminController — 2 endpoint live mới: admin-only + 400", () =>
     // Dùng AdsService thật (client + prisma giả) để chứng minh đường đi trọn vẹn:
     // controller chuẩn hoá undefined → [] → service ném BadRequest.
     const service = new AdsService(prismaGia() as never, adsGia() as never);
-    const ctl = new AdsAdminController(service);
+    const ctl = new AdsAdminController(service, {} as any); // landingSeo không đụng trong test này
     await expect(ctl.yTuongTuKhoa(reqCoAdmin(), undefined)).rejects.toThrow(
       BadRequestException,
     );
@@ -661,7 +661,7 @@ describe("AdsAdminController — 2 endpoint live mới: admin-only + 400", () =>
 
   it("GET keywords/live (từ khoá thật): không req.user → chặn 401", async () => {
     const svc = serviceGia();
-    const ctl = new AdsAdminController(svc);
+    const ctl = new AdsAdminController(svc, {} as any); // landingSeo không đụng trong các test này
     await expect(ctl.tuKhoaThat(reqAnDanh())).rejects.toThrow(
       UnauthorizedException,
     );

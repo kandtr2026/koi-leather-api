@@ -23,10 +23,12 @@ import type { Request, Response } from "express";
 import { AdsService } from "./ads.service";
 import { KeywordPoolService } from "./keyword-pool.service";
 import { SyncService } from "./sync.service";
+import { LandingSeoService } from "./landing-seo.service";
 import { AssignKeywordDto } from "./dto/assign-keyword.dto";
 import { PushBulkDto } from "./dto/push-bulk.dto";
 import { SyncPushDto } from "./dto/sync-push.dto";
 import { AdClickDto, AdContactDto } from "./dto/public-ad.dto";
+import { AnalyzeDto, ScoreDto, SeodraftDto } from "./dto/landing-seo.dto";
 
 /**
  * Đường ghi nhận cú bấm quảng cáo — CÔNG KHAI.
@@ -190,7 +192,10 @@ export class AdsTrackController {
 @ApiTags("Analytics (admin)")
 @Controller("analytics")
 export class AdsAdminController {
-  constructor(private readonly ads: AdsService) {}
+  constructor(
+    private readonly ads: AdsService,
+    private readonly landingSeo: LandingSeoService,
+  ) {}
 
   @Get("ads")
   @ApiOperation({ summary: "Danh sách cú bấm quảng cáo" })
@@ -560,6 +565,91 @@ export class AdsAdminController {
       throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
     }
     return this.ads.dayTuKhoaNhieu(dto.ids);
+  }
+
+  // ─── Cụm "Ads ↔ Landing ↔ SEO" (bước 1, 2, 3, 6) ─────────────────────────
+  //
+  // CHỈ ĐỌC + NHÁP: bốn đường này không mutate gì xuống Google Ads. Bước 4-5
+  // (review + đẩy) đi qua sổ tay KoiAdKeyword và push-bulk ở trên.
+  //
+  // Ba đường POST đều tốn phí GPT nên cùng một bộ chốt: tự kiểm req.user (chống
+  // PUBLIC_VIEW=1 mở cửa phần đọc), ValidationPipe whitelist chặn body lạ, và
+  // Throttle 10 lượt/phút — cùng mức route seo/review.
+
+  /**
+   * Bước 1: campaign đang chạy (ENABLED) kèm finalUrls của quảng cáo bên trong,
+   * để heoiu vẽ danh sách chọn landing phân tích. Cùng khuôn daNoi/thieuBien
+   * với các route đọc Ads khác.
+   */
+  @Get("ads/landing/campaigns")
+  @ApiOperation({ summary: "Campaign đang chạy + URL landing của quảng cáo" })
+  async landingCampaigns(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.landingSeo.landingCampaigns();
+  }
+
+  /**
+   * Bước 2: fetch trang landing (chỉ host trong allowlist — chống SSRF), lột
+   * chữ, GPT tóm tắt. Trả ok=false kèm loi khi landing/GPT lỗi — KHÔNG ném 500,
+   * để heoiu luôn nhận cùng một khuôn trả lời.
+   */
+  @Post("ads/landing/analyze")
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: "Tải trang landing + GPT tóm tắt (chỉ host cho phép)" })
+  async phanTichLanding(@Req() req: Request, @Body() dto: AnalyzeDto) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.landingSeo.phanTichLanding(dto.url);
+  }
+
+  /**
+   * Bước 3: chấm MỘT LÔ từ khoá so với landing → nenDung / nenChan / nenThem.
+   * heoiu tự chia lô ~100 từ và gọi nhiều lần. Không gọi GPT khi lô vào rỗng
+   * sau lọc — trả ba mảng rỗng kèm loi, không tốn phí.
+   */
+  @Post("ads/landing/score")
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: "GPT chấm một lô từ khoá so với landing (nenDung/nenChan/nenThem)" })
+  async chamTuKhoa(@Req() req: Request, @Body() dto: ScoreDto) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.landingSeo.chamTuKhoa({
+      landingText: dto.landingText,
+      tomTat: dto.tomTat,
+      intent: dto.intent,
+      tuKhoas: dto.tuKhoas,
+      searchTerms: dto.searchTerms,
+    });
+  }
+
+  /**
+   * Bước 6: GPT viết NHÁP khối nội dung SEO bổ sung (H2/FAQ) phủ từ khoá đã
+   * duyệt. Chỉ trả về cho heoiu hiển thị — không ghi xuống landing, không đẩy
+   * đi đâu; chủ shop tự quyết định dán hay không.
+   */
+  @Post("ads/landing/seo-draft")
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: "GPT viết nháp khối nội dung SEO (H2/FAQ) cho landing" })
+  async vietSeoDraft(@Req() req: Request, @Body() dto: SeodraftDto) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.landingSeo.vietSeoDraft({
+      landingText: dto.landingText,
+      tomTat: dto.tomTat,
+      tuKhoas: dto.tuKhoas,
+      url: dto.url,
+    });
   }
 }
 

@@ -37,6 +37,15 @@ const DUONG_TU_CHOI_SERVICE = [
  */
 const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   ["POST", /^\/analytics\/ads\/convert$/],
+  // ----- Landing-SEO (cụm "Ads ↔ Landing ↔ SEO") -----
+  // Ba đường POST gọi GPT (tốn phí OpenAI) phục vụ bước phân tích landing /
+  // chấm từ khoá / viết nháp SEO. KHÔNG mutate tài khoản Ads, nhưng là POST
+  // có tác dụng phụ ngoài (gọi OpenAI, fetch ra ngoài) nên phải qua token ghi.
+  // Đường TĨNH và là nhánh /landing riêng — đặt TRƯỚC các luật /keywords để giữ
+  // quy ước "static trước dynamic" và khỏi bị luật uuid nào nuốt nhầm.
+  ["POST", /^\/analytics\/ads\/landing\/analyze$/],
+  ["POST", /^\/analytics\/ads\/landing\/score$/],
+  ["POST", /^\/analytics\/ads\/landing\/seo-draft$/],
   ["POST", /^\/analytics\/ads\/keywords$/],
   // Import hiện trạng Google Ads về sổ tay (Phase 0). CHỈ đọc Ads + ghi DB của
   // mình, KHÔNG mutate tài khoản quảng cáo — nhưng vẫn là POST có tác dụng phụ
