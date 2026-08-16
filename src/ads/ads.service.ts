@@ -1073,11 +1073,59 @@ export class AdsService {
    * Đây là sổ tay nội bộ nên xoá thật sự là ổn — không ảnh hưởng lịch sử
    * cú bấm hay báo cáo doanh thu vốn nằm ở bảng koi_ad_clicks.
    */
-  async xoaTuKhoa(id: string): Promise<{ ok: boolean }> {
-    const ton = await this.prisma.koiAdKeyword.findUnique({ where: { id } });
-    if (!ton) throw new NotFoundException("Không tìm thấy từ khoá");
-    await this.prisma.koiAdKeyword.delete({ where: { id } });
-    return { ok: true };
+  async xoaTuKhoa(id: string): Promise<{
+    ok: boolean;
+    deleted: boolean;
+    goAds?: boolean;
+    loiDongBo?: string;
+  }> {
+    const k = await this.prisma.koiAdKeyword.findUnique({ where: { id } });
+    if (!k) throw new NotFoundException("Không tìm thấy từ khoá");
+
+    // Dòng chưa đẩy (không có adsResourceName) → xoá DB luôn, không cần gọi Ads.
+    if (!k.adsResourceName) {
+      await this.prisma.koiAdKeyword.delete({ where: { id } });
+      return { ok: true, deleted: true, goAds: false };
+    }
+
+    // Dòng đã đẩy → gỡ criterion khỏi Google Ads TRƯỚC, xoá DB SAU.
+    // Thứ tự này quan trọng: xoá DB trước mà Ads lỗi thì criterion còn sống trên
+    // tài khoản thật, vẫn ăn tiền, mà mình mất luôn adsResourceName — không còn
+    // cách nào tìm lại để xoá ngoài vào Google Ads bấm tay.
+    if (!this.ads.daCauHinh()) {
+      const thieu = this.ads.bienConThieu().join(", ");
+      throw new BadRequestException(`Chưa cấu hình Google Ads API. Còn thiếu: ${thieu}`);
+    }
+
+    const loai = k.loai ?? "keyword";
+    const phamVi = k.phamViNegative ?? "adgroup";
+    const service =
+      loai === "negative" && phamVi === "campaign"
+        ? "campaignCriteria:mutate"
+        : "adGroupCriteria:mutate";
+
+    try {
+      await this.ads.mutate(service, {
+        operations: [{ remove: k.adsResourceName }],
+      });
+
+      // Ads xoá thành công → xoá dòng DB.
+      await this.prisma.koiAdKeyword.delete({ where: { id } });
+      return { ok: true, deleted: true, goAds: true };
+    } catch (err: any) {
+      // Ads lỗi → GIỮ dòng, ghi lỗi vào loiDongBo để hiển thị trên panel.
+      const loiDongBo: string = err?.message
+        ? String(err.message).slice(0, 500)
+        : "Lỗi không xác định khi gọi Google Ads API";
+
+      await this.prisma.koiAdKeyword.update({
+        where: { id },
+        data: { trangThaiDongBo: "loi", loiDongBo },
+      });
+
+      // Không ném lại: controller trả về kết quả lỗi rõ ràng thay vì 500.
+      return { ok: true, deleted: false, loiDongBo };
+    }
   }
 
   /**

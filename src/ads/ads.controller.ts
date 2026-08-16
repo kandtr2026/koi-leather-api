@@ -498,9 +498,22 @@ export class AdsAdminController {
     return this.ads.suaTuKhoaV2(id, body);
   }
 
+  /**
+   * Xoá từ khoá khỏi sổ tay — và GỠ khỏi Google Ads trước nếu đã đẩy.
+   *
+   * Từ 2026-08-16 (chốt của chủ dự án): sổ tay là gốc nên xoá phải đè được xuống
+   * Ads. Service gọi Ads mutate remove TRƯỚC, thành công mới delete dòng DB; Ads
+   * lỗi thì giữ dòng và ghi loiDongBo. Đây giờ là endpoint MUTATE tài khoản thật,
+   * nên tự kiểm req.user giống route push.
+   */
   @Delete("ads/keywords/:id")
-  @ApiOperation({ summary: "Xoá từ khoá khỏi sổ tay" })
-  async xoaTuKhoa(@Param("id") id: string) {
+  @ApiOperation({
+    summary: "Xoá từ khoá khỏi sổ tay (gỡ khỏi Google Ads trước nếu đã đẩy)",
+  })
+  async xoaTuKhoa(@Param("id") id: string, @Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
     return this.ads.xoaTuKhoa(id);
   }
 
