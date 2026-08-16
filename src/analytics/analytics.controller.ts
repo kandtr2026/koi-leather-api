@@ -15,6 +15,7 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { AnalyticsService } from "./analytics.service";
+import { TrackPageViewDto, TrackContactClickDto } from "./dto/track.dto";
 
 /**
  * Đường ghi nhận lượt xem — CÔNG KHAI.

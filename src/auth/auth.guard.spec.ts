@@ -260,6 +260,18 @@ describe("AuthGuard — token ghi cho Heoiu", () => {
       const { ctx: c } = ctx(method, path, TOKEN_GHI);
       expect(guard.canActivate(c)).toBe(true);
     });
+
+    it("POST /analytics/ads/keywords/push-bulk đi qua (nút đẩy cả lô)", () => {
+      const { guard, authService } = guardMoi();
+      const { ctx: c, request } = ctx(
+        "POST",
+        "/analytics/ads/keywords/push-bulk",
+        TOKEN_GHI,
+      );
+      expect(guard.canActivate(c)).toBe(true);
+      expect(authService.verifyToken).not.toHaveBeenCalled();
+      expect(request.user).toEqual({ service: "heoiu", chiGhi: true });
+    });
   });
 
   describe("từ chối", () => {

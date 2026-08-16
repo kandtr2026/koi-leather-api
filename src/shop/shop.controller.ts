@@ -12,9 +12,12 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { ShopService } from "./shop.service";
 import { ShopContentService } from "./shop-content.service";
 import { SlugPipe } from "./slug.pipe";
+import { CreateLeadDto } from "./dto/create-lead.dto";
+import { CreateLeadDto } from "./dto/create-lead.dto";
 
 /**
  * Các kiểu sắp xếp khách được chọn. Bỏ trống = "popular" (mặc định): hàng đinh
@@ -205,26 +208,14 @@ export class ShopController {
 
   @Post("leads")
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 3, ttl: 3600_000 } }) // 3 req/giờ/IP
   @ApiOperation({ summary: "Khách để lại thông tin liên hệ (công khai)" })
-  createLead(
-    @Body()
-    body: {
-      name?: string;
-      phone?: string;
-      message?: string;
-      productName?: string;
-    },
-  ) {
-    const name = String(body?.name ?? "").trim();
-    const phone = String(body?.phone ?? "").replace(/[\s.-]/g, "");
-    if (name.length < 2) throw new BadRequestException("Tên không hợp lệ");
-    if (!/^(0\d{9}|\+84\d{9})$/.test(phone))
-      throw new BadRequestException("Số điện thoại không hợp lệ");
+  createLead(@Body() dto: CreateLeadDto) {
     return this.content.createLead({
-      name,
-      phone,
-      message: body?.message ?? null,
-      productName: body?.productName ?? null,
+      name: dto.name.trim(),
+      phone: dto.phone.replace(/[\s.-]/g, ""),
+      message: dto.message ?? null,
+      productName: dto.productName ?? null,
     });
   }
 
