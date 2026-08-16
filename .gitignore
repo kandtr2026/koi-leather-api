@@ -15,3 +15,5 @@ public/build-meta.json
 
 # tep do dac tam thoi (khong thuoc san pham)
 _scratch/
+
+.env*
