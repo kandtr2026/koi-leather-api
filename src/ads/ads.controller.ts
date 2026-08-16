@@ -28,7 +28,7 @@ import { AssignKeywordDto } from "./dto/assign-keyword.dto";
 import { PushBulkDto } from "./dto/push-bulk.dto";
 import { SyncPushDto } from "./dto/sync-push.dto";
 import { AdClickDto, AdContactDto } from "./dto/public-ad.dto";
-import { AnalyzeDto, ScoreDto, SeodraftDto } from "./dto/landing-seo.dto";
+import { AnalyzeDto, LuuVerifiedDto, ScoreDto, SeodraftDto } from "./dto/landing-seo.dto";
 
 /**
  * Đường ghi nhận cú bấm quảng cáo — CÔNG KHAI.
@@ -567,14 +567,16 @@ export class AdsAdminController {
     return this.ads.dayTuKhoaNhieu(dto.ids);
   }
 
-  // ─── Cụm "Ads ↔ Landing ↔ SEO" (bước 1, 2, 3, 6) ─────────────────────────
+  // ─── Cụm "Ads ↔ Landing ↔ SEO" (bước 1, 2, 3, 6 + verified pool) ──────────
   //
-  // CHỈ ĐỌC + NHÁP: bốn đường này không mutate gì xuống Google Ads. Bước 4-5
-  // (review + đẩy) đi qua sổ tay KoiAdKeyword và push-bulk ở trên.
+  // KHÔNG mutate tài khoản Ads: bước 4-5 (review + đẩy) đi qua sổ tay KoiAdKeyword
+  // và push-bulk ở trên; verified pool chỉ ghi Postgres.
   //
-  // Ba đường POST đều tốn phí GPT nên cùng một bộ chốt: tự kiểm req.user (chống
-  // PUBLIC_VIEW=1 mở cửa phần đọc), ValidationPipe whitelist chặn body lạ, và
-  // Throttle 10 lượt/phút — cùng mức route seo/review.
+  // Ba đường POST gọi GPT đều tốn phí nên cùng một bộ chốt: tự kiểm req.user
+  // (chống PUBLIC_VIEW=1 mở cửa phần đọc), ValidationPipe whitelist chặn body lạ,
+  // và Throttle 10 lượt/phút — cùng mức route seo/review. Ba đường verified pool
+  // cũng tự kiểm req.user; GET verified ngoài admin đăng nhập còn phục vụ
+  // SERVICE TOKEN của heoiu (AuthGuard mở mọi GET /analytics cho token đọc).
 
   /**
    * Bước 1: campaign đang chạy (ENABLED) kèm finalUrls của quảng cáo bên trong,
@@ -650,6 +652,56 @@ export class AdsAdminController {
       tuKhoas: dto.tuKhoas,
       url: dto.url,
     });
+  }
+
+  /**
+   * Verified pool — ĐỌC: toàn bộ từ khoá đã đẩy lên Ads, theo từng landing.
+   * heoiu đọc đường này bằng SERVICE TOKEN (AuthGuard mở mọi GET /analytics cho
+   * token đọc — req.user khi đó là { service:'heoiu', chiDoc: true }, vẫn truthy
+   * qua chốt dưới) để lọc từ đã đẩy khi chấm lại landing, khỏi duyệt từ đầu.
+   */
+  @Get("ads/landing/verified")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: "Verified pool: từ khoá đã đẩy lên Ads theo landing" })
+  async docVerified(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.landingSeo.docVerified();
+  }
+
+  /**
+   * Verified pool — LƯU quyết định duyệt (phase 1 chỉ 'pushed') sau khi chủ shop
+   * duyệt wizard bên heoiu. CHỈ ghi Postgres, KHÔNG mutate tài khoản Ads.
+   * Body { url, dsQuyetDinh } qua ValidationPipe whitelist; host ngoài allowlist
+   * bị service chặn 400 (cùng danh sách với analyze).
+   */
+  @Post("ads/landing/verified")
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: "Lưu từ đã đẩy vào verified pool (chỉ ghi Postgres)" })
+  async luuVerified(@Req() req: Request, @Body() dto: LuuVerifiedDto) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.landingSeo.luuVerified(dto.url, dto.dsQuyetDinh);
+  }
+
+  /**
+   * Verified pool — XOÁ SẠCH pool của một landing (?url=...), dùng khi landing
+   * bị bỏ hoặc dựng lại từ đầu. Đọc query param, KHÔNG dùng body — DELETE mang
+   * body không đáng tin qua các proxy. CHỈ ghi Postgres, không đụng Ads.
+   */
+  @Delete("ads/landing/verified")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: "Xoá verified pool của một landing (?url=...)" })
+  async xoaVerified(@Req() req: Request, @Query("url") url?: string) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.landingSeo.xoaVerified(url || "");
   }
 }
 

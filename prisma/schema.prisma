@@ -898,6 +898,40 @@ model KoiAdKeyword {
   @@schema("koi_free_style")
 }
 
+/// "Verified pool" của cụm Landing-SEO — từ khoá ĐÃ ĐẨY lên Google Ads, theo từng
+/// trang landing. VÌ SAO BẢNG NÀY: mỗi lần wizard heoiu chấm lại từ khoá cho một
+/// landing, các từ đã đẩy trước đó hiện ra đòi duyệt lại từ đầu. Bảng này ghi quyết
+/// định "đã đẩy" theo URL landing để lần chấm sau heoiu đọc và lọc ra — chủ shop
+/// chỉ phải duyệt phần mới. CHỈ lưu từ đã đẩy: quyết định duy nhất là 'pushed',
+/// từ bị loại KHÔNG ghi (đã loại thì không cần nhớ, đỡ rác pool).
+/// Phạm vi theo urlLanding chứ không theo campaign: cùng một landing chung một
+/// pool dù đẩy bằng chiến dịch nào.
+model KoiLandingVerified {
+  id String @id @default(uuid())
+
+  /// URL landing — phạm vi của pool: cùng landing chung pool, không phụ thuộc campaign.
+  urlLanding String
+
+  /// Từ khoá đã chuẩn hoá (trim + lowercase) — phải trùng byte-for-byte cách client chuẩn hoá.
+  tuKhoa String
+
+  /// Quyết định duyệt. Phase 1 chỉ có 'pushed' = đã đẩy lên Google Ads.
+  quyetDinh String
+
+  /// Id chiến dịch lúc đẩy (tham khảo, nullable).
+  chienDich String?
+
+  /// Lần đầu ghi nhận từ được đẩy. Upsert KHÔNG đè trường này — cần biết từ đã
+  /// chạy từ bao giờ, không phải lần đẩy lại gần nhất.
+  taoLuc DateTime @default(now())
+
+  /// Một từ chỉ có một quyết định trên mỗi landing: đẩy lại là upsert cập nhật,
+  /// không đẻ dòng trùng.
+  @@unique([urlLanding, tuKhoa])
+  @@map("koi_landing_verified")
+  @@schema("koi_free_style")
+}
+
 // ─── Keyword Pool + Google Ads Sync (Phase 3) ─────────────────────────────────
 
 model KeywordPool {

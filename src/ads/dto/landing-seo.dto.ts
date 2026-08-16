@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -136,4 +137,51 @@ export class SeodraftDto {
   @IsString()
   @MaxLength(2048)
   url?: string;
+}
+
+/**
+ * Verified pool — quyết định duyệt của MỘT từ khoá trên một landing.
+ *
+ * Phase 1 chỉ nhận đúng 'pushed' (đã đẩy lên Google Ads): chủ shop đã chốt chỉ
+ * lưu từ đã đẩy, từ bị loại KHÔNG vào pool. IsIn chặn mọi giá trị lạ ngay ở
+ * biên; service vẫn kiểm lại vì không tin client.
+ */
+export class QuyetDinhVerifiedDto {
+  /** Từ khoá nguyên văn heoiu gửi — service chuẩn hoá lại trim + lowercase. */
+  @IsString()
+  @MaxLength(200)
+  tuKhoa: string;
+
+  @IsIn(["pushed"], { message: "quyetDinh hiện chỉ nhận 'pushed'" })
+  quyetDinh: string;
+
+  /** Id chiến dịch lúc đẩy — tham khảo, thiếu cũng được. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  chienDich?: string;
+}
+
+/**
+ * Verified pool — lưu cả lô quyết định cho MỘT landing.
+ *
+ * url validate giống hệt AnalyzeDto (IsUrl + trần 2048); host allowlist kiểm
+ * THÊM trong service vì IsUrl không biết host nào được phép — cùng chốt chống
+ * gieo rác pool bằng URL ngoài danh sách. Trần 200 quyết định: heoiu gửi cả
+ * wizard một lần; 200 từ × 200 ký tự vẫn nằm gọn dưới trần body 64KB của heoiu.
+ */
+export class LuuVerifiedDto {
+  @IsUrl(
+    { require_protocol: true, protocols: ["http", "https"] },
+    { message: "url phải là địa chỉ http/https hợp lệ" },
+  )
+  @MaxLength(2048)
+  url: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(200)
+  @ValidateNested({ each: true })
+  @Type(() => QuyetDinhVerifiedDto)
+  dsQuyetDinh: QuyetDinhVerifiedDto[];
 }

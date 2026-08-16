@@ -46,6 +46,11 @@ const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   ["POST", /^\/analytics\/ads\/landing\/analyze$/],
   ["POST", /^\/analytics\/ads\/landing\/score$/],
   ["POST", /^\/analytics\/ads\/landing\/seo-draft$/],
+  // Verified pool: lưu/xoá quyết định duyệt ("đã đẩy") theo từng landing —
+  // CHỈ ghi Postgres, không mutate tài khoản Ads. GET verified KHÔNG có ở đây:
+  // heoiu đọc bằng token đọc (nhánh service token mở mọi GET /analytics).
+  ["POST", /^\/analytics\/ads\/landing\/verified$/],
+  ["DELETE", /^\/analytics\/ads\/landing\/verified$/],
   ["POST", /^\/analytics\/ads\/keywords$/],
   // Import hiện trạng Google Ads về sổ tay (Phase 0). CHỈ đọc Ads + ghi DB của
   // mình, KHÔNG mutate tài khoản quảng cáo — nhưng vẫn là POST có tác dụng phụ

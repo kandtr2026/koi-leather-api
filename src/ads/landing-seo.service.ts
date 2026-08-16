@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { GoogleAdsClient } from "./google-ads.client";
 import { OpenAiClient } from "../ai-edit/openai.client";
+import { PrismaService } from "../prisma/prisma.service";
 
 /**
  * Cụm "Ads ↔ Landing ↔ SEO" (bước 1, 2, 3, 6 của luồng):
@@ -9,6 +10,10 @@ import { OpenAiClient } from "../ai-edit/openai.client";
  *   3. chamTuKhoa        — GPT chấm một lô từ khoá so với landing: nenDung /
  *                          nenChan / nenThem (nenThem ưu tiên search term thật).
  *   6. vietSeoDraft      — GPT viết nháp khối nội dung SEO bổ sung (H2, FAQ).
+ *
+ * Thêm verified pool (luuVerified / docVerified / xoaVerified): từ khoá ĐÃ ĐẨY
+ * lên Ads ghi theo từng landing để lần chấm sau heoiu lọc ra, khỏi duyệt lại
+ * từ đầu. Phần này CHỈ ghi Postgres, vẫn không mutate tài khoản Ads.
  *
  * CHỈ ĐỌC + NHÁP. Cả cụm KHÔNG gọi mutate() nào xuống Google Ads: bước 4-5
  * (review + đẩy) đi qua sổ tay KoiAdKeyword và push-bulk đã có sẵn.
@@ -102,6 +107,9 @@ export class LandingSeoService {
   constructor(
     private readonly gg: GoogleAdsClient,
     private readonly openai: OpenAiClient,
+    // Verified pool ghi Postgres. PrismaModule là @Global (AdsModule đã import
+    // sẵn) nên chỉ việc tiêm vào, không khai báo thêm ở module.
+    private readonly db: PrismaService,
   ) {}
 
   // ─── Bước 1: campaign đang chạy + URL landing ─────────────────────────────
@@ -444,6 +452,129 @@ export class LandingSeoService {
       return { ...rongs, loi: "GPT không trả được khối nội dung nào hợp lệ — thử lại" };
     }
     return { sections, ghiChu };
+  }
+
+  // ─── Verified pool: từ đã đẩy lên Ads theo từng landing ────────────────────
+  //
+  // CHỈ ghi Postgres, KHÔNG mutate tài khoản Ads. Pool là bộ nhớ của quyết định
+  // "đã đẩy" để lần chấm sau heoiu lọc ra, khỏi bắt chủ shop duyệt lại từ đầu.
+  // Chủ shop đã chốt: CHỈ lưu từ đã đẩy ('pushed'), từ bị loại không ghi.
+
+  /**
+   * Lưu quyết định "đã đẩy" vào verified pool của một landing.
+   *
+   * Khoá theo (urlLanding, tuKhoa) nên đẩy lại là upsert: tạo dòng mới nếu chưa
+   * có, cập nhật quyetDinh + chienDich nếu đã có — GIỮ taoLuc gốc của lần đẩy
+   * đầu. Chuẩn hoá từ khoá trim + lowercase (phải trùng byte-for-byte cách heoiu
+   * chuẩn hoá khi lọc), khử trùng trong lô. quyetDinh !== 'pushed' bị bỏ qua dù
+   * DTO đã chặn — không tin client. Host ngoài HOST_CHO_PHEP là 400: defense-
+   * in-depth chống gieo rác pool bằng URL không phải landing của tiệm.
+   */
+  async luuVerified(
+    url: string,
+    dsQuyetDinh: Array<{ tuKhoa: string; quyetDinh: string; chienDich?: string | null }>,
+  ): Promise<{ ok: boolean; daLuu: number }> {
+    const urlLanding = this.kiemHostLanding(url);
+
+    const thay = new Set<string>();
+    const hopLe: Array<{ tuKhoa: string; chienDich: string | null }> = [];
+    for (const item of dsQuyetDinh ?? []) {
+      if (!item || item.quyetDinh !== "pushed") continue;
+      const tuKhoa = String(item.tuKhoa || "")
+        .trim()
+        .toLowerCase();
+      if (!tuKhoa || thay.has(tuKhoa)) continue;
+      thay.add(tuKhoa);
+      hopLe.push({
+        tuKhoa,
+        chienDich:
+          typeof item.chienDich === "string" && item.chienDich.trim()
+            ? item.chienDich.trim()
+            : null,
+      });
+    }
+
+    // Một transaction cho cả lô: lưu dở giữa chừng thì không có nửa pool.
+    if (hopLe.length) {
+      await this.db.$transaction(
+        hopLe.map((item) =>
+          this.db.koiLandingVerified.upsert({
+            where: { urlLanding_tuKhoa: { urlLanding, tuKhoa: item.tuKhoa } },
+            create: {
+              urlLanding,
+              tuKhoa: item.tuKhoa,
+              quyetDinh: "pushed",
+              chienDich: item.chienDich,
+            },
+            // CHỈ hai trường này — taoLuc giữ nguyên của lần đẩy đầu.
+            update: { quyetDinh: "pushed", chienDich: item.chienDich },
+          }),
+        ),
+      );
+    }
+
+    return { ok: true, daLuu: hopLe.length };
+  }
+
+  /**
+   * Đọc TOÀN BỘ verified pool — heoiu cầm về tự lọc theo landing khi chấm điểm.
+   * Xếp taoLuc desc để từ mới đẩy hiện trước. Pool nhỏ (chỉ từ đã đẩy) nên trả
+   * cả bảng, không phân trang.
+   */
+  async docVerified(): Promise<{
+    ok: boolean;
+    ds: Array<{
+      id: string;
+      urlLanding: string;
+      tuKhoa: string;
+      quyetDinh: string;
+      chienDich: string | null;
+      taoLuc: Date;
+    }>;
+  }> {
+    const ds = await this.db.koiLandingVerified.findMany({
+      orderBy: { taoLuc: "desc" },
+    });
+    return { ok: true, ds };
+  }
+
+  /**
+   * Xoá SẠCH pool của MỘT landing — dùng khi landing bị bỏ hoặc dựng lại từ đầu.
+   * deleteMany theo đúng urlLanding đã lưu, không đụng pool landing khác. Host lạ
+   * vẫn bị 400 (không có dòng nào của host lạ trong bảng, nhưng chặn sớm cho
+   * lỗi hiện ra ngay thay vì trả daXoa=0 im lặng).
+   */
+  async xoaVerified(url: string): Promise<{ ok: boolean; daXoa: number }> {
+    const urlLanding = this.kiemHostLanding(url);
+    const kq = await this.db.koiLandingVerified.deleteMany({
+      where: { urlLanding },
+    });
+    return { ok: true, daXoa: kq.count };
+  }
+
+  /**
+   * Chốt host cho verified pool: parse được, http/https, host trong HOST_CHO_PHEP
+   * — CÙNG danh sách analyze dùng (bên kia chống SSRF, bên này chống gieo rác
+   * pool). Trả lại url đã trim làm khoá lưu: pool khoá bằng chuỗi heoiu gửi,
+   * nên heoiu phải gửi ĐÚNG MỘT chuỗi cho lưu/đọc/xoá cùng một landing.
+   */
+  private kiemHostLanding(url: string): string {
+    const urlLanding = String(url || "").trim();
+    let u: URL;
+    try {
+      u = new URL(urlLanding);
+    } catch {
+      throw new BadRequestException("url không phải địa chỉ hợp lệ");
+    }
+    if (u.protocol !== "http:" && u.protocol !== "https:") {
+      throw new BadRequestException("Chỉ nhận địa chỉ http/https");
+    }
+    if (!HOST_CHO_PHEP.has(u.hostname.toLowerCase())) {
+      throw new BadRequestException(
+        "Chỉ nhận trang thuộc koileather.com hoặc kitleather.com",
+      );
+    }
+    return urlLanding;
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
