@@ -547,6 +547,29 @@ export class AdsAdminController {
   }
 
   /**
+   * Chuyển 1 từ khoá giữa 3 box của Sổ tay SEO — MUTATE tài khoản thật.
+   *
+   * Kéo/bấm thẻ trên kanban gọi route này. body.den ∈ dang-chay | tam-dung |
+   * dang-chan. Service tự phân nhánh: cùng loại → pause/resume; đổi loại
+   * keyword↔negative → gỡ criterion cũ + tạo lại. den sai → 400 từ service.
+   *
+   * Tự kiểm req.user như route push/delete: đây là hành động đụng tài khoản thật.
+   */
+  @Post("ads/keywords/:id/move")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Chuyển từ khoá giữa 3 box Sổ tay SEO (MUTATE tài khoản thật)" })
+  async chuyenBoxTuKhoa(
+    @Param("id") id: string,
+    @Body() body: { den?: string },
+    @Req() req: Request,
+  ) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.ads.chuyenBoxTuKhoa(id, String(body?.den ?? ""));
+  }
+
+  /**
    * Đẩy NHIỀU từ khoá lên Google Ads — nút "Đẩy cả lô" của sổ tay (Phase 4).
    *
    * MUTATE tài khoản thật. Body chỉ nhận `{ ids: UUID[] }`; ValidationPipe
