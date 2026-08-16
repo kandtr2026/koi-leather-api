@@ -23,6 +23,7 @@ import { AdsService } from "./ads.service";
 import { KeywordPoolService } from "./keyword-pool.service";
 import { SyncService } from "./sync.service";
 import { AssignKeywordDto } from "./dto/assign-keyword.dto";
+import { PushBulkDto } from "./dto/push-bulk.dto";
 import { SyncPushDto } from "./dto/sync-push.dto";
 
 /**
@@ -538,6 +539,27 @@ export class AdsAdminController {
       throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
     }
     return this.ads.dayTuKhoa(id);
+  }
+
+  /**
+   * Đẩy NHIỀU từ khoá lên Google Ads — nút "Đẩy cả lô" của sổ tay (Phase 4).
+   *
+   * MUTATE tài khoản thật. Body chỉ nhận `{ ids: UUID[] }`; ValidationPipe
+   * whitelist cắt bỏ mọi field lạ, IsUUID loại id sai khuôn, ArrayMinSize(1)
+   * loại mảng rỗng — cả ba đều 400 trước khi chạm service.
+   *
+   * Trả khuôn `{ total, succeeded, failed, errors: [{ id, loi }] }` giống
+   * sync/push để Heoiu parse lại một mẫu đã có. Một dòng lỗi không chặn cả lô.
+   */
+  @Post("ads/keywords/push-bulk")
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+  @ApiOperation({ summary: "Đẩy nhiều từ khoá lên Google Ads (MUTATE tài khoản thật)" })
+  async dayNhieuTuKhoa(@Body() dto: PushBulkDto, @Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.ads.dayTuKhoaNhieu(dto.ids);
   }
 }
 

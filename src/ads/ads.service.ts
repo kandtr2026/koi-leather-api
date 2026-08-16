@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { randomInt, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
@@ -165,8 +170,24 @@ const NGUONG_NHIEU_BAM = 5;
  */
 const GCLID_HOP_LE = /^[A-Za-z0-9._~-]+$/;
 
+/**
+ * Nghỉ ngắn giữa các lần mutate trong một lô đẩy.
+ *
+ * Google Ads giới hạn số lệnh mutate trong một phút (và số operation trong một
+ * request). Đẩy cả lô là một vòng lặp gọi mutate liên tiếp cho từng từ khoá —
+ * nghỉ một nhịp giữa các lượt để không đập vào trần quota và làm Google từ chối
+ * giữa chừng, lỗi lúc đó rất khó đoán vì nó đổ lên một từ khoá ngẫu nhiên chứ
+ * không phải từ khoá thật sự hỏng.
+ *
+ * 250ms = ~4 lệnh/giây, ~240 lệnh/phút — thoải mái dưới mọi trần mutate thông
+ * thường, mà một lô vài chục từ chỉ tốn thêm vài giây.
+ */
+const NGHI_GIUA_LAN_DAY_MS = 250;
+
 @Injectable()
 export class AdsService {
+  private readonly log = new Logger(AdsService.name);
+
   constructor(
     private prisma: PrismaService,
     private ads: GoogleAdsClient,
@@ -2166,5 +2187,103 @@ export class AdsService {
       // Không ném lại: controller trả về kết quả lỗi rõ ràng thay vì 500.
       return { ok: false, trangThaiDongBo: "loi", adsResourceName: k.adsResourceName, loiDongBo };
     }
+  }
+
+  /**
+   * Đẩy nhiều từ khoá từ sổ tay lên Google Ads — nút "Đẩy cả lô".
+   *
+   * Cùng tầng logic với `dayTuKhoa` cho một dòng, chỉ khác ở vòng lặp và cách
+   * gom lỗi. KHÔNG nhân đôi logic mutate: mỗi dòng vẫn đi qua `dayTuKhoa` nên
+   * create/update/optimistic-lock/ghi-trạng-thái chỉ có MỘT chỗ để sửa.
+   *
+   * IDEMPOTENT theo hướng lọc: chỉ đẩy dòng `chua_day` | `loi`. Dòng `da_day`
+   * và `dang_day` bị bỏ qua lặng lẽ, không gọi Ads — bấm lại lần hai sau khi đã
+   * đẩy xong thì mọi dòng đều `da_day`, lô trả `succeeded: 0` mà không đẻ thêm
+   * criterion trùng hay đốt quota. Dòng `loi` tự động được thử lại (đúng điều
+   * nút "đẩy cả lô" cần làm).
+   *
+   * MỘT DÒNG LỖI KHÔNG CHẶN CẢ LÔ. Lỗi mỗi dòng (validation, Ads từ chối, mất
+   * mạng) bị bắt riêng và gom vào `errors` dạng `{ id, loi }` — khác `dayTuKhoa`
+   * ném BadRequest lên controller. Khuôn trả về giữ ba trường `total`/`succeeded`
+   * /`failed` giống `sync/push` để phía Heoiu parse lại một mẫu đã quen, chỉ đổi
+   * `errors` thành mảng object để còn biết lỗi thuộc về dòng nào trong lưới.
+   *
+   * THROTTLE giữa các lần mutate để không vỡ quota (xem NGHI_GIUA_LAN_DAY_MS).
+   */
+  async dayTuKhoaNhieu(ids: string[]): Promise<{
+    total: number;
+    succeeded: number;
+    failed: number;
+    errors: Array<{ id: string; loi: string }>;
+  }> {
+    const total = ids.length;
+    let succeeded = 0;
+    let failed = 0;
+    const errors: Array<{ id: string; loi: string }> = [];
+
+    // Một câu SELECT lấy trạng thái cả lô để lọc idempotent TRƯỚC khi vào vòng
+    // lặp, thay vì mỗi dòng một lần đọc. id không có trong kết quả = không tồn
+    // tại → tính là lỗi riêng của dòng đó, không ném chung cho cả lô.
+    const tonTai = await this.prisma.koiAdKeyword.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, trangThaiDongBo: true },
+    });
+    const trangThaiTheoId = new Map(tonTai.map((k) => [k.id, k.trangThaiDongBo]));
+
+    this.log.log(`dayTuKhoaNhieu start: ${total} từ khoá`);
+
+    for (const id of ids) {
+      const trangThai = trangThaiTheoId.get(id);
+
+      if (trangThai === undefined) {
+        failed++;
+        errors.push({ id, loi: "Không tìm thấy từ khoá" });
+        continue;
+      }
+
+      // Idempotent: đã đẩy xong hoặc đang được đẩy thì bỏ qua, không đếm gì.
+      if (trangThai === "da_day" || trangThai === "dang_day") {
+        continue;
+      }
+
+      try {
+        const kq = await this.dayTuKhoa(id);
+        if (kq.ok) {
+          succeeded++;
+        } else if (kq.trangThaiDongBo === "dang_day") {
+          // Race: một request khác đã đóng dấu dang_day giữa lúc lọc và lúc gọi.
+          // Bỏ qua lặng lẽ — dòng đó đang được nơi khác đẩy.
+          continue;
+        } else {
+          failed++;
+          errors.push({ id, loi: kq.loiDongBo ?? "Lỗi không xác định khi đẩy" });
+        }
+      } catch (err) {
+        // Validation (BadRequest: thiếu adGroupId, shared negative chưa hỗ trợ…)
+        // hoặc lỗi bất ngờ — ghi lỗi dòng này rồi đi tiếp dòng kế.
+        failed++;
+        errors.push({ id, loi: this.moTaLoiDay(err) });
+      }
+
+      // Nghỉ giữa các lần mutate — không nghỉ cho dòng bị skip ở trên.
+      await this.ngu(NGHI_GIUA_LAN_DAY_MS);
+    }
+
+    this.log.log(
+      `dayTuKhoaNhieu done: ${succeeded} ok, ${failed} lỗi, ${total - succeeded - failed} bỏ qua`,
+    );
+    return { total, succeeded, failed, errors };
+  }
+
+  /** Lấy câu lỗi ngắn gọn, không lộ stack trace ra phản hồi API. */
+  private moTaLoiDay(err: unknown): string {
+    const raw =
+      err instanceof Error ? err.message : String(err ?? "Lỗi không rõ");
+    return raw.slice(0, 500);
+  }
+
+  /** Ngủ ngắn — dùng cho throttle giữa các lần mutate Google Ads. */
+  private ngu(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

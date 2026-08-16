@@ -43,6 +43,11 @@ const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   // (ghi DB) nên đi qua token ghi, phải nằm trong allowlist này. Đặt TRƯỚC luật
   // /keywords/:id để đường tĩnh không bị luật uuid nuốt.
   ["POST", /^\/analytics\/ads\/keywords\/import$/],
+  // Đẩy NHIỀU từ khoá lên Google Ads (Phase 4 batch push). MUTATE tài khoản
+  // thật — body { ids: UUID[] }. Đường TĨNH (push-bulk là một đoạn cố định),
+  // đặt TRƯỚC luật /keywords/:id/push cho cùng quy ước "static trước dynamic"
+  // dù hai regex không xung đột nhau (một đoạn vs hai đoạn sau /keywords).
+  ["POST", /^\/analytics\/ads\/keywords\/push-bulk$/],
   // Đẩy 1 từ khoá lên Google Ads (Phase 2). MUTATE tài khoản thật — cẩn thận.
   // Đặt TRƯỚC luật /keywords/:id/... chung vì push là endpoint riêng.
   // Khuôn UUID giống PATCH/DELETE bên dưới — cùng bảng KoiAdKeyword.
