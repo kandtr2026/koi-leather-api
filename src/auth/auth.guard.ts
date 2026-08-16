@@ -63,6 +63,25 @@ const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   ["DELETE", /^\/analytics\/ads\/keywords\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/],
   // Lead thì ngược lại: `leads.id` là BigInt tự tăng, nên đúng là \d+.
   ["PATCH", /^\/analytics\/leads\/\d+$/],
+  // ----- Keyword Pool (Phase 3) -----
+  // Gắn 1 từ khoá vào ad group. MUTATE tài khoản Ads thật (đẩy inline, không
+  // qua queue) — trả 200 kèm syncStatus='error' nếu Ads từ chối, chứ không 500.
+  ["POST", /^\/analytics\/ads\/keyword-pool\/assign$/],
+  // Gỡ 1 link. Xoá criterion trên Ads TRƯỚC, DB SAU — Ads lỗi thì giữ dòng local
+  // (mất adsResourceName là không còn cách tìm lại criterion đang ăn tiền).
+  // linkId là UUID (`KeywordCampaignLink.id String @default(uuid())`) — cùng
+  // khuôn 8-4-4-4-12 với các luật keywords ở trên, KHÔNG phải \d+.
+  [
+    "DELETE",
+    /^\/analytics\/ads\/keyword-pool\/assign\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/,
+  ],
+  // Kéo campaign + ad group từ Ads về DB. CHỈ đọc Ads, nhưng ghi DB nên vẫn là
+  // đường ghi. Nút "Làm mới từ Google Ads" bên Heoiu.
+  ["POST", /^\/analytics\/ads\/sync\/pull$/],
+  // Đẩy các link pending/error lên Ads. MUTATE tài khoản thật — nút "Đẩy lên
+  // Google Ads". Body rỗng = đẩy tất cả đang chờ, nên đây là đường nguy hiểm
+  // nhất trong danh sách này.
+  ["POST", /^\/analytics\/ads\/sync\/push$/],
 ];
 
 /**
@@ -108,6 +127,23 @@ export class AuthGuard implements CanActivate {
     // Storefront công khai (KoiFront): nhóm /shop/* là API cho khách vãng lai,
     // chỉ đọc hàng đã xuất bản và field an toàn — luôn mở, không dính khoá admin.
     if (path.startsWith("/shop")) {
+      return true;
+    }
+
+    // Vercel Cron gọi bằng máy: không có phiên đăng nhập, không có JWT. Nó gửi
+    // Authorization: Bearer <CRON_SECRET> — chuỗi đó không phải JWT nên
+    // verifyToken ném lỗi, request bị coi là ẩn danh rồi chặn 401, và không có
+    // cách nào bảo Vercel gửi JWT thay thế.
+    //
+    // Nên guard cho ĐÚNG MỘT đường dẫn này đi qua, rồi controller TỰ kiểm
+    // CRON_SECRET ngay dòng đầu hàm (ads.controller.ts → kiemCronSecret) —
+    // giống cách /shop/ads-feed.csv tự kiểm HTTP Basic. Đường này bảo mật bằng
+    // chính nó, KHÔNG dựa vào guard, và phải đọc như vậy khi sửa về sau.
+    //
+    // Khớp CHÍNH XÁC sau khi chuẩn hoá, không phải theo tiền tố: mở theo tiền tố
+    // là vô tình mở luôn mọi đường /analytics/ads/cron/* thêm sau này, mà những
+    // đường đó chưa chắc có tự kiểm bí mật.
+    if (chuanHoaDuong(path) === "/analytics/ads/cron/sweep") {
       return true;
     }
 

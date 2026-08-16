@@ -7,10 +7,13 @@
   "functions": {
     "api/index.js": {
       "memory": 1024,
-      "maxDuration": 60,
+      "maxDuration": 300,
       "includeFiles": "{dist/src/**,public/**,data/**}"
     }
   },
+  "crons": [
+    { "path": "/analytics/ads/cron/sweep", "schedule": "0 3 * * *" }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index.js" }
   ]

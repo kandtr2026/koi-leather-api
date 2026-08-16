@@ -13,11 +13,17 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  ValidationPipe,
+  UsePipes,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 import { AdsService } from "./ads.service";
+import { KeywordPoolService } from "./keyword-pool.service";
+import { SyncService } from "./sync.service";
+import { AssignKeywordDto } from "./dto/assign-keyword.dto";
+import { SyncPushDto } from "./dto/sync-push.dto";
 
 /**
  * Đường ghi nhận cú bấm quảng cáo — CÔNG KHAI.
@@ -532,5 +538,206 @@ export class AdsAdminController {
       throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
     }
     return this.ads.dayTuKhoa(id);
+  }
+}
+
+/**
+ * Keyword Pool + Google Ads Sync — Phase 3.
+ *
+ * Nằm dưới /analytics/ads/... để đi qua AuthGuard hiện có (tiền tố /analytics
+ * đã được koi-domain-router chuyển tiếp về API này).
+ *
+ * Mọi route ở đây yêu cầu đăng nhập admin (req.user truthy). Pattern giống các
+ * route admin khác trong AdsAdminController phía trên.
+ */
+@ApiTags("Analytics (admin)")
+@Controller("analytics")
+@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+export class AdsKeywordPoolController {
+  constructor(
+    private readonly kwPool: KeywordPoolService,
+    private readonly sync: SyncService,
+  ) {}
+
+  // ─── Keyword Pool ──────────────────────────────────────────────────────────
+
+  @Get("ads/keyword-pool")
+  @ApiOperation({ summary: "Danh sách keyword pool, hỗ trợ lọc + phân trang" })
+  async listKeywordPool(
+    @Req() req: Request,
+    @Query("projectTag") projectTag?: string,
+    @Query("q") q?: string,
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+  ) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.kwPool.list({
+      projectTag,
+      q,
+      page: Number(page) || 1,
+      pageSize: Number(pageSize) || 50,
+    });
+  }
+
+  /**
+   * Gán keyword + ĐẨY LUÔN lên Google Ads trong cùng request.
+   *
+   * 200 chứ không 201/202: phản hồi mang kết quả đẩy thật (syncStatus là
+   * 'synced' hay 'error', kèm lastError) chứ không phải "đã nhận, đi hỏi sau".
+   * Bản cũ trả 202 + jobId vì có queue; giờ không còn queue nữa.
+   */
+  @Post("ads/keyword-pool/assign")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Gán keyword vào campaign/ad group + đẩy ngay lên Google Ads, trả syncStatus thật",
+  })
+  async assignKeyword(
+    @Req() req: Request,
+    @Body() dto: AssignKeywordDto,
+  ) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.kwPool.assign(dto);
+  }
+
+  /**
+   * Huỷ gán: xoá criterion trên Google Ads trước, xoá dòng local sau.
+   *
+   * Xoá được trên Ads thì trả { deleted: true }. Ads lỗi thì GIỮ dòng local và
+   * trả { deleted: false, errors } — xem doc unassign() để biết vì sao không
+   * xoá local trước.
+   */
+  @Delete("ads/keyword-pool/assign/:linkId")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Huỷ gán keyword: xoá criterion trên Ads rồi xoá link. Trả 409 nếu đang syncing.",
+  })
+  async unassignKeyword(
+    @Req() req: Request,
+    @Param("linkId") linkId: string,
+  ) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.kwPool.unassign(linkId);
+  }
+
+  // ─── Sync ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Hút campaign + ad group từ Google Ads về DB local. CHẠY XONG MỚI TRẢ.
+   *
+   * 200 chứ không 202: không còn queue, phản hồi mang số đếm thật. Trả 409 nếu
+   * có lần chạy cùng loại còn trong cửa sổ 5 phút (chống double-click).
+   */
+  @Post("ads/sync/pull")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Hút campaign + ad group từ Google Ads về local. Trả 409 nếu đang chạy.",
+  })
+  async syncPull(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.sync.pull(this.aiBam(req));
+  }
+
+  /**
+   * Đẩy link lên Google Ads. Không truyền linkIds = đẩy tất cả pending/error.
+   *
+   * MUTATE TÀI KHOẢN THẬT. Một link lỗi không chặn cả lô: link đó ghi error rồi
+   * đi tiếp, lỗi gom vào mảng errors trong phản hồi.
+   */
+  @Post("ads/sync/push")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Đẩy keyword lên Google Ads (MUTATE tài khoản thật). Trả 409 nếu đang chạy.",
+  })
+  async syncPush(@Req() req: Request, @Body() dto: SyncPushDto) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.sync.push(dto?.linkIds, this.aiBam(req));
+  }
+
+  /**
+   * Dọn dẹp hằng ngày cho Vercel Cron — KHÔNG cần đăng nhập, bảo mật bằng
+   * CRON_SECRET.
+   *
+   * VÌ SAO KHÔNG DÙNG AuthGuard. Vercel Cron gọi bằng máy, không có phiên đăng
+   * nhập và không có JWT nào để gửi. Nó gửi `Authorization: Bearer <CRON_SECRET>`
+   * (biến CRON_SECRET của Vercel) — mà AuthGuard đưa chuỗi đó vào verifyToken,
+   * thấy không phải JWT hợp lệ nên coi là ẩn danh rồi chặn 401. Nên đường này tự
+   * kiểm bí mật ngay dòng đầu hàm, giống cách /shop/ads-feed.csv tự kiểm HTTP
+   * Basic. AuthGuard có một nhánh allowlist đúng đường dẫn này để request đi qua
+   * được — xem auth.guard.ts.
+   *
+   * KHOÁ CHẶT KHI THIẾU BIẾN: chưa đặt CRON_SECRET thì trả 401 hết. Mặc định
+   * phải là đóng — hở chỗ này là ai cũng gọi được một đường MUTATE tài khoản
+   * quảng cáo thật.
+   */
+  @Get("ads/cron/sweep")
+  @ApiOperation({
+    summary: "Cron dọn dẹp: gỡ link kẹt, thử lại link lỗi, hút lại campaign",
+  })
+  async cronSweep(@Req() req: Request) {
+    this.kiemCronSecret(req);
+    return this.sync.sweep();
+  }
+
+  @Get("ads/sync/status")
+  @ApiOperation({ summary: "Trạng thái sync: số link pending/error/synced + log gần đây" })
+  async syncStatus(@Req() req: Request, @Query("limit") limit?: string) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để xem thông tin này");
+    }
+    return this.sync.getStatus(Number(limit) || 20);
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  /** Ghi vào SyncJobLog.triggeredBy để sau còn biết ai đã bấm. */
+  private aiBam(req: Request): string {
+    const u = (req as Request & { user?: { email?: string; service?: string } })
+      .user;
+    return u?.email ?? u?.service ?? "admin";
+  }
+
+  /**
+   * Kiểm CRON_SECRET. Nhận cả `x-cron-secret: <bí mật>` (gọi tay/curl) và
+   * `Authorization: Bearer <bí mật>` (dạng Vercel Cron gửi).
+   *
+   * So sánh bằng timingSafeEqual trên bản băm SHA-256, không phải `===`, cùng
+   * lý do như kiemBasic() ở AdsTrackController: `===` thoát ra ngay ký tự đầu
+   * khác nhau nên thời gian phản hồi tiết lộ đã đoán đúng mấy ký tự; băm trước
+   * cho hai buffer dài bằng nhau (timingSafeEqual đòi vậy) và giấu luôn độ dài.
+   */
+  private kiemCronSecret(req: Request): void {
+    const mong = process.env.CRON_SECRET || "";
+    if (!mong) {
+      throw new UnauthorizedException("Chưa cấu hình CRON_SECRET");
+    }
+
+    const auth = req.headers.authorization || "";
+    const nhan =
+      (req.headers["x-cron-secret"] as string) ||
+      (auth.startsWith("Bearer ") ? auth.slice(7) : "");
+
+    if (!nhan || !this.bangNhauBam(nhan, mong)) {
+      throw new UnauthorizedException("Sai CRON_SECRET");
+    }
+  }
+
+  private bangNhauBam(a: string, b: string): boolean {
+    return timingSafeEqual(
+      createHash("sha256").update(a, "utf8").digest(),
+      createHash("sha256").update(b, "utf8").digest(),
+    );
   }
 }
