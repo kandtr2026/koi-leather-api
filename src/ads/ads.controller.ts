@@ -17,6 +17,7 @@ import {
   UsePipes,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 import { AdsService } from "./ads.service";
@@ -25,6 +26,7 @@ import { SyncService } from "./sync.service";
 import { AssignKeywordDto } from "./dto/assign-keyword.dto";
 import { PushBulkDto } from "./dto/push-bulk.dto";
 import { SyncPushDto } from "./dto/sync-push.dto";
+import { AdClickDto, AdContactDto } from "./dto/public-ad.dto";
 
 /**
  * Đường ghi nhận cú bấm quảng cáo — CÔNG KHAI.
@@ -44,20 +46,7 @@ export class AdsTrackController {
 
   @Post("ad-click")
   @ApiOperation({ summary: "Khách vừa vào từ quảng cáo — trả về mã ngắn" })
-  async adClick(
-    @Body()
-    body: {
-      gclid?: string;
-      gbraid?: string;
-      wbraid?: string;
-      landingPath?: string;
-    },
-  ): Promise<{ token: string | null }> {
-    // Không có mã nào của Google thì không phải khách quảng cáo — đừng đẻ dòng
-    // rác. Storefront cũng đã lọc, đây là lớp chặn thứ hai.
-    if (!body?.gclid && !body?.gbraid && !body?.wbraid) {
-      return { token: null };
-    }
+  async adClick(@Body() body: AdClickDto): Promise<{ token: string | null }> {
     try {
       return await this.ads.ghiNhanBam(body);
     } catch {
@@ -72,15 +61,12 @@ export class AdsTrackController {
   @ApiOperation({
     summary: "Khách vừa bấm nút Zalo/Messenger/Gọi — tính luôn là chuyển đổi",
   })
-  async adContact(
-    @Body() body: { token?: string; channel?: string; productName?: string },
-  ): Promise<void> {
-    if (!body?.token) return;
+  async adContact(@Body() dto: AdContactDto): Promise<void> {
     try {
       await this.ads.ghiNhanLienHe({
-        token: body.token,
-        channel: body.channel ?? null,
-        productName: body.productName ?? null,
+        token: dto.token,
+        channel: dto.channel,
+        productName: dto.productName ?? null,
       });
     } catch {
       // Nuốt lỗi: 204 dù có chuyện gì. Nút Zalo phải luôn chạy.
@@ -115,6 +101,7 @@ export class AdsTrackController {
   @Get("ads-feed.csv")
   @Header("Content-Type", "text/csv; charset=utf-8")
   @Header("Cache-Control", "no-store")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } }) // 5 req/phút/IP
   @ApiOperation({
     summary: "Google Ads tự tải theo lịch (HTTP Basic, không phải Bearer)",
   })
