@@ -13,7 +13,14 @@ function prismaGia() {
   const daGhi: unknown[] = [];
   return {
     daGhi,
-    koiPresence: { upsert: async () => {} },
+    koiPresence: {
+      upsert: async () => {},
+      // track() gọi donRacHienDien() — bốc thăm Math.random() (tỉ lệ 0.02) rồi
+      // gọi deleteMany. Mock thiếu hàm này thì cứ ~2% lượt test ném TypeError
+      // "deleteMany is not a function" — test đỏ ngẫu nhiên, không liên quan
+      // thứ đang kiểm (nguon). Xem don-rac-hien-dien.spec.ts.
+      deleteMany: async () => ({ count: 0 }),
+    },
     koiPageView: {
       create: async (arg: unknown) => {
         daGhi.push(arg);

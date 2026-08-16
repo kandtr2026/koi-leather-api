@@ -12,7 +12,9 @@
  *
  * Mock GoogleAdsClient và Prisma hoàn toàn — KHÔNG gọi Ads API thật.
  */
+import { BadRequestException, ValidationPipe } from "@nestjs/common";
 import { AdsService } from "./ads.service";
+import { PushBulkDto } from "./dto/push-bulk.dto";
 
 /** GoogleAdsClient giả — đủ 4 thứ dayTuKhoa() chạm tới. */
 function adsGia(over: Record<string, any> = {}) {
@@ -205,5 +207,71 @@ describe("dayTuKhoaNhieu() — đẩy cả lô từ sổ tay", () => {
     expect(kq.succeeded).toBe(1);
     expect(kq.failed).toBe(0);
     expect(ads.mutate).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * PushBulkDto — validate ở BIÊN, trước khi chạm Google Ads.
+ *
+ * Tầng service (`dayTuKhoaNhieu`) chỉ nhận `ids` đã được ValidationPipe lọc.
+ * Nếu biên này lỏng thì một lô rỗng hoặc lô khổng lồ chui thẳng vào vòng lặp
+ * mutate tài khoản thật — nên phải khoá đúng các quy tắc DTO:
+ *
+ *   ArrayMinSize(1)  mảng rỗng → 400, không gọi Ads lần nào
+ *   ArrayMaxSize(500) vượt trần → 400 (mỗi id là một lượt gọi Ads, hàm
+ *                    serverless chỉ có 300 giây)
+ *   IsUUID(4)        id sai khuôn → 400
+ *   whitelist        field lạ bị cắt, không kênh nào chui thêm tham số
+ *
+ * Chạy đúng ValidationPipe mà controller dùng (`whitelist: true, transform:
+ * true`) để chứng minh "→ 400" là thật, chứ không test DTO khô.
+ */
+describe("PushBulkDto — validate ở biên (trước khi chạm Ads)", () => {
+  const pipe = new ValidationPipe({ whitelist: true, transform: true });
+
+  /** Chạy body qua đúng pipe của controller, trả về DTO đã lọc. */
+  async function bienDich(than: unknown): Promise<PushBulkDto> {
+    return pipe.transform(than, { type: "body", metatype: PushBulkDto });
+  }
+
+  it("lô rỗng → 400 (ArrayMinSize 1)", async () => {
+    await expect(bienDich({ ids: [] })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("vượt trần 500 → 400 (ArrayMaxSize 500)", async () => {
+    const ids = Array.from({ length: 501 }, (_, i) => UUID(String(i % 10)));
+    await expect(bienDich({ ids })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("đúng 500 → qua, không bị chặn nhầm", async () => {
+    const ids = Array.from({ length: 500 }, (_, i) => UUID(String(i % 10)));
+    const dto = await bienDich({ ids });
+    expect(dto.ids).toHaveLength(500);
+  });
+
+  it("ids không phải mảng → 400 (IsArray)", async () => {
+    await expect(bienDich({ ids: "abc" })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("id không phải UUID v4 → 400 (IsUUID each)", async () => {
+    await expect(bienDich({ ids: [UUID("1"), "khong-phai-uuid"] })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it("field lạ bị whitelist cắt bỏ, chỉ còn ids", async () => {
+    const a = UUID("1");
+    const dto: any = await bienDich({ ids: [a], token: "x", linkIds: [], other: 123 });
+    expect(dto.ids).toEqual([a]);
+    expect(dto.token).toBeUndefined();
+    expect(dto.linkIds).toBeUndefined();
+    expect(dto.other).toBeUndefined();
+  });
+
+  it("lô hợp lệ qua và giữ nguyên ids", async () => {
+    const a = UUID("1");
+    const b = UUID("2");
+    const dto = await bienDich({ ids: [a, b] });
+    expect(dto.ids).toEqual([a, b]);
   });
 });
