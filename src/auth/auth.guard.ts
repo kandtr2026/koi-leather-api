@@ -131,7 +131,11 @@ export class AuthGuard implements CanActivate {
 
     // Storefront công khai (KoiFront): nhóm /shop/* là API cho khách vãng lai,
     // chỉ đọc hàng đã xuất bản và field an toàn — luôn mở, không dính khoá admin.
-    if (path.startsWith("/shop")) {
+    //
+    // Khớp CHÍNH XÁC "/shop" hoặc "/shop/" + bất kỳ gì, sau khi chuẩn hoá, để
+    // tránh mở nhầm /shopee-ads hay /shopping (đã nằm trong danh sách router).
+    const duong = chuanHoaDuong(path);
+    if (duong === "/shop" || duong.startsWith("/shop/")) {
       return true;
     }
 
