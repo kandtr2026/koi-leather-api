@@ -165,8 +165,22 @@ export class AnalyticsService {
     }).format(t);
   }
 
-  /** Gom referrer về vài nhóm để đếm — tên miền thô thì tãi ra quá vụn. */
-  private nguon(referrer: string | null, host: string): string {
+  /**
+   * Gom referrer về vài nhóm để đếm — tên miền thô thì tãi ra quá vụn.
+   *
+   * `path` là đường dẫn với query của lượt hiện tại. Chỉ dùng để nhận ra lượt
+   * Google Ads: click ads bao giờ cũng mang theo mã quảng cáo (gclid / gbraid /
+   * wbraid) trên URL — organic không có. Referrer google giống nhau cho cả hai
+   * nên không tách được nếu không nhìn path.
+   *
+   * Có mã quảng cáo tính là google_ads KỂ CẢ khi referrer trống (trình duyệt
+   * chặn referrer) hoặc là internal (khách đã bấm quanh trang nhưng query vẫn
+   * còn gclid): gclid chỉ do Google Ads tạo ra, có nó là phiên đó bắt đầu từ
+   * một cú bấm quảng cáo.
+   */
+  private nguon(referrer: string | null, host: string, path?: string): string {
+    const coMaQuangCao = /[?&](gclid|gbraid|wbraid)=/i.test(path || "");
+    if (coMaQuangCao) return "google_ads";
     if (!referrer) return "direct";
     let h: string;
     try {
@@ -185,7 +199,7 @@ export class AnalyticsService {
     const hostSach = (host || "").replace(/^www\./, "").split(":")[0];
     if (hostSach) nhaMinh.push(hostSach);
     if (nhaMinh.some((d) => h === d || h.endsWith(`.${d}`))) return "internal";
-    if (/(^|\.)google\./.test(h)) return "google";
+    if (/(^|\.)google\./.test(h)) return "google_organic";
     if (/(^|\.)(facebook|fb)\./.test(h) || h.includes("fbclid")) return "facebook";
     if (/(^|\.)zalo\./.test(h)) return "zalo";
     if (/(^|\.)instagram\./.test(h)) return "instagram";
@@ -258,7 +272,9 @@ export class AnalyticsService {
     }
 
     const path = this.chuanHoa(input.path);
-    const source = this.nguon(input.referrer ?? null, input.host);
+    // Truyền path GỐC (còn query) cho nguon() để nhận ra lượt Google Ads qua
+    // mã quảng cáo — chuanHoa đã cắt query ngay sau đó.
+    const source = this.nguon(input.referrer ?? null, input.host, input.path);
     const device = this.thietBi(ua);
     const visitorHash = this.visitorHash(input.ip, ua);
     // Dịch vùng MỘT lần lúc ghi (geo.ts), đọc sau chỉ đọc cột — khỏi nợ một
@@ -333,7 +349,7 @@ export class AnalyticsService {
       data: {
         channel: input.channel,
         path: this.chuanHoa(input.path),
-        source: this.nguon(input.referrer ?? null, input.host),
+        source: this.nguon(input.referrer ?? null, input.host, input.path),
         referrer: input.referrer ? input.referrer.slice(0, 500) : null,
         device: this.thietBi(ua),
         visitorHash: this.visitorHash(input.ip, ua),
