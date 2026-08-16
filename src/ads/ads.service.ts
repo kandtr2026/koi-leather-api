@@ -1984,10 +1984,15 @@ export class AdsService {
 
     // Chặn trùng lặp (theo tuKhoa + chienDich + loaiKhop như cũ — loai không
     // vào key vì một từ không nên vừa là keyword vừa là negative trong cùng chiến dịch).
+    // Idempotent: nếu đã tồn tại thì trả về row cũ thay vì throw lỗi. Trường hợp
+    // hay gặp: wizard push lần 1 tạo được row nhưng chunk đẩy Ads lỗi giữa chừng;
+    // mapSoTay của panel vẫn là snapshot cũ nên lần 2 wizard gọi lại hàm này —
+    // nếu throw thì mất id, không đẩy được. Trả về row cũ thì caller nhận id và
+    // tiếp tục bình thường.
     const trung = await this.prisma.koiAdKeyword.findFirst({
       where: { tuKhoa, chienDich, loaiKhop },
     });
-    if (trung) throw new BadRequestException("Từ khoá này đã tồn tại trong sổ tay");
+    if (trung) return trung;
 
     return this.prisma.koiAdKeyword.create({
       data: {
