@@ -17,7 +17,6 @@ import { ShopService } from "./shop.service";
 import { ShopContentService } from "./shop-content.service";
 import { SlugPipe } from "./slug.pipe";
 import { CreateLeadDto } from "./dto/create-lead.dto";
-import { CreateLeadDto } from "./dto/create-lead.dto";
 
 /**
  * Các kiểu sắp xếp khách được chọn. Bỏ trống = "popular" (mặc định): hàng đinh
