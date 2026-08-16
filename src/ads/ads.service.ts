@@ -1279,6 +1279,51 @@ export class AdsService {
       else themMoi += 1;
     }
 
+    // ─── GOM VÀO KEYWORD POOL (Phase 3) ─────────────────────────────────────
+    // Import xong sổ tay thì gom luôn text+projectTag unique vào pool để user
+    // có gì để assign. Upsert idempotent: text+projectTag đã có thì chỉ cập
+    // nhật nguồn thành "imported", không đổi notes (user có thể đã ghi chú tay).
+    //
+    // Chạy SAU khi import sổ tay xong, trước khi return — nếu import thất bại
+    // thì pool không nhận rác. Nếu đoạn này lỗi thì không làm sập import (try/
+    // catch bọc ngoài), chỉ log ra — vì sổ tay vẫn đầy đủ, user vẫn xem được.
+    try {
+      // Lọc unique theo (text, projectTag): nhiều criterion cùng từ (khác ad
+      // group hay match type) chỉ sinh một dòng pool. projectTag = chienDich vì
+      // đó là ngữ cảnh phân biệt "túi da" của dự án A với "túi da" của dự án B.
+      const poolMap = new Map<string, { text: string; projectTag: string }>();
+      for (const d of dsNhap) {
+        const key = `${d.tuKhoa}|||${d.chienDich ?? ""}`;
+        if (!poolMap.has(key)) {
+          poolMap.set(key, {
+            text: d.tuKhoa,
+            projectTag: d.chienDich ?? "",
+          });
+        }
+      }
+      const poolItems = Array.from(poolMap.values());
+
+      // Bulk upsert vào keyword_pool, lô 500 dòng/câu giống import ở trên.
+      const CO_LO_POOL = 500;
+      for (let i = 0; i < poolItems.length; i += CO_LO_POOL) {
+        const lo = poolItems.slice(i, i + CO_LO_POOL);
+        const hang = lo.map(
+          (p) => Prisma.sql`(${randomUUID()}, ${p.text}, 'imported', ${p.projectTag || null}, ${null}, ${now}, ${now})`,
+        );
+        await this.prisma.$executeRaw(Prisma.sql`
+          INSERT INTO "koi_free_style"."keyword_pool"
+            ("id", "text", "source", "projectTag", "notes", "createdAt", "updatedAt")
+          VALUES ${Prisma.join(hang)}
+          ON CONFLICT ("text", "projectTag") DO UPDATE SET
+            "source"    = EXCLUDED."source",
+            "updatedAt" = EXCLUDED."updatedAt"
+        `);
+      }
+    } catch (err) {
+      // Log nhưng không ném lỗi ra ngoài — import sổ tay vẫn thành công.
+      console.error("[importTuKhoaTuAds] Lỗi gom vào keyword_pool:", err);
+    }
+
     return {
       daNoi: true,
       thieuBien: [],

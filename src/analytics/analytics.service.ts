@@ -14,7 +14,7 @@ import {
 } from "./kenh-lien-he";
 import { docIpNoiBo, gopIpNoiBo, laIpNoiBo, type IpNoiBo } from "./ip-noi-bo";
 import { khuVuc } from "./geo";
-import { gomKhachIp, type LuotKhachIp } from "./khach-ip";
+import { gomKhachIp, gomTheoKhuVuc, type LuotKhachIp } from "./khach-ip";
 
 /**
  * Theo dõi lưu lượng truy cập storefront.
@@ -529,9 +529,13 @@ export class AnalyticsService {
       // Biên ngày theo LỊCH VIỆT NAM — xem ghi chú ở hanhVi().
       from: this.ngayVN(tu),
       den: this.ngayVN(new Date()),
-      // True khi kéo về chạm trần: phần mất là phần CŨ NHẤT (ORDER BY desc).
-      daCat: dong.length >= TRAN_LUOT_HANH_VI,
-      list: gomKhachIp(luot, gioiHan),
+// True khi kéo về chạm trần: phần mất là phần CŨ NHẤT (ORDER BY desc).
+    daCat: dong.length >= TRAN_LUOT_HANH_VI,
+    list: gomKhachIp(luot, gioiHan),
+    // Gom theo khu vực trên TOÀN BỘ lượt trong kỳ (không bị cắt bởi limit) —
+    // cho bản đồ khu vực ở tab IP khách của Heoiu. Gom ở backend vì limit 50
+    // của list làm tỉnh đông khách nhất thành số bịa khi gom phía front.
+    theoKhuVuc: gomTheoKhuVuc(luot),
     };
   }
 

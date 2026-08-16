@@ -88,3 +88,54 @@ export function gomKhachIp(
   );
   return ra.slice(0, Math.max(1, Math.trunc(gioiHan) || 1));
 }
+
+/** Một dòng gom theo khu vực — dữ liệu cho bản đồ trên Heoiu. */
+export interface DongTheoKhuVuc {
+  /** Tên khu vực ("Hà Nội", "Mỹ"...). Không tra được thì "Không biết". */
+  ten: string;
+  /** Số khách KHÁC NHAU (visitorHash) của khu vực trong kỳ. */
+  khach: number;
+  /** Tổng lượt xem của khu vực trong kỳ. */
+  luot: number;
+}
+
+/**
+ * Gom lượt thô theo khu vực để vẽ bản đồ khách xem.
+ *
+ * KHÁC gomKhachIp: hàm kia gom theo KHÁCH (một dòng một khách), hàm này gom theo
+ * KHU VỰC (một dòng một tỉnh/nước) — hai câu hỏi khác nhau, hai chiều gom khác
+ * nhau, không thay thế được nhau.
+ *
+ * khach đếm theo visitorHash riêng (không đếm lượt) vì bản đồ trả lời "khu vực
+ * nào có nhiều KHÁCH", lượt chỉ là phụ. Lượt thiếu visitorHash thì bỏ hẳn (không
+ * gom được, đếm vào chỉ làm sai tỉ lệ). khuVuc null/hụt -> gom vào "Không biết"
+ * để con số không biến mất khỏi tổng.
+ */
+export function gomTheoKhuVuc(
+  luot: readonly LuotKhachIp[],
+): DongTheoKhuVuc[] {
+  const nhom = new Map<string, { khach: Set<string>; luot: number }>();
+  for (const l of luot) {
+    if (!l.visitorHash) continue;
+    const ten = l.khuVuc || "Không biết";
+    const co = nhom.get(ten);
+    if (co) {
+      co.khach.add(l.visitorHash);
+      co.luot += 1;
+    } else {
+      nhom.set(ten, { khach: new Set([l.visitorHash]), luot: 1 });
+    }
+  }
+
+  const ra: DongTheoKhuVuc[] = [];
+  for (const [ten, v] of nhom) {
+    ra.push({ ten, khach: v.khach.size, luot: v.luot });
+  }
+  ra.sort(
+    (a, b) =>
+      b.khach - a.khach ||
+      b.luot - a.luot ||
+      a.ten.localeCompare(b.ten, "vi"),
+  );
+  return ra;
+}
