@@ -22,6 +22,7 @@ import { ShopModule } from "./shop/shop.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { AdsModule } from "./ads/ads.module";
 import { AiEditModule } from "./ai-edit/ai-edit.module";
+import { SeoWhitelistModule } from "./seo-whitelist/seo-whitelist.module";
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { AiEditModule } from "./ai-edit/ai-edit.module";
     AnalyticsModule,
     AdsModule,
     AiEditModule,
+    SeoWhitelistModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -12,7 +12,9 @@
     }
   },
   "crons": [
-    { "path": "/analytics/ads/cron/sweep", "schedule": "0 3 * * *" }
+    { "path": "/analytics/ads/cron/sweep",     "schedule": "0 3 * * *" },
+    { "path": "/analytics/seo/cron/snapshot",  "schedule": "0 3 * * *" },
+    { "path": "/analytics/seo/cron/review",    "schedule": "0 4 * * *" }
   ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index.js" }

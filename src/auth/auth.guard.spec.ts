@@ -198,6 +198,26 @@ describe("AuthGuard — service token cho Heoiu", () => {
       expect(guard.canActivate(c)).toBe(true);
     });
   });
+
+  describe("cron whitelist SEO — allowlist, không cần token", () => {
+    it.each([
+      "/analytics/seo/cron/snapshot",
+      "/analytics/seo/cron/review",
+    ])("GET %s đi qua (controller tự kiểm CRON_SECRET)", (path) => {
+      const { guard, authService } = guardMoi();
+      const { ctx: c } = ctx("GET", path);
+      expect(guard.canActivate(c)).toBe(true);
+      expect(authService.verifyToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("cron whitelist SEO — không lọt đường khác", () => {
+    it("GET /analytics/seo/cron/sweep không được mở (không trong allowlist)", () => {
+      const { guard } = guardMoi();
+      const { ctx: c } = ctx("GET", "/analytics/seo/cron/sweep");
+      expect(() => guard.canActivate(c)).toThrow(UnauthorizedException);
+    });
+  });
 });
 
 /**
@@ -234,13 +254,14 @@ describe("AuthGuard — token ghi cho Heoiu", () => {
   // phải chép thiếu. Xem GHI_CHO_PHEP trong auth.guard.ts.
   const UUID = "3f1a7c8e-9b24-4d61-a0f5-7e2c8b41d6a9";
 
-  describe("cho phép đúng 5 đường", () => {
+  describe("cho phép đúng 6 đường", () => {
     it.each([
       ["POST", "/analytics/ads/convert"],
       ["POST", "/analytics/ads/keywords"],
       ["PATCH", `/analytics/ads/keywords/${UUID}`],
       ["DELETE", `/analytics/ads/keywords/${UUID}`],
       ["PATCH", "/analytics/leads/34"],
+      ["POST", "/analytics/seo/review"],
     ])("%s %s đi qua và KHÔNG gọi verifyToken", (method, path) => {
       const { guard, authService } = guardMoi();
       const { ctx: c, request } = ctx(method, path, TOKEN_GHI);

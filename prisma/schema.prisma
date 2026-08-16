@@ -998,3 +998,59 @@ model SyncJobLog {
   @@map("sync_job_log")
   @@schema("koi_free_style")
 }
+
+/// Snapshot metric từ khoá Google Ads, ghi HẰNG NGÀY (mỗi ngày một dòng/từ khoá).
+/// Dữ liệu lấy từ tuKhoaThat() = keyword_view LAST_30_DAYS (số 30 ngày cuốn chiếu).
+model KoiKeywordMetric {
+  id           String   @id @default(uuid())
+  tuKhoa       String
+  chienDich    String?
+  /// Ngày snapshot, chuẩn hoá về 00:00 giờ VN (Asia/Ho_Chi_Minh).
+  ngay         DateTime
+  hienThi      Int
+  cuBam        Int
+  chiPhi       Float    /// VND, cost_micros / 1e6
+  ctr          Float?
+  cpcTrungBinh Float?
+  cuChuyenDoi  Int?
+
+  @@unique([tuKhoa, chienDich, ngay])
+  @@index([ngay])
+  @@index([tuKhoa])
+  @@map("koi_keyword_metrics")
+  @@schema("koi_free_style")
+}
+
+/// Trạng thái whitelist SEO hiện tại của một từ khoá (upsert theo tuKhoa).
+/// pending | whitelisted | rejected. KHÔNG có uuTien, KHÔNG có expired.
+model KoiKeywordWhitelist {
+  id          String   @id @default(uuid())
+  tuKhoa      String   @unique
+  chienDich   String?
+  trangThai   String   @default("pending")
+  lyDo        String?
+  diem        Int?     /// 0-100
+  nguonReview String   @default("ai") /// ai | tay
+  model       String?
+  ngayReview  DateTime @default(now())
+
+  @@index([trangThai])
+  @@map("koi_keyword_whitelist")
+  @@schema("koi_free_style")
+}
+
+/// Nhật ký mỗi lần review (append-only, không bao giờ sửa/xoá dòng cũ).
+model KoiKeywordReviewLog {
+  id          String    @id @default(uuid())
+  tuKhoa      String
+  quyetDinh   String    /// whitelisted | rejected
+  lyDo        String?
+  diem        Int?
+  model       String?
+  metricId    String?   /// id dòng KoiKeywordMetric dùng để review (tuỳ chọn)
+  ngayReview  DateTime  @default(now())
+
+  @@index([tuKhoa, ngayReview])
+  @@map("koi_keyword_review_logs")
+  @@schema("koi_free_style")
+}

@@ -87,6 +87,11 @@ const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   // Google Ads". Body rỗng = đẩy tất cả đang chờ, nên đây là đường nguy hiểm
   // nhất trong danh sách này.
   ["POST", /^\/analytics\/ads\/sync\/push$/],
+  // ----- Whitelist SEO (Phase 4.5) -----
+  // Chạy AI review diện từ khoá đã cắn tiền. Gọi GPT (tốn phí OpenAI nhỏ) +
+  // upsert trạng thái — không mutate tài khoản Ads, nhưng vẫn là POST ghi DB
+  // nên phải qua token ghi. Đường TĨNH, đặt cuối danh sách cho dễ đọc.
+  ["POST", /^\/analytics\/seo\/review$/],
 ];
 
 /**
@@ -153,6 +158,14 @@ export class AuthGuard implements CanActivate {
     // là vô tình mở luôn mọi đường /analytics/ads/cron/* thêm sau này, mà những
     // đường đó chưa chắc có tự kiểm bí mật.
     if (chuanHoaDuong(path) === "/analytics/ads/cron/sweep") {
+      return true;
+    }
+    // Whitelist SEO: hai cron daily của SeoWhitelistController — cùng quy ước
+    // "allowlist đúng đường dẫn, controller TỰ kiểm CRON_SECRET" như sweep.
+    if (chuanHoaDuong(path) === "/analytics/seo/cron/snapshot") {
+      return true;
+    }
+    if (chuanHoaDuong(path) === "/analytics/seo/cron/review") {
       return true;
     }
 

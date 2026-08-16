@@ -10,5 +10,7 @@ import { OpenAiClient } from "./openai.client";
   imports: [PrismaModule],
   controllers: [AiEditController],
   providers: [AiEditService, AiEditResolver, AiEditWriter, OpenAiClient],
+  // SeoWhitelistModule dùng chung client GPT (OpenAiClient không giữ trạng thái).
+  exports: [OpenAiClient],
 })
 export class AiEditModule {}

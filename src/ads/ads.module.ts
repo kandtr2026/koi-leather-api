@@ -17,5 +17,7 @@ import { AdsSyncService } from "./ads-sync.service";
     SyncService,
     AdsSyncService,
   ],
+  // SeoWhitelistModule dùng tuKhoaThat() làm nguồn snapshot metric từ khoá.
+  exports: [AdsService],
 })
 export class AdsModule {}
