@@ -67,7 +67,7 @@ export class SearchTermDto {
  * Bước 3 — chấm MỘT LÔ từ khoá so với nội dung landing.
  *
  * tuKhoas trần 120: client tự chia lô gọi nhiều lần chứ server không gộp, vì
- * mỗi lượt GPT đã có hạn chờ 50 giây trong khi hàm serverless chỉ sống 60 giây.
+ * mỗi lượt GPT đã có hạn chờ 4 phút trong khi hàm serverless sống 300 giây.
  * landingText trần 12000 nhỉnh hơn mức cat 8000 của bước analyze một khoảng
  * phòng xa, service sẽ tự cat lại đúng mức trước khi đưa vào prompt.
  */

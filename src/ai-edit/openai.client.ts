@@ -37,23 +37,32 @@ export class OpenAiClient {
   /**
    * Hạn chờ OpenAI, tính bằng mili-giây.
    *
-   * PHẢI NHỎ HƠN maxDuration TRONG vercel.json (đang là 60 giây).
+   * PHẢI NHỎ HƠN CẢ BỐN HẠN BAO NGOÀI. Đây là số nằm trong cùng của một chuỗi
+   * bốn tầng, và chỉ cần một tầng ngoài ngắn hơn là câu báo lỗi tử tế bên dưới
+   * không bao giờ tới được chủ shop:
    *
-   * Vì sao phải nhỏ hơn: nếu để hạn này lớn hơn giới hạn của nền tảng thì Vercel
-   * cắt hàm TRƯỚC, nên nhánh AbortError bên dưới không bao giờ chạy và chủ shop
-   * nhận về lỗi 504 trống rỗng thay vì câu giải thích có hướng xử lý.
+   *   koi-domain-router  300s  ← proxy của koileather.com, dự án Vercel RIÊNG
+   *   vercel.json ở đây  300s
+   *   trình duyệt admin  260s  ← index.html, hàm aiXemTruoc
+   *   hạn này            240s
    *
-   * Để 50 giây là chừa 10 giây cho phần còn lại của một lượt: khởi động lạnh,
+   * Tầng ngoài cùng là chỗ đã cắn một lần thật: koi-domain-router để 30 giây
+   * trong khi ba tầng còn lại để 120-300, nên MỌI lượt sửa bài dài chết với
+   * FUNCTION_INVOCATION_TIMEOUT — mà Vercel ghi nó vào log thành 502 với
+   * timestamp lúc BẮT ĐẦU request, nhìn hệt như chính hàm này ném 502 sau hai
+   * giây. Đổi số ở đây thì phải mở cả tệp vercel.json của router mà đối chiếu,
+   * không chỉ vercel.json của dự án này.
+   *
+   * Để 4 phút là chừa 60 giây cho phần còn lại của một lượt: khởi động lạnh,
    * đọc bản ghi từ DB trước khi gọi, rồi dựng bảng so sánh trả về sau khi gọi.
    *
-   * Đổi maxDuration trong vercel.json thì phải đổi cả số này — hoặc đặt
-   * OPENAI_TIMEOUT_MS trên Vercel để chỉnh không cần deploy. Số vượt quá 58 giây
-   * bị kẹp lại, vì quá đó là Vercel cắt trước và mất câu báo lỗi tử tế.
+   * Chỉnh nhanh không cần deploy thì đặt OPENAI_TIMEOUT_MS trên Vercel. Số vượt
+   * quá 270 giây bị kẹp lại, vì quá đó là Vercel cắt trước và mất câu báo lỗi.
    */
   private get hanChoMs(): number {
     const n = Number(process.env.OPENAI_TIMEOUT_MS || "");
-    if (!Number.isFinite(n) || n <= 0) return 50_000;
-    return Math.min(n, 58_000);
+    if (!Number.isFinite(n) || n <= 0) return 240_000;
+    return Math.min(n, 270_000);
   }
 
   daCoKey(): boolean {

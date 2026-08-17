@@ -18,11 +18,11 @@ import { PrismaService } from "../prisma/prisma.service";
  * CHỈ ĐỌC + NHÁP. Cả cụm KHÔNG gọi mutate() nào xuống Google Ads: bước 4-5
  * (review + đẩy) đi qua sổ tay KoiAdKeyword và push-bulk đã có sẵn.
  *
- * Ngân sách thời gian: hàm serverless sống 60 giây; fetch landing trần 15 giây
- * + một lượt GPT trần 50 giây (OpenAiClient.hanChoMs) — tổng lý thuyết 65 giây,
- * chấp nhận rủi ro này theo kế hoạch: fetch thường về trong 1-2 giây nên tổng
- * thực tế nằm trong hạn, còn chạm trần thì request bị Vercel cắt và heoiu nhận
- * timeout — bấm lại được, không mất dữ liệu gì.
+ * Ngân sách thời gian: hàm serverless sống 300 giây (maxDuration trong
+ * vercel.json); fetch landing trần 15 giây + một lượt GPT trần 4 phút
+ * (OpenAiClient.hanChoMs) — tổng lý thuyết 255 giây, vẫn dưới hạn của hàm.
+ * Chạm trần thì request bị Vercel cắt và heoiu nhận timeout — bấm lại được,
+ * không mất dữ liệu gì.
  */
 
 // Chỉ fetch ĐÚNG các host này — chốt chống SSRF. Không có nó thì ai có quyền

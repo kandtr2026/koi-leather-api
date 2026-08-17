@@ -182,7 +182,7 @@ export class AiEditResolver {
    * Số ảnh gửi cho AI xem. Đặt qua AI_EDIT_SO_ANH.
    *
    * Vì sao phải có trần: mỗi tấm ảnh là thêm token VÀ thêm giây chờ, mà cả lượt
-   * gọi chỉ có 50 giây trước khi openai.client tự bỏ cuộc. 3 tấm là đủ thấy hình
+   * gọi chỉ có 4 phút trước khi openai.client tự bỏ cuộc. 3 tấm là đủ thấy hình
    * dáng, chất da và một góc chi tiết; tấm thứ mười không thêm được gì mà lượt
    * nào cũng phải trả tiền cho nó.
    *
