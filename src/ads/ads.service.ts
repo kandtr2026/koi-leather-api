@@ -2263,19 +2263,28 @@ export class AdsService {
    *      nhánh TẠO MỚI). suaTuKhoaV2 chỉ ghi DB nên KHÔNG dùng ở đây được: nó để
    *      criterion cũ còn sống trên tài khoản, vẫn ăn tiền.
    *
-   * KHÔNG NGUYÊN TỬ: nếu remove (bước B) OK nhưng create lỗi, dòng ở trạng thái
+   *   C. Đổi kiểu khớp (loaiKhop broad/phrase/exact): Google Ads KHÔNG cho dùng
+   *      update để đổi match type của criterion đã tồn tại — phải gỡ criterion
+   *      cũ trên Ads rồi tạo lại với match type mới, giống nhánh B. `loaiKhop`
+   *      truyền vào thì ưu tiên hơn `den`: chỉ đổi kiểu khớp, giữ nguyên loai
+   *      (keyword/negative) và trangThai.
+   *
+   * KHÔNG NGUYÊN TỬ: nếu remove (bước B/C) OK nhưng create lỗi, dòng ở trạng thái
    * loại mới với adsResourceName=null, trangThaiDongBo='loi' (chưa có trên Ads).
    * Bấm "Đẩy lên Ads" ở tab Từ khoá Ads để thử lại tạo criterion mới.
    */
   async chuyenBoxTuKhoa(
     id: string,
     den: string,
+    loaiKhop?: string,
   ): Promise<{
     ok: boolean;
     trangThaiDongBo: string;
     adsResourceName: string | null;
     loiDongBo: string | null;
   }> {
+    const MAP_KHOP_HOP_LE = ["broad", "phrase", "exact"];
+
     // Đích → (loaiMoi, trangThaiMoi).
     const DICH: Record<string, { loai: string; trangThai: string }> = {
       "dang-chay": { loai: "keyword", trangThai: "active" },
@@ -2288,6 +2297,11 @@ export class AdsService {
         `den không hợp lệ: ${den}. Chỉ nhận dang-chay | tam-dung | dang-chan.`,
       );
     }
+    if (loaiKhop != null && MAP_KHOP_HOP_LE.indexOf(loaiKhop) < 0) {
+      throw new BadRequestException(
+        `loaiKhop không hợp lệ: ${loaiKhop}. Chỉ nhận broad | phrase | exact.`,
+      );
+    }
 
     const k = await this.prisma.koiAdKeyword.findUnique({ where: { id } });
     if (!k) throw new NotFoundException(`Không tìm thấy từ khoá ${id}`);
@@ -2298,9 +2312,10 @@ export class AdsService {
     }
 
     const loaiHienTai = k.loai ?? "keyword";
+    const doiKieuKhop = loaiKhop != null && k.loaiKhop !== loaiKhop;
 
-    // --- NHÁNH A: cùng loại, chỉ đổi active↔paused ---
-    if (dich.loai === loaiHienTai) {
+    // --- NHÁNH A: cùng loại, chỉ đổi active↔paused (không đổi kiểu khớp) ---
+    if (!doiKieuKhop && dich.loai === loaiHienTai) {
       // No-op nếu đã đúng trạng thái rồi (kéo về đúng cột đang đứng).
       if (k.trangThai === dich.trangThai) {
         return { ok: true, trangThaiDongBo: k.trangThaiDongBo, adsResourceName: k.adsResourceName, loiDongBo: null };
@@ -2314,32 +2329,36 @@ export class AdsService {
     }
 
     // --- NHÁNH B: đổi loại keyword↔negative ---
+    // --- NHÁNH C: đổi kiểu khớp broad/phrase/exact (Google Ads bắt gỡ + tạo lại) ---
     if (!this.ads.daCauHinh()) {
       const thieu = this.ads.bienConThieu().join(", ");
       throw new BadRequestException(`Chưa cấu hình Google Ads API. Còn thiếu: ${thieu}`);
     }
 
-    // Xác định phạm vi negative + kiểm đủ id để TẠO LẠI loại mới.
     let phamViMoi: string | null = k.phamViNegative ?? "adgroup";
-    if (dich.loai === "keyword") {
-      // keyword bắt buộc ad group. Negative mức campaign chỉ có campaignId → chịu.
-      if (!k.adGroupId) {
-        throw new BadRequestException(
-          "Negative mức campaign không có ad group nên không tự chuyển sang từ khoá được. " +
-            "Chuyển thủ công trên Google Ads.",
-        );
-      }
-      phamViMoi = null; // keyword không dùng phamViNegative
-    } else {
-      // → negative: bám ad group nếu có, không thì mức campaign.
-      phamViMoi = k.adGroupId ? "adgroup" : k.campaignId ? "campaign" : null;
-      if (!phamViMoi) {
-        throw new BadRequestException(
-          "Từ khoá thiếu cả adGroupId lẫn campaignId nên không tạo negative được. " +
-            "Chuyển thủ công trên Google Ads.",
-        );
+    if (!doiKieuKhop) {
+      // Nhánh B thuần: đổi loại → tính lại phạm vi negative cho loại mới.
+      if (dich.loai === "keyword") {
+        // keyword bắt buộc ad group. Negative mức campaign chỉ có campaignId → chịu.
+        if (!k.adGroupId) {
+          throw new BadRequestException(
+            "Negative mức campaign không có ad group nên không tự chuyển sang từ khoá được. " +
+              "Chuyển thủ công trên Google Ads.",
+          );
+        }
+        phamViMoi = null; // keyword không dùng phamViNegative
+      } else {
+        // → negative: bám ad group nếu có, không thì mức campaign.
+        phamViMoi = k.adGroupId ? "adgroup" : k.campaignId ? "campaign" : null;
+        if (!phamViMoi) {
+          throw new BadRequestException(
+            "Từ khoá thiếu cả adGroupId lẫn campaignId nên không tạo negative được. " +
+              "Chuyển thủ công trên Google Ads.",
+          );
+        }
       }
     }
+    // Nhánh C (đổi kiểu khớp): giữ nguyên phamViMoi/loai/trangThai đang có.
 
     // 1. Gỡ criterion CŨ trên Ads (nếu đã đẩy). Cùng logic chọn service với xoaTuKhoa.
     if (k.adsResourceName) {
@@ -2353,7 +2372,7 @@ export class AdsService {
           operations: [{ remove: k.adsResourceName }],
         });
       } catch (err: any) {
-        // Gỡ lỗi → GIỮ NGUYÊN dòng, ghi lỗi, KHÔNG đổi loại nửa vời.
+        // Gỡ lỗi → GIỮ NGUYÊN dòng, ghi lỗi, KHÔNG đổi loại/kiểu khớp nửa vời.
         const loiDongBo: string = err?.message
           ? String(err.message).slice(0, 500)
           : "Lỗi không xác định khi gỡ criterion cũ trên Google Ads";
@@ -2365,20 +2384,24 @@ export class AdsService {
       }
     }
 
-    // 2. Đổi loại trong DB + reset resource name → dòng coi như chưa đẩy loại mới.
-    await this.prisma.koiAdKeyword.update({
-      where: { id },
-      data: {
-        loai: dich.loai,
-        trangThai: dich.trangThai,
-        phamViNegative: phamViMoi,
-        adsResourceName: null,
-        trangThaiDongBo: "chua_day",
-        loiDongBo: null,
-      },
-    });
+    // 2. Đổi trong DB + reset resource name → dòng coi như chưa đẩy dạng mới.
+    //    Nhánh C chỉ đổi loaiKhop; nhánh B đổi loai + trạng thái + phạm vi.
+    const dataCapNhat: Prisma.KoiAdKeywordUpdateInput = {
+      adsResourceName: null,
+      trangThaiDongBo: "chua_day",
+      loiDongBo: null,
+    };
+    if (doiKieuKhop) {
+      dataCapNhat.loaiKhop = loaiKhop;
+      dataCapNhat.dongBoLuc = null;
+    } else {
+      dataCapNhat.loai = dich.loai;
+      dataCapNhat.trangThai = dich.trangThai;
+      dataCapNhat.phamViNegative = phamViMoi;
+    }
+    await this.prisma.koiAdKeyword.update({ where: { id }, data: dataCapNhat });
 
-    // 3. Tạo lại criterion loại mới trên Ads (dayTuKhoa nhánh TẠO MỚI).
+    // 3. Tạo lại criterion dạng mới trên Ads (dayTuKhoa nhánh TẠO MỚI).
     return this.dayTuKhoa(id);
   }
 

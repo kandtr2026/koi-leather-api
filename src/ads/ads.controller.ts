@@ -553,6 +553,11 @@ export class AdsAdminController {
    * dang-chan. Service tự phân nhánh: cùng loại → pause/resume; đổi loại
    * keyword↔negative → gỡ criterion cũ + tạo lại. den sai → 400 từ service.
    *
+   * Cho phép body.loaiKhop ∈ broad | phrase | exact để ĐỔI KIỂU KHỚP ngay từ
+   * thẻ kanban: Google Ads không cho update match type trên criterion đã tồn
+   * tại nên service gỡ cũ + tạo mới. Có loaiKhop thì `den` chỉ là cột nguồn
+   * (giữ nguyên loai/trangThai hiện tại).
+   *
    * Tự kiểm req.user như route push/delete: đây là hành động đụng tài khoản thật.
    */
   @Post("ads/keywords/:id/move")
@@ -560,13 +565,16 @@ export class AdsAdminController {
   @ApiOperation({ summary: "Chuyển từ khoá giữa 3 box Sổ tay SEO (MUTATE tài khoản thật)" })
   async chuyenBoxTuKhoa(
     @Param("id") id: string,
-    @Body() body: { den?: string },
+    @Body() body: { den?: string; loaiKhop?: string },
     @Req() req: Request,
   ) {
     if (!(req as Request & { user?: unknown }).user) {
       throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
     }
-    return this.ads.chuyenBoxTuKhoa(id, String(body?.den ?? ""));
+    const loaiKhop = body?.loaiKhop != null && String(body.loaiKhop).trim() !== ""
+      ? String(body.loaiKhop).trim()
+      : undefined;
+    return this.ads.chuyenBoxTuKhoa(id, String(body?.den ?? ""), loaiKhop);
   }
 
   /**
