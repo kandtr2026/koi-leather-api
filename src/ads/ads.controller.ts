@@ -598,6 +598,29 @@ export class AdsAdminController {
     return this.ads.dayTuKhoaNhieu(dto.ids);
   }
 
+  /**
+   * AI MENTOR cho MỘT chiến dịch — đọc số liệu thật rồi hỏi GPT "nên làm gì
+   * tiếp theo", trả lời khuyên chia 4 nhóm. CHỈ ĐỌC Ads, không MUTATE.
+   *
+   * POST (không GET) để đồng nhất với các đường gọi GPT tốn phí (landing/analyze,
+   * score...) và tự kiểm req.user — mỗi lần bấm là một lượt GPT trên số liệu thật.
+   * Không dùng ValidationPipe/DTO riêng: chỉ một field campaignId, service tự
+   * chặn rỗng + chỉ-chữ-số trước khi ghép vào GAQL.
+   */
+  @Post("ads/mentor/campaign")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: "AI mentor: đọc số liệu 1 chiến dịch → khuyên việc cần làm" })
+  async mentorChienDich(
+    @Body() body: { campaignId?: string },
+    @Req() req: Request,
+  ) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.ads.mentorChienDich(String(body?.campaignId ?? ""));
+  }
+
   // ─── Cụm "Ads ↔ Landing ↔ SEO" (bước 1, 2, 3, 6 + verified pool) ──────────
   //
   // KHÔNG mutate tài khoản Ads: bước 4-5 (review + đẩy) đi qua sổ tay KoiAdKeyword

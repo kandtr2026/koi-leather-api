@@ -46,6 +46,11 @@ const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   ["POST", /^\/analytics\/ads\/landing\/analyze$/],
   ["POST", /^\/analytics\/ads\/landing\/score$/],
   ["POST", /^\/analytics\/ads\/landing\/seo-draft$/],
+  // AI mentor chiến dịch: đọc số liệu 1 chiến dịch (GAQL) rồi gọi GPT khuyên
+  // việc cần làm. KHÔNG mutate tài khoản Ads, nhưng là POST gọi OpenAI (tốn
+  // phí) — CÙNG loại với ba đường landing ở trên, nên đi qua token ghi. Đường
+  // TĨNH, nhánh /mentor riêng, đặt cạnh cụm landing cho dễ đọc.
+  ["POST", /^\/analytics\/ads\/mentor\/campaign$/],
   // Verified pool: lưu/xoá quyết định duyệt ("đã đẩy") theo từng landing —
   // CHỈ ghi Postgres, không mutate tài khoản Ads. GET verified KHÔNG có ở đây:
   // heoiu đọc bằng token đọc (nhánh service token mở mọi GET /analytics).

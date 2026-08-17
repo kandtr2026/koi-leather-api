@@ -72,7 +72,7 @@ const dongTuKhoa = (id: string, over: Record<string, any> = {}) => ({
 });
 
 const dichVu = (prisma: any, ads: any) =>
-  new AdsService(prisma as never, ads as never);
+  new AdsService(prisma as never, ads as never, null as never);
 
 const UUID = (n: string) => `${n.repeat(8)}-${n.repeat(4)}-4${n.repeat(3)}-8${n.repeat(3)}-${n.repeat(12)}`;
 

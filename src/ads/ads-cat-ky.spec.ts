@@ -35,7 +35,7 @@ function prismaGia() {
  * Tham số thứ hai là GoogleAdsClient — chỉ dùng cho phần từ khoá, `danhSach()`
  * không chạm tới. Truyền null để bài kiểm không phải dựng cả client thật.
  */
-const dichVu = (p: any) => new AdsService(p as never, null as never);
+const dichVu = (p: any) => new AdsService(p as never, null as never, null as never);
 
 /** Mốc `gte` mà một lượt gọi đã dùng, theo tên cột. */
 const mocCua = (arg: any, cot: string) => arg?.where?.[cot]?.gte;

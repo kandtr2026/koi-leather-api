@@ -39,7 +39,7 @@ function prismaGia(soTay: any[] = []) {
 }
 
 const dichVu = (ads: any, prisma: any = prismaGia()) =>
-  new AdsService(prisma as never, ads as never);
+  new AdsService(prisma as never, ads as never, null as never);
 
 /** Các cột SỐ (number|null) của một dòng từ khoá — dùng để soát NaN. */
 const COT_SO_TU_KHOA = [
@@ -652,7 +652,7 @@ describe("AdsAdminController — 2 endpoint live mới: admin-only + 400", () =>
   it("GET keyword-ideas/live: có admin nhưng KHÔNG seed hợp lệ → 400 (qua service thật)", async () => {
     // Dùng AdsService thật (client + prisma giả) để chứng minh đường đi trọn vẹn:
     // controller chuẩn hoá undefined → [] → service ném BadRequest.
-    const service = new AdsService(prismaGia() as never, adsGia() as never);
+    const service = new AdsService(prismaGia() as never, adsGia() as never, null as never);
     const ctl = new AdsAdminController(service, {} as any); // landingSeo không đụng trong test này
     await expect(ctl.yTuongTuKhoa(reqCoAdmin(), undefined)).rejects.toThrow(
       BadRequestException,

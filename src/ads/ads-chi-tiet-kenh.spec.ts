@@ -85,7 +85,7 @@ const click = (gclid: string | null) => ({
   exportedAt: null,
 });
 
-const dichVu = (p: any, ads: any) => new AdsService(p as never, ads as never);
+const dichVu = (p: any, ads: any) => new AdsService(p as never, ads as never, null as never);
 
 describe("danhSach chiTiet — chi phí kênh và nối gclid → từ khoá", () => {
   it("chiPhi = tổng cost_micros / 1e6 làm tròn; câu campaign BETWEEN ngày lịch VN", async () => {

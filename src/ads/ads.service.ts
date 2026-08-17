@@ -9,6 +9,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { dauNgayVN, ngayVNCuaDate, ngayVNString } from "../common/ngay-vn";
 import { GoogleAdsClient } from "./google-ads.client";
+import { OpenAiClient } from "../ai-edit/openai.client";
 
 /**
  * Nối cú bấm quảng cáo Google với hội thoại Zalo.
@@ -191,6 +192,9 @@ export class AdsService {
   constructor(
     private prisma: PrismaService,
     private ads: GoogleAdsClient,
+    // OpenAiClient lấy từ AiEditModule (ads.module.ts đã import) — cùng client
+    // GPT mà LandingSeoService dùng, cho tính năng "AI mentor chiến dịch".
+    private openai: OpenAiClient,
   ) {}
 
   /**
@@ -1632,6 +1636,240 @@ export class AdsService {
           ghiChuCuaToi: ghiChuTheoTu.get(text.trim().toLowerCase()) ?? null,
         };
       }),
+    };
+  }
+
+  /**
+   * AI MENTOR cho MỘT chiến dịch: đọc số liệu thật (cấp chiến dịch + từng từ
+   * khoá) rồi hỏi GPT "nên làm gì tiếp theo", trả về lời khuyên chia 4 nhóm.
+   *
+   * VÌ SAO ĐỌC LẠI TỪ ADS chứ không lấy bản DB: sổ tay trong DB là bản chép,
+   * có thể lệch với Ads. Lời khuyên phải dựa trên số liệu THẬT 30 ngày mới có
+   * giá trị, nên đi thẳng keyword_view như tuKhoaThat.
+   *
+   * HAI truy vấn vì search_budget/rank_lost_impression_share CHỈ có ở cấp
+   * campaign (keyword_view không cho các cột này — chọn vào là Google trả 503).
+   * Muốn khuyên ngân sách thì bắt buộc query riêng ở campaign.
+   *
+   * KHÔNG ném lỗi thô: theo khuôn daNoi/{ok} như các đường Ads khác. Chưa nối
+   * Ads → daNoi:false. GPT lỗi (chưa có key, quá hạn, JSON hỏng) → ok:false kèm
+   * câu tiếng Việt của OpenAiClient, để heoiu vẽ một khuôn nhất quán.
+   */
+  async mentorChienDich(campaignId: string): Promise<{
+    ok: boolean;
+    daNoi: boolean;
+    thieuBien?: string[];
+    loi?: string;
+    chienDich?: { id: string; ten: string };
+    model?: string;
+    loiKhuyen?: {
+      tomTat: string;
+      nganSach: string[];
+      tuKhoaTatGiu: string[];
+      negativeKhop: string[];
+      ytuongMoi: string[];
+    };
+  }> {
+    const id = String(campaignId || "").trim();
+    if (!id) {
+      return { ok: false, daNoi: true, loi: "Thiếu campaignId" };
+    }
+    if (!this.ads.daCauHinh()) {
+      return { ok: false, daNoi: false, thieuBien: this.ads.bienConThieu() };
+    }
+
+    // Chỉ nhận chữ số: campaignId đi thẳng vào GAQL nên phải chặn chèn chuỗi.
+    if (!/^\d+$/.test(id)) {
+      return { ok: false, daNoi: true, loi: "campaignId không hợp lệ" };
+    }
+
+    // Hai lượt đọc độc lập chạy SONG SONG (cùng lý do như tuKhoaThat: cả hai
+    // đều gọi ra Internet). camp = số liệu cấp chiến dịch (ngân sách, lost IS);
+    // kw = từng từ khoá của riêng chiến dịch này kèm metric 30 ngày.
+    const [campRows, kwRows, soTay] = await Promise.all([
+      this.ads.truyVan(`
+        SELECT
+          campaign.id,
+          campaign.name,
+          campaign.status,
+          campaign_budget.amount_micros,
+          metrics.cost_micros,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.conversions,
+          metrics.all_conversions,
+          metrics.conversions_value,
+          metrics.average_cpc,
+          metrics.search_impression_share,
+          metrics.search_budget_lost_impression_share,
+          metrics.search_rank_lost_impression_share
+        FROM campaign
+        WHERE campaign.id = ${id}
+          AND segments.date DURING LAST_30_DAYS
+      `),
+      this.ads.truyVan(`
+        SELECT
+          ad_group_criterion.keyword.text,
+          ad_group_criterion.keyword.match_type,
+          ad_group_criterion.status,
+          ad_group_criterion.negative,
+          ad_group_criterion.quality_info.quality_score,
+          campaign.name,
+          ad_group.name,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.ctr,
+          metrics.average_cpc,
+          metrics.cost_micros,
+          metrics.conversions,
+          metrics.all_conversions,
+          metrics.conversions_value,
+          metrics.cost_per_conversion,
+          metrics.search_impression_share
+        FROM keyword_view
+        WHERE campaign.id = ${id}
+          AND segments.date DURING LAST_30_DAYS
+          AND ad_group_criterion.status != 'REMOVED'
+        ORDER BY metrics.cost_micros DESC
+      `),
+      this.prisma.koiAdKeyword.findMany(),
+    ]);
+
+    // Chiến dịch không có dòng nào (id sai, hoặc không tiêu trong 30 ngày):
+    // campaign.name lấy được ở kwRows nếu có từ khoá; nếu cả hai rỗng thì báo.
+    const tenCamp =
+      String(campRows[0]?.campaign?.name ?? kwRows[0]?.campaign?.name ?? "") ||
+      "";
+    if (!campRows.length && !kwRows.length) {
+      return {
+        ok: false,
+        daNoi: true,
+        loi: "Chiến dịch không có dữ liệu 30 ngày (id sai hoặc chưa chạy).",
+      };
+    }
+
+    const ghiChuTheoTu = new Map<string, string>();
+    for (const d of soTay) {
+      if (d.ghiChu) ghiChuTheoTu.set(d.tuKhoa.trim().toLowerCase(), d.ghiChu);
+    }
+
+    // ── Gói số liệu chiến dịch cho GPT (đã quy đổi micro → đồng, phân số → %).
+    const c = campRows[0] ?? {};
+    const cm = c.metrics ?? {};
+    const camp = {
+      ten: tenCamp,
+      trangThai: String(c.campaign?.status ?? "").toLowerCase(),
+      nganSachNgay: this.micro(c.campaignBudget?.amountMicros),
+      chiPhi30Ngay: this.micro(cm.costMicros),
+      hienThi: this.so(cm.impressions),
+      cuBam: this.so(cm.clicks),
+      cuChuyenDoi: this.so(cm.conversions),
+      cuChuyenDoiTatCa: this.so(cm.allConversions),
+      giaTriChuyenDoi: this.so(cm.conversionsValue),
+      cpcTrungBinh: this.micro(cm.averageCpc),
+      tyLeHienThi: this.phanTram(cm.searchImpressionShare),
+      matViNganSach: this.phanTram(cm.searchBudgetLostImpressionShare),
+      matViHang: this.phanTram(cm.searchRankLostImpressionShare),
+    };
+
+    // ── Danh sách từ khoá của riêng camp này. Giới hạn 120 dòng đầu (đã ORDER
+    //    BY chi phí giảm dần) để payload GPT không phình — camp lớn vẫn gói được
+    //    những từ đốt tiền nhất, đủ để khuyên tắt/giữ.
+    const TOI_DA_KW = 120;
+    const dsKw = kwRows.slice(0, TOI_DA_KW).map((r) => {
+      const kw = r.adGroupCriterion?.keyword ?? {};
+      const text = String(kw.text ?? "");
+      const m = r.metrics ?? {};
+      return {
+        tuKhoa: text,
+        loaiKhop: r.adGroupCriterion?.negative
+          ? "negative"
+          : String(kw.matchType ?? "").toLowerCase(),
+        trangThai: String(r.adGroupCriterion?.status ?? "").toLowerCase(),
+        nhomQuangCao: String(r.adGroup?.name ?? ""),
+        hienThi: Number(m.impressions ?? 0),
+        cuBam: Number(m.clicks ?? 0),
+        chiPhi: Number(m.costMicros ?? 0) / 1_000_000,
+        ctr: this.phanTram(m.ctr),
+        cpcTrungBinh: this.micro(m.averageCpc),
+        cuChuyenDoi: this.so(m.conversions),
+        cuChuyenDoiTatCa: this.so(m.allConversions),
+        giaMoiChuyenDoi: this.micro(m.costPerConversion),
+        diemChatLuong: this.so(r.adGroupCriterion?.qualityInfo?.qualityScore),
+        ghiChuCuaToi: ghiChuTheoTu.get(text.trim().toLowerCase()) ?? null,
+      };
+    });
+
+    const heThong =
+      "Bạn là chuyên gia Google Ads Search, cố vấn cho chủ một shop đồ da thủ " +
+      "công ở Việt Nam. Bạn nhận số liệu THẬT 30 ngày của MỘT chiến dịch (cấp " +
+      "chiến dịch + từng từ khoá) và khuyên chủ shop NÊN LÀM GÌ TIẾP THEO. " +
+      "Viết tiếng Việt, ngắn gọn, mỗi mục là một hành động cụ thể làm được ngay " +
+      "trên giao diện Google Ads (không nói lý thuyết chung chung). Dựa vào con " +
+      "số trong dữ liệu, dẫn ra con số khi khuyên (ví dụ 'từ X tốn 500k/0 " +
+      "chuyển đổi → tắt'). Nếu số liệu chưa đủ để kết luận thì nói rõ là chưa " +
+      "đủ, đừng bịa. TUYỆT ĐỐI không tự ý khuyên tăng ngân sách gấp nhiều lần " +
+      "nếu chưa có bằng chứng lời. Trả về JSON đúng khuôn:\n" +
+      '{ "tomTat": string, "nganSach": string[], "tuKhoaTatGiu": string[], ' +
+      '"negativeKhop": string[], "ytuongMoi": string[] }\n' +
+      "- tomTat: 1-2 câu tình trạng chung của chiến dịch.\n" +
+      "- nganSach: khuyên về ngân sách & bidding (dựa matViNganSach, matViHang, " +
+      "cpcTrungBinh, chiPhi so với chuyển đổi).\n" +
+      "- tuKhoaTatGiu: từ khoá nào nên TẮT (đốt tiền không ra chuyển đổi) hoặc " +
+      "GIỮ/đẩy mạnh (đang ra khách rẻ).\n" +
+      "- negativeKhop: gợi ý từ loại trừ (negative) và đổi loại khớp " +
+      "(rộng/cụm từ/chính xác) cho hợp.\n" +
+      "- ytuongMoi: ý tưởng từ khoá MỚI nên thêm cho chiến dịch này.\n" +
+      "Mỗi mảng 0-6 mục; mảng rỗng nếu không có gì đáng nói.";
+
+    const nguoiDung =
+      "Số liệu chiến dịch (đơn vị tiền = đồng, các tỷ lệ = %, null nghĩa là " +
+      "chưa đủ dữ liệu):\n" +
+      JSON.stringify(camp) +
+      "\n\nTừ khoá trong chiến dịch (tối đa " +
+      TOI_DA_KW +
+      " từ, sắp theo chi phí giảm dần):\n" +
+      JSON.stringify(dsKw) +
+      "\n\nTrả về JSON đúng khuôn đã nêu trong hướng dẫn hệ thống.";
+
+    let duLieu: unknown;
+    let model = "";
+    try {
+      const kq = await this.openai.sinhJson(heThong, nguoiDung, 4000);
+      duLieu = kq.dulieu;
+      model = kq.model;
+    } catch (e) {
+      const loi = e as Error;
+      this.log.warn(`AI mentor lỗi GPT (camp ${id}): ${loi.message}`);
+      return { ok: false, daNoi: true, loi: loi.message };
+    }
+
+    // Neo về đúng khuôn 4 nhóm: GPT có thể trả thiếu key hoặc trả object thay vì
+    // mảng. lamMang ép mọi thứ về string[] sạch để heoiu vẽ không cần đoán.
+    const d = (duLieu && typeof duLieu === "object" ? duLieu : {}) as Record<
+      string,
+      unknown
+    >;
+    const lamMang = (v: unknown): string[] =>
+      Array.isArray(v)
+        ? v
+            .filter((x): x is string => typeof x === "string" && !!x.trim())
+            .map((x) => x.trim().slice(0, 500))
+            .slice(0, 6)
+        : [];
+
+    return {
+      ok: true,
+      daNoi: true,
+      chienDich: { id, ten: tenCamp },
+      model,
+      loiKhuyen: {
+        tomTat: typeof d.tomTat === "string" ? d.tomTat.trim().slice(0, 1000) : "",
+        nganSach: lamMang(d.nganSach),
+        tuKhoaTatGiu: lamMang(d.tuKhoaTatGiu),
+        negativeKhop: lamMang(d.negativeKhop),
+        ytuongMoi: lamMang(d.ytuongMoi),
+      },
     };
   }
 
