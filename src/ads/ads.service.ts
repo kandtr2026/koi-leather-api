@@ -1686,8 +1686,21 @@ export class AdsService {
     // Hai lượt đọc độc lập chạy SONG SONG (cùng lý do như tuKhoaThat: cả hai
     // đều gọi ra Internet). camp = số liệu cấp chiến dịch (ngân sách, lost IS);
     // kw = từng từ khoá của riêng chiến dịch này kèm metric 30 ngày.
-    const [campRows, kwRows, soTay] = await Promise.all([
-      this.ads.truyVan(`
+    // Sáu lượt đọc độc lập chạy SONG SONG. Ba lượt đầu là số liệu chiến dịch +
+    // từ khoá + ghi chú tay. BA LƯỢT NEGATIVE là mấu chốt của lần sửa này: GPT
+    // phải thấy ĐỦ negative đang chặn ở cả ba cấp thì mới khuyên đúng, không thì
+    // dễ (a) bảo thêm negative đã có, (b) không biết vì sao một cụm không hiện.
+    //
+    //  - campNegRows: negative cấp CHIẾN DỊCH (campaign_criterion) — keyword_view
+    //    KHÔNG chứa negative cấp chiến dịch nên phải query riêng.
+    //  - sharedSetRows: các DANH SÁCH negative dùng chung (cấp tài khoản) đang
+    //    GẮN vào chính chiến dịch này. Chỉ lấy tên+id list ở đây; nội dung từ
+    //    khoá trong list phải query shared_criterion sau (phụ thuộc id list).
+    //  - custNegRows: negative cấp TÀI KHOẢN áp cho toàn bộ account
+    //    (customer_negative_criterion, kiểu KEYWORD).
+    const [campRows, kwRows, soTay, campNegRows, sharedSetRows, custNegRows] =
+      await Promise.all([
+        this.ads.truyVan(`
         SELECT
           campaign.id,
           campaign.name,
@@ -1707,7 +1720,7 @@ export class AdsService {
         WHERE campaign.id = ${id}
           AND segments.date DURING LAST_30_DAYS
       `),
-      this.ads.truyVan(`
+        this.ads.truyVan(`
         SELECT
           ad_group_criterion.keyword.text,
           ad_group_criterion.keyword.match_type,
@@ -1732,8 +1745,60 @@ export class AdsService {
           AND ad_group_criterion.status != 'REMOVED'
         ORDER BY metrics.cost_micros DESC
       `),
-      this.prisma.koiAdKeyword.findMany(),
-    ]);
+        this.prisma.koiAdKeyword.findMany(),
+        this.ads.truyVan(`
+        SELECT
+          campaign_criterion.keyword.text,
+          campaign_criterion.keyword.match_type
+        FROM campaign_criterion
+        WHERE campaign.id = ${id}
+          AND campaign_criterion.type = 'KEYWORD'
+          AND campaign_criterion.negative = TRUE
+          AND campaign_criterion.status != 'REMOVED'
+      `),
+        this.ads.truyVan(`
+        SELECT
+          shared_set.id,
+          shared_set.name
+        FROM campaign_shared_set
+        WHERE campaign.id = ${id}
+          AND shared_set.type = 'NEGATIVE_KEYWORDS'
+          AND campaign_shared_set.status != 'REMOVED'
+      `),
+        this.ads.truyVan(`
+        SELECT
+          customer_negative_criterion.keyword.text,
+          customer_negative_criterion.keyword.match_type
+        FROM customer_negative_criterion
+        WHERE customer_negative_criterion.type = 'KEYWORD'
+      `),
+      ]);
+
+    // Nội dung từ khoá trong các danh sách negative dùng chung: phải đọc SAU vì
+    // WHERE lọc theo id list vừa lấy ở sharedSetRows. Tài khoản chưa gắn list nào
+    // thì bỏ hẳn lượt này (khỏi tốn round-trip). Chặn id không phải chữ số trước
+    // khi ghép vào GAQL — cùng lý do như campaignId.
+    const idListNegative = sharedSetRows
+      .map((r) => (r.sharedSet?.id != null ? String(r.sharedSet.id) : ""))
+      .filter((x) => /^\d+$/.test(x));
+    const tenListTheoId = new Map<string, string>();
+    for (const r of sharedSetRows) {
+      const sid = r.sharedSet?.id != null ? String(r.sharedSet.id) : "";
+      if (sid) tenListTheoId.set(sid, String(r.sharedSet?.name ?? ""));
+    }
+    let sharedNegRows: Awaited<ReturnType<typeof this.ads.truyVan>> = [];
+    if (idListNegative.length) {
+      sharedNegRows = await this.ads.truyVan(`
+        SELECT
+          shared_set.id,
+          shared_set.name,
+          shared_criterion.keyword.text,
+          shared_criterion.keyword.match_type
+        FROM shared_criterion
+        WHERE shared_set.id IN (${idListNegative.join(",")})
+          AND shared_criterion.type = 'KEYWORD'
+      `);
+    }
 
     // Chiến dịch không có dòng nào (id sai, hoặc không tiêu trong 30 ngày):
     // campaign.name lấy được ở kwRows nếu có từ khoá; nếu cả hai rỗng thì báo.
@@ -1772,19 +1837,25 @@ export class AdsService {
       matViHang: this.phanTram(cm.searchRankLostImpressionShare),
     };
 
-    // ── Danh sách từ khoá của riêng camp này. Giới hạn 120 dòng đầu (đã ORDER
-    //    BY chi phí giảm dần) để payload GPT không phình — camp lớn vẫn gói được
-    //    những từ đốt tiền nhất, đủ để khuyên tắt/giữ.
+    // ── TÁCH negative cấp ad group khỏi từ khoá thường TRƯỚC KHI cắt 120 dòng.
+    //    keyword_view trộn cả hai; negative có chi phí 0 nên với ORDER BY chi phí
+    //    giảm dần, camp > 120 từ sẽ đẩy hết negative xuống đáy và bị cắt mất —
+    //    GPT không thấy negative nào. Tách ra để negative đi vào khu riêng, đầy
+    //    đủ, không tranh chỗ với top-chi-phí.
+    const kwThuong = kwRows.filter((r) => !r.adGroupCriterion?.negative);
+    const negAdGroupRows = kwRows.filter((r) => r.adGroupCriterion?.negative);
+
+    // ── Danh sách từ khoá THƯỜNG của riêng camp này. Giới hạn 120 dòng đầu (đã
+    //    ORDER BY chi phí giảm dần) để payload GPT không phình — camp lớn vẫn gói
+    //    được những từ đốt tiền nhất, đủ để khuyên tắt/giữ.
     const TOI_DA_KW = 120;
-    const dsKw = kwRows.slice(0, TOI_DA_KW).map((r) => {
+    const dsKw = kwThuong.slice(0, TOI_DA_KW).map((r) => {
       const kw = r.adGroupCriterion?.keyword ?? {};
       const text = String(kw.text ?? "");
       const m = r.metrics ?? {};
       return {
         tuKhoa: text,
-        loaiKhop: r.adGroupCriterion?.negative
-          ? "negative"
-          : String(kw.matchType ?? "").toLowerCase(),
+        loaiKhop: String(kw.matchType ?? "").toLowerCase(),
         trangThai: String(r.adGroupCriterion?.status ?? "").toLowerCase(),
         nhomQuangCao: String(r.adGroup?.name ?? ""),
         hienThi: Number(m.impressions ?? 0),
@@ -1799,6 +1870,60 @@ export class AdsService {
         ghiChuCuaToi: ghiChuTheoTu.get(text.trim().toLowerCase()) ?? null,
       };
     });
+
+    // ── NEGATIVE ĐANG CHẶN, gom theo BA CẤP để GPT biết cụm nào đã bị loại trừ
+    //    (khỏi gợi ý lại) và ở đâu (biết chỉnh đúng chỗ). Mỗi negative rút gọn
+    //    còn { tuKhoa, loaiKhop } — số liệu metric của negative không có ý nghĩa.
+    //    Giới hạn mỗi cấp 200 dòng: tài khoản thật có thể ~17k negative dùng
+    //    chung, gửi hết thì phình payload; 200 cụm đầu đủ để GPT nắm bối cảnh.
+    const TOI_DA_NEG = 200;
+    const rutNeg = (text: unknown, matchType: unknown) => ({
+      tuKhoa: String(text ?? ""),
+      loaiKhop: String(matchType ?? "").toLowerCase(),
+    });
+    const negAdGroup = negAdGroupRows
+      .slice(0, TOI_DA_NEG)
+      .map((r) =>
+        rutNeg(r.adGroupCriterion?.keyword?.text, r.adGroupCriterion?.keyword?.matchType),
+      )
+      .filter((n) => n.tuKhoa);
+    const negChienDich = campNegRows
+      .slice(0, TOI_DA_NEG)
+      .map((r) =>
+        rutNeg(r.campaignCriterion?.keyword?.text, r.campaignCriterion?.keyword?.matchType),
+      )
+      .filter((n) => n.tuKhoa);
+    // Negative dùng chung (cấp tài khoản) kèm TÊN danh sách để chủ shop biết vào
+    // đâu sửa. Gộp mọi list gắn vào camp này thành một mảng phẳng, mỗi mục có
+    // thêm "danhSach".
+    const negDungChung = sharedNegRows
+      .slice(0, TOI_DA_NEG)
+      .map((r) => {
+        const sid = r.sharedSet?.id != null ? String(r.sharedSet.id) : "";
+        return {
+          ...rutNeg(r.sharedCriterion?.keyword?.text, r.sharedCriterion?.keyword?.matchType),
+          danhSach:
+            String(r.sharedSet?.name ?? "") || tenListTheoId.get(sid) || "",
+        };
+      })
+      .filter((n) => n.tuKhoa);
+    const negTaiKhoan = custNegRows
+      .slice(0, TOI_DA_NEG)
+      .map((r) =>
+        rutNeg(
+          r.customerNegativeCriterion?.keyword?.text,
+          r.customerNegativeCriterion?.keyword?.matchType,
+        ),
+      )
+      .filter((n) => n.tuKhoa);
+
+    const negativeDangCo = {
+      capAdGroup: negAdGroup,
+      capChienDich: negChienDich,
+      capTaiKhoanDungChung: negDungChung,
+      capTaiKhoanChung: negTaiKhoan,
+      tenCacDanhSachDungChung: Array.from(tenListTheoId.values()).filter(Boolean),
+    };
 
     const heThong =
       "Bạn là chuyên gia Google Ads Search, cố vấn cho chủ một shop đồ da thủ " +
@@ -1818,7 +1943,11 @@ export class AdsService {
       "- tuKhoaTatGiu: từ khoá nào nên TẮT (đốt tiền không ra chuyển đổi) hoặc " +
       "GIỮ/đẩy mạnh (đang ra khách rẻ).\n" +
       "- negativeKhop: gợi ý từ loại trừ (negative) và đổi loại khớp " +
-      "(rộng/cụm từ/chính xác) cho hợp.\n" +
+      "(rộng/cụm từ/chính xác) cho hợp. Dữ liệu có mục 'negativeDangCo' liệt kê " +
+      "negative ĐÃ chặn ở 3 cấp (ad group / chiến dịch / tài khoản — gồm cả danh " +
+      "sách dùng chung). TUYỆT ĐỐI không gợi ý thêm cụm đã nằm trong đó; chỉ đề " +
+      "xuất cụm MỚI, và nếu thấy negative hiện tại đang chặn nhầm từ khoá tốt thì " +
+      "chỉ ra để chủ shop gỡ.\n" +
       "- ytuongMoi: ý tưởng từ khoá MỚI nên thêm cho chiến dịch này.\n" +
       "Mỗi mảng 0-6 mục; mảng rỗng nếu không có gì đáng nói.";
 
@@ -1830,6 +1959,9 @@ export class AdsService {
       TOI_DA_KW +
       " từ, sắp theo chi phí giảm dần):\n" +
       JSON.stringify(dsKw) +
+      "\n\nNegative ĐANG CHẶN (đừng gợi ý lại các cụm này; capTaiKhoan* áp cho " +
+      "toàn tài khoản chứ không riêng chiến dịch):\n" +
+      JSON.stringify(negativeDangCo) +
       "\n\nTrả về JSON đúng khuôn đã nêu trong hướng dẫn hệ thống.";
 
     let duLieu: unknown;
