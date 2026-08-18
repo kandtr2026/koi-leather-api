@@ -12,7 +12,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation } from "@nestjs/swagger";
-import { Throttle } from "@nestjs/throttler";
+import { Throttle, SkipThrottle } from "@nestjs/throttler";
 import { ShopService } from "./shop.service";
 import { ShopContentService } from "./shop-content.service";
 import { SlugPipe } from "./slug.pipe";
@@ -56,7 +56,30 @@ export class ShopController {
     private readonly content: ShopContentService,
   ) {}
 
+  /*
+   * VÌ SAO CÁC ĐƯỜNG ĐỌC DƯỚI ĐÂY GẮN @SkipThrottle()
+   *
+   * Rate limit toàn cục 60 req/phút/IP (app.module.ts) chặn đúng thứ nó nên
+   * chặn với người dùng thật, nhưng nó cũng chặn `next build` của storefront:
+   * bản dựng prerender 754 trang bằng nhiều worker song song, tất cả đi ra từ
+   * MỘT IP của Vercel, nên đụng trần trong vài giây. Đo thật ngày 18/08/2026:
+   * build chết ở trang 188/754 với `API /shop/products/... → 429`, tức là mọi
+   * lần deploy storefront từ 16/08 đều thất bại.
+   *
+   * Miễn ở đây KHÔNG mở thêm bề mặt tấn công đáng kể: đều là GET đọc hàng đã
+   * xuất bản, không tham số nào ghi dữ liệu, và đã có @Header Cache-Control
+   * public nên CDN đỡ phần lớn lưu lượng lặp thay vì để nó xuống Prisma.
+   *
+   * CHỪA LẠI, cố ý — đây là các đường thực sự cần trần:
+   *   @Post("leads")        3 req/giờ  (cuối file này)
+   *   @Get("ads-feed.csv")  5 req/phút (ads.controller.ts, cùng tiền tố /shop)
+   * Nên không miễn theo tiền tố /shop được, phải gắn từng đường.
+   *
+   * Gắn từng route thay vì @SkipThrottle() ở cấp class là có ý: route thêm vào
+   * controller này sau vẫn mặc định CHỊU giới hạn, không lặng lẽ được miễn.
+   */
   @Get("home")
+  @SkipThrottle()
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
   @ApiOperation({ summary: "Dữ liệu trang chủ: sản phẩm nổi bật + danh mục" })
   home() {
@@ -64,6 +87,7 @@ export class ShopController {
   }
 
   @Get("categories")
+  @SkipThrottle()
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
   @ApiOperation({ summary: "Danh sách danh mục (kèm ảnh đại diện, số lượng)" })
   categories() {
@@ -71,6 +95,7 @@ export class ShopController {
   }
 
   @Get("categories/:slug")
+  @SkipThrottle()
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
   @ApiOperation({
     summary: "Danh mục theo slug + sản phẩm trong danh mục (lọc + sắp xếp được)",
@@ -97,6 +122,7 @@ export class ShopController {
   }
 
   @Get("filters")
+  @SkipThrottle()
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
   @ApiOperation({
     summary:
@@ -122,6 +148,7 @@ export class ShopController {
   }
 
   @Get("color-families")
+  @SkipThrottle()
   @Header("Cache-Control", "public, max-age=300, s-maxage=3600")
   @ApiOperation({ summary: "Toàn bộ nhóm màu chuẩn (cho picker admin)" })
   colorFamilies() {
@@ -129,6 +156,7 @@ export class ShopController {
   }
 
   @Get("products")
+  @SkipThrottle()
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
   @ApiOperation({
     summary: "Danh sách sản phẩm (lọc theo danh mục / loại da / loại ảnh / tìm kiếm)",
@@ -160,6 +188,7 @@ export class ShopController {
   }
 
   @Get("products/:slug")
+  @SkipThrottle()
   @Header("Cache-Control", "public, max-age=60, s-maxage=300")
   @ApiOperation({ summary: "Chi tiết sản phẩm theo slug + liên quan" })
   productBySlug(@Param("slug", SlugPipe) slug: string) {
@@ -169,6 +198,7 @@ export class ShopController {
   // ----- Nội dung cũ (blog / trang / tag) — schema public -----
 
   @Get("posts")
+  @SkipThrottle()
   @Header("Cache-Control", "no-store")
   @ApiOperation({ summary: "Danh sách bài viết blog + chuyên mục" })
   posts(@Query("page") page?: string, @Query("limit") limit?: string) {
@@ -176,6 +206,7 @@ export class ShopController {
   }
 
   @Get("content/:slug")
+  @SkipThrottle()
   @Header("Cache-Control", "no-store")
   @ApiOperation({ summary: "Bài viết hoặc trang tĩnh theo slug" })
   async contentBySlug(@Param("slug", SlugPipe) slug: string) {
@@ -185,6 +216,7 @@ export class ShopController {
   }
 
   @Get("blog-terms/:taxonomy/:slug")
+  @SkipThrottle()
   @Header("Cache-Control", "no-store")
   @ApiOperation({ summary: "Chuyên mục / tag blog + các bài thuộc nó" })
   async blogTerm(
@@ -197,6 +229,7 @@ export class ShopController {
   }
 
   @Get("product-tags/:slug")
+  @SkipThrottle()
   @Header("Cache-Control", "public, max-age=120, s-maxage=600")
   @ApiOperation({ summary: "Từ khoá sản phẩm (schema public) + sản phẩm" })
   async productTag(@Param("slug", SlugPipe) slug: string) {
@@ -219,6 +252,7 @@ export class ShopController {
   }
 
   @Get("sitemap-data")
+  @SkipThrottle()
   @Header("Cache-Control", "public, max-age=600, s-maxage=3600")
   @ApiOperation({ summary: "Dữ liệu dựng sitemap.xml" })
   sitemapData() {
