@@ -12,6 +12,7 @@ import {
   DefaultValuePipe,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -21,12 +22,22 @@ import {
   ApiBody,
 } from "@nestjs/swagger";
 import { ProductService } from "./product.service";
+import { RevalidateStorefrontInterceptor } from "../common/revalidate-storefront.interceptor";
 import { CreateProductDto, VariantDto } from "./dto/create-product.dto";
-import { BatchVariantPatchDto, UpdateProductDto } from "./dto/update-product.dto";
+import {
+  BatchVariantPatchDto,
+  UpdateProductDto,
+} from "./dto/update-product.dto";
 import { CleanDescriptionsDto } from "./dto/clean-descriptions.dto";
 
 @ApiTags("Products")
 @Controller("products")
+/**
+ * Mọi đường GHI ở controller này bắn webhook revalidate sang storefront sau khi
+ * lưu THÀNH CÔNG — xem common/revalidate-storefront.interceptor.ts để biết vì sao
+ * đặt ở biên HTTP thay vì gọi tay trong service. GET không kích hoạt.
+ */
+@UseInterceptors(RevalidateStorefrontInterceptor)
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
