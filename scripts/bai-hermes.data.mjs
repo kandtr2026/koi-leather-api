@@ -68,6 +68,18 @@ export const BAI_HERMES = [
       ['“chất” Hermes', 'form dáng ưa thích'],
     ],
     thayCum: [
+      /**
+       * HAI CÂU NÀY LỌT LƯỚI LƯỢT ĐẦU, chỉ thấy khi đọc trang thật trên
+       * production. Chúng không có cấu trúc "dây lưng Hermes" nên bộ chặn
+       * phaiSachCum không bắt, mà lại là LỜI KHAI VỀ CHẤT LƯỢNG — nặng hơn mấy
+       * chỗ chỉ mượn tên:
+       *   "kiểm tra tỉ mỉ trước khi giao để đảm bảo đạt chuẩn Hermes"
+       *   "✅ Chuẩn form Hermes – không sai tỷ lệ"
+       * Bài học: kiểm cấu trúc sở hữu là chưa đủ; còn phải đọc bằng mắt.
+       */
+      ['đạt chuẩn Hermes', 'đạt chuẩn xưởng'],
+      ['Chuẩn form Hermes', 'Chuẩn form theo khoá'],
+      ['chuẩn form Hermes', 'chuẩn form theo khoá'],
       // Vừa với khoá nào → GIỮ, chỉ chuẩn hoá cách nói.
       ['khóa phong cách Hermes', 'khoá Hermès'],
       ['form Hermes nguyên bản', 'form nguyên bản của khoá'],
@@ -75,6 +87,7 @@ export const BAI_HERMES = [
       ['làm dây lưng theo form Hermes', 'làm dây lưng theo form khoá'],
       ['dây lưng theo form Hermes', 'dây lưng theo form khoá'],
       ['form dáng Hermes', 'form dáng của khoá'],
+      ['theo form Hermes', 'theo form khoá'],
       // Tên nhãn đứng làm TÊN MÓN → bỏ.
       ['dây lưng Hermes da cá sấu đặt làm', 'dây lưng da cá sấu đặt làm'],
       ['Dây lưng Hermes da Epsom', 'Dây lưng da Epsom'],

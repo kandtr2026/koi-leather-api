@@ -69,8 +69,18 @@ for (const b of BAI_HERMES) {
   });
   if (!p) { loi.push(`${b.slug}: KHÔNG THẤY bài`); continue; }
 
-  if ((p.title ?? '').trim() !== b.tieuDeCu.trim()) {
-    boQua.push(`${b.slug}: tiêu đề trong DB là "${p.title}" ≠ tieuDeCu → BỎ QUA (có người đã sửa tay)`);
+  /**
+   * CHẠY LẠI ĐƯỢC. Nhận CẢ tiêu đề cũ (lượt đầu) và tiêu đề mới (lượt sau) —
+   * vì bảng `thayCum` còn được bổ sung sau khi đã ghi một lần: hai câu khai
+   * chất lượng ("đạt chuẩn Hermes", "Chuẩn form Hermes") chỉ lộ ra khi đọc
+   * trang thật trên production, tức là sau lượt ghi đầu.
+   *
+   * Vẫn CHẶN nếu tiêu đề là thứ ba khác hẳn — nghĩa là có người sửa tay, và ghi
+   * đè lên là xoá việc của họ.
+   */
+  const tieuDe = (p.title ?? '').trim();
+  if (tieuDe !== b.tieuDeCu.trim() && tieuDe !== b.tieuDeMoi.trim()) {
+    boQua.push(`${b.slug}: tiêu đề trong DB là "${p.title}" — không phải tieuDeCu lẫn tieuDeMoi → BỎ QUA (có người đã sửa tay)`);
     continue;
   }
 
