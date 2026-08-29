@@ -151,6 +151,18 @@ export class OpenAiClient {
     // detail "low": OpenAI xử ảnh ở mức thô, tốn ít token và nhanh hơn nhiều.
     // Đủ cho việc mình cần — nhận ra kiểu dáng, chất da, màu, bố cục. Muốn model
     // đọc chữ in trên sản phẩm thì mới cần "high", mà đó không phải việc ở đây.
+    //
+    // ĐỪNG NÂNG LÊN "high". Chủ shop chốt giữ "low" ngày 28/08/2026, và đây là
+    // quyết định về DỮ LIỆU KHÁCH HÀNG chứ không phải về tiền hay tốc độ: phần
+    // lớn hàng đặt riêng có tên khách hoặc logo công ty dập ngay trên mặt da
+    // ("Money Clip Penny", "Bao chìa khoá Ford", "Bao da điện thoại Vertu"…).
+    // "high" là mức model đọc được chữ đó, và nó sẽ chép tên khách vào mô tả sản
+    // phẩm công khai. "low" là lớp chắn khiến model tả được chất liệu và kiểu dáng
+    // mà không phiên chữ ra bài — đã đo trên hàng thật: món tên "Penny" cho ra mô
+    // tả không có chữ "Penny" nào.
+    //
+    // Cần đọc chữ trong ảnh cho một việc khác thì thêm tham số riêng cho việc đó,
+    // đừng đổi hằng này.
     const noiDung = anhSach.length
       ? [
           { type: "text", text: nguoiDung },

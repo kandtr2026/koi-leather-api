@@ -309,6 +309,9 @@
          ngay trong trang, không bị giật. Không dùng .admin-link cho thẻ <a>: nó
          bị applyRoute() quét querySelectorAll('.tab-btn') đè 'active'. -->
     <button class="tab-btn" data-tab="noidung"><i class="fas fa-pen-to-square mr-2 text-amber-500"></i>Sửa nội dung</button>
+    <!-- Tab CUỐI hàng, chủ shop chốt vị trí này. Panel chỉ đọc (không tick tay)
+         nên không cần cổng đăng nhập riêng như tab Sửa nội dung. -->
+    <button class="tab-btn" data-tab="seoplan"><i class="fas fa-chart-line mr-2 text-amber-500"></i>Kế hoạch SEO</button>
   </div>
 
   <!-- Main -->
@@ -529,6 +532,17 @@
       <div class="h-[calc(100vh_-_190px)] min-h-[520px] overflow-hidden rounded-xl border bg-white shadow-sm">
         <iframe src="/quan-tri/noi-dung/?embed=1"
                 class="h-full w-full border-0" title="Sửa nội dung" loading="lazy"></iframe>
+      </div>
+    </div>
+
+    <!-- Kế hoạch SEO organic: bảng CHỈ ĐỌC, tiến độ sửa trong code
+         (koi-storefront/src/lib/seo-plan-data.ts) rồi deploy. loading="lazy" nên
+         chưa bấm vào tab thì iframe không nạp — người vào sửa giá không phải trả
+         một lượt tải cho bảng SEO. -->
+    <div class="panel" id="panel-seoplan">
+      <div class="h-[calc(100vh_-_190px)] min-h-[520px] overflow-hidden rounded-xl border bg-white shadow-sm">
+        <iframe src="/quan-tri/seo-plan/?embed=1"
+                class="h-full w-full border-0" title="Kế hoạch SEO" loading="lazy"></iframe>
       </div>
     </div>
 
@@ -1146,6 +1160,9 @@ const ROUTE_MAP = {
   // Sửa nội dung là TAB NỘI BỘ (panel iframe /quan-tri/noi-dung/?embed=1) —
   // chuyển tính năng ngay trong trang thay vì link nhảy trang như cũ.
   '/admin/noi-dung':    { panel: 'noidung',  label: 'Sửa nội dung' },
+  // Kế hoạch SEO: tab CUỐI hàng. Cũng là tab nội bộ như "Sửa nội dung" — panel
+  // iframe /quan-tri/seo-plan/?embed=1, không link nhảy trang.
+  '/admin/seo-plan':    { panel: 'seoplan',  label: 'Kế hoạch SEO' },
 
 };
 const ROUTES = Object.keys(ROUTE_MAP);
