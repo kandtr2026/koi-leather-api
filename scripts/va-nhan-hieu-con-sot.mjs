@@ -118,18 +118,30 @@ for (const v of DOI_TEN) {
   if (!p.descriptionBlocks) continue;
 
   const truoc = JSON.stringify(p.descriptionBlocks);
-  const coNhan = (v.phaiSach ?? []).some((n) => conNhan(n, truoc));
-  const coTenCu = reTen(v.tenCu).test(truoc);
-  if (!coNhan && !coTenCu) continue;
-
   const moi = thayTrongCay(p.descriptionBlocks, v);
   const sau = JSON.stringify(moi);
-  if (sau === truoc) {
-    loi.push(`${v.slug}: descriptionBlocks CÒN nhãn hiệu mà phép thay không khớp gì`);
+
+  /**
+   * CHẠY LẠI ĐƯỢC NHIỀU LẦN — điều kiện phải theo "CÒN GÌ PHẢI SỬA", không theo
+   * "CÓ KHỚP GÌ KHÔNG".
+   *
+   * Bản đầu tôi vào việc khi thấy tenCu xuất hiện trong khối, rồi báo lỗi nếu
+   * không thay được gì. Chạy lần hai là 4 món ĐÃ SỬA XONG bị chặn: khối vẫn chứa
+   * tên sản phẩm (tất nhiên — đó là tiêu đề của nó), nhưng chẳng còn gì để thay,
+   * nên "không thay được gì" bị đọc thành "còn nhãn hiệu chưa dọn". Bộ chặn báo
+   * đỏ ở đúng chỗ đã sạch, và nó chặn cả lượt.
+   *
+   * Nay chỉ nhìn một câu hỏi: sau khi thay, `phaiSach` còn không?
+   *   · không còn + không đổi gì → sạch từ trước, bỏ qua im lặng
+   *   · không còn + có đổi       → vừa dọn, ghi
+   *   · còn                      → dừng cả lượt, và in ra chỗ còn
+   */
+  const sot = (v.phaiSach ?? []).filter((n) => conNhan(n, sau));
+  if (sot.length) {
+    loi.push(`${v.slug}: descriptionBlocks sau khi thay vẫn còn ${sot.join('/')}`);
     continue;
   }
-  const sot = (v.phaiSach ?? []).filter((n) => conNhan(n, sau));
-  if (sot.length) loi.push(`${v.slug}: descriptionBlocks sau khi thay vẫn còn ${sot.join('/')}`);
+  if (sau === truoc) continue;
 
   suaKhoi.push({ id: p.id, slug: v.slug, truoc: p.descriptionBlocks, moi });
 }
@@ -146,6 +158,28 @@ for (const v of DOI_TEN) {
 const TEN_DONG_BANG = [
   ['Túi Xách Nữ Da Bò Swift Đen – Phong Cách Chanel', 'Túi Xách Nữ Chần Trám – Da Cừu – Đen'],
   ['Dây Lưng Da Bò Swift Đen Nâu – Khóa Cartier Bạc', 'Dây Lưng Da Box Calf Đen Nâu – Khoá Bạc'],
+  // Tiêu đề 4 bài blog đã viết lại (xem bai-hermes.data.mjs). Widget "bài mới
+  // nhất" của WordPress chép cứng tiêu đề + đoạn mở vào HTML, nên sửa bài blog
+  // KHÔNG chạm tới bản chép ở đây — đúng cùng loại lỗi với tên sản phẩm.
+  ['Đặt Làm Dây Lưng Hermes – Chuẩn Form, Đúng Gu, Đúng Da', 'Đặt Làm Dây Thắt Lưng Da Theo Yêu Cầu – Vừa Khoá Rời Sẵn Có'],
+  ['Túi Hermès Da Epsom – Vì Sao Được Giới Sưu Tầm Ưa Chuộng?', 'Da Epsom – Vì Sao Giữ Form Tốt Và Ai Nên Chọn'],
+  ['Túi Hermès da Togo: Những điều cần biết trước khi lựa chọn', 'Da Togo: Những Điều Cần Biết Trước Khi Chọn'],
+  ['Túi Hermès da đà điểu có gì đặc biệt mà nhiều người săn tìm?', 'Da Đà Điểu Có Gì Đặc Biệt Mà Nhiều Người Săn Tìm?'],
+  // Đoạn mở bài bị cắt giữa câu trong widget nên không khớp nguyên văn được —
+  // thay đúng cụm đầu là đủ.
+  ['Túi Hermès da đà điểu nổi bật', 'Da đà điểu nổi bật'],
+  ['Túi Hermès da Togo nổi bật', 'Da Togo nổi bật'],
+  ['Đặt làm dây lưng Hermes thủ công tại KOI Leather', 'Đặt làm dây thắt lưng da thủ công tại KOI Leather'],
+  ['Túi Hermès da đà điểu', 'Túi da đà điểu'],
+  ['Túi Hermès da Togo', 'Túi da Togo'],
+  ['Túi Hermès Da Epsom', 'Túi da Epsom'],
+  /**
+   * LỜI KHAI VỀ BÊN THỨ BA. Trang /day-da-dong-ho/ đang ghi xưởng thuộc da của
+   * mình cũng cung cấp cho Louis Vuitton. Tôi không kiểm được thật hay không, và
+   * lời khai loại này không chứng minh được cho người xét rủi ro — nhưng lại là
+   * chỗ dễ bị bắt nhất. Gọi tên xưởng (Henglong, Singapore) đã đủ sức nặng.
+   */
+  ['Henglong (Singapore – Louis Vuitton)', 'Henglong (Singapore)'],
 ];
 
 /**
