@@ -312,6 +312,11 @@
     <!-- Tab CUỐI hàng, chủ shop chốt vị trí này. Panel chỉ đọc (không tick tay)
          nên không cần cổng đăng nhập riêng như tab Sửa nội dung. -->
     <button class="tab-btn" data-tab="seoplan"><i class="fas fa-chart-line mr-2 text-amber-500"></i>Kế hoạch SEO</button>
+    <!-- Tab "Từ khoá": ẢNH CHỤP bộ từ khoá, khác hẳn tab Kế hoạch SEO ở trên —
+         tab kia gọi Search Console live để theo dõi hạng hằng ngày, tab này đọc
+         một snapshot chốt sẵn nên mở tức thì và luôn biết số chốt ngày nào. Chạy
+         lại snapshot: node scripts/snapshot-tu-khoa.mjs (repo koi-storefront). -->
+    <button class="tab-btn" data-tab="tukhoa"><i class="fas fa-key mr-2 text-amber-500"></i>Từ khoá</button>
   </div>
 
   <!-- Main -->
@@ -543,6 +548,15 @@
       <div class="h-[calc(100vh_-_190px)] min-h-[520px] overflow-hidden rounded-xl border bg-white shadow-sm">
         <iframe src="/quan-tri/seo-plan/?embed=1"
                 class="h-full w-full border-0" title="Kế hoạch SEO" loading="lazy"></iframe>
+      </div>
+    </div>
+
+    <!-- Bộ từ khoá: ảnh chụp GSC + Google Ads. Cũng loading="lazy" — snapshot có
+         ~3.400 dòng, chưa bấm vào tab thì không trả một lượt tải nào cho nó. -->
+    <div class="panel" id="panel-tukhoa">
+      <div class="h-[calc(100vh_-_190px)] min-h-[520px] overflow-hidden rounded-xl border bg-white shadow-sm">
+        <iframe src="/quan-tri/tu-khoa/?embed=1"
+                class="h-full w-full border-0" title="Bộ từ khoá" loading="lazy"></iframe>
       </div>
     </div>
 
@@ -1163,6 +1177,8 @@ const ROUTE_MAP = {
   // Kế hoạch SEO: tab CUỐI hàng. Cũng là tab nội bộ như "Sửa nội dung" — panel
   // iframe /quan-tri/seo-plan/?embed=1, không link nhảy trang.
   '/admin/seo-plan':    { panel: 'seoplan',  label: 'Kế hoạch SEO' },
+  // Từ khoá: ảnh chụp bộ từ khoá (GSC + Ads). Cùng kiểu tab nội bộ.
+  '/admin/tu-khoa':     { panel: 'tukhoa',   label: 'Từ khoá' },
 
 };
 const ROUTES = Object.keys(ROUTE_MAP);
