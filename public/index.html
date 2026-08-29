@@ -317,6 +317,12 @@
          một snapshot chốt sẵn nên mở tức thì và luôn biết số chốt ngày nào. Chạy
          lại snapshot: node scripts/snapshot-tu-khoa.mjs (repo koi-storefront). -->
     <button class="tab-btn" data-tab="tukhoa"><i class="fas fa-key mr-2 text-amber-500"></i>Từ khoá</button>
+    <!-- Tab "Viec can lam": so ghi viec de khong troi giua cac phien. KHAC tab
+         "Ke hoach SEO" — bang kia chi noi ve SEO va moi dong gan mot tu khoa;
+         bang nay noi ve moi viec con treo cua ca du an (du lieu, chinh sach, no
+         ky thuat) va xep theo AI DANG CHAN. Tron hai bang la bang SEO thanh bai
+         rac. Noi dung: koi-storefront/src/lib/viec-can-lam-data.ts -->
+    <button class="tab-btn" data-tab="viec"><i class="fas fa-list-check mr-2 text-amber-500"></i>Việc cần làm</button>
   </div>
 
   <!-- Main -->
@@ -557,6 +563,14 @@
       <div class="h-[calc(100vh_-_190px)] min-h-[520px] overflow-hidden rounded-xl border bg-white shadow-sm">
         <iframe src="/quan-tri/tu-khoa/?embed=1"
                 class="h-full w-full border-0" title="Bộ từ khoá" loading="lazy"></iframe>
+      </div>
+    </div>
+
+    <!-- Viec can lam: bang chi doc, noi dung trong code roi deploy. -->
+    <div class="panel" id="panel-viec">
+      <div class="h-[calc(100vh_-_190px)] min-h-[520px] overflow-hidden rounded-xl border bg-white shadow-sm">
+        <iframe src="/quan-tri/viec-can-lam/?embed=1"
+                class="h-full w-full border-0" title="Việc cần làm" loading="lazy"></iframe>
       </div>
     </div>
 
@@ -1179,6 +1193,8 @@ const ROUTE_MAP = {
   '/admin/seo-plan':    { panel: 'seoplan',  label: 'Kế hoạch SEO' },
   // Từ khoá: ảnh chụp bộ từ khoá (GSC + Ads). Cùng kiểu tab nội bộ.
   '/admin/tu-khoa':     { panel: 'tukhoa',   label: 'Từ khoá' },
+  // Viec can lam: so ghi viec ca du an, xep theo ai dang chan.
+  '/admin/viec-can-lam': { panel: 'viec',    label: 'Việc cần làm' },
 
 };
 const ROUTES = Object.keys(ROUTE_MAP);
