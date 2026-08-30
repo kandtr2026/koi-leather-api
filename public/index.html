@@ -317,6 +317,14 @@
          một snapshot chốt sẵn nên mở tức thì và luôn biết số chốt ngày nào. Chạy
          lại snapshot: node scripts/snapshot-tu-khoa.mjs (repo koi-storefront). -->
     <button class="tab-btn" data-tab="tukhoa"><i class="fas fa-key mr-2 text-amber-500"></i>Từ khoá</button>
+    <!-- Tab "Tu khoa SEO": bang seo_plan_items tren Supabase, SUA DUOC TAI CHO
+         (SEOKOI_TASK.md, Anh Khoa giao 30/08/2026). KHAC tab "Ke hoach SEO" o
+         tren: bang kia nam trong ma nguon koi-storefront va CHI DOC theo yeu cau
+         truoc day cua chu shop; bang nay nam trong DB nen sua duoc bang tay.
+         Hai bang SE lech nhau khi cung noi ve mot tu khoa — do la he qua that cua
+         viec co hai nguon, khong phai loi. Muon mot cho duy nhat thi phai chot bo
+         mot trong hai. Noi dung: koi-storefront/src/app/(vi)/quan-tri/tu-khoa-seo/ -->
+    <button class="tab-btn" data-tab="seokw"><i class="fas fa-chart-simple mr-2 text-amber-500"></i>Từ khoá SEO</button>
     <!-- Tab "Viec can lam": so ghi viec de khong troi giua cac phien. KHAC tab
          "Ke hoach SEO" — bang kia chi noi ve SEO va moi dong gan mot tu khoa;
          bang nay noi ve moi viec con treo cua ca du an (du lieu, chinh sach, no
@@ -571,6 +579,15 @@
       <div class="h-[calc(100vh_-_190px)] min-h-[520px] overflow-hidden rounded-xl border bg-white shadow-sm">
         <iframe src="/quan-tri/viec-can-lam/?embed=1"
                 class="h-full w-full border-0" title="Việc cần làm" loading="lazy"></iframe>
+      </div>
+    </div>
+
+    <!-- Tu khoa SEO: bang Supabase seo_plan_items, sua duoc tai cho. Ghi can
+         phien dang nhap cua tab "Sua noi dung" — xem dau tep page.tsx. -->
+    <div class="panel" id="panel-seokw">
+      <div class="h-[calc(100vh_-_190px)] min-h-[520px] overflow-hidden rounded-xl border bg-white shadow-sm">
+        <iframe src="/quan-tri/tu-khoa-seo/?embed=1"
+                class="h-full w-full border-0" title="Từ khoá SEO" loading="lazy"></iframe>
       </div>
     </div>
 
@@ -1195,6 +1212,10 @@ const ROUTE_MAP = {
   '/admin/tu-khoa':     { panel: 'tukhoa',   label: 'Từ khoá' },
   // Viec can lam: so ghi viec ca du an, xep theo ai dang chan.
   '/admin/viec-can-lam': { panel: 'viec',    label: 'Việc cần làm' },
+  // Tu khoa SEO: bang Supabase seo_plan_items, sua duoc tai cho. Dia chi
+  // '/admin/seo' la ten SEOKOI_TASK.md yeu cau; giu nguyen de mo tren dien
+  // thoai gon tay.
+  '/admin/seo':          { panel: 'seokw',   label: 'Từ khoá SEO' },
 
 };
 const ROUTES = Object.keys(ROUTE_MAP);
