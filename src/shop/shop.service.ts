@@ -230,6 +230,11 @@ export class ShopService {
       name: c.name,
       slug: c.slug,
       description: c.description ?? null,
+      // Câu VIẾT RIÊNG cho kết quả tìm kiếm. 19/34 danh mục có sẵn trong DB mà
+      // trước đây không đường nào trả ra, nên mặt tiền phải tự cắt `description`
+      // ở đúng 160 ký tự — ra thẻ meta cụt giữa từ ("đường may chắc chắn, phù").
+      meta_description: c.metaDescription ?? null,
+      meta_title: c.metaTitle ?? null,
       parent_id: null,
       product_count: c._count?.categoryLinks ?? c.product_count ?? 0,
       is_hidden: c.isActive === false,
