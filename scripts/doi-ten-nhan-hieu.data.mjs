@@ -441,20 +441,25 @@ export const DOI_TEN = [
 ];
 
 /**
- * SLUG CÒN CHỨA NHÃN HIỆU — LƯỢT SAU, kèm 301 trong koi-storefront.
+ * SLUG CÒN CHỨA NHÃN HIỆU — ✅ ĐÃ LÀM 30/08/2026, xem scripts/doi-slug.data.mjs.
+ *
+ * ĐỪNG CHẠY LẠI THEO DANH SÁCH NÀY. Cả 23 slug dưới đây không còn tồn tại trong
+ * DB nữa; chúng đang là `source` của 23 luật 301 trong
+ * koi-storefront/src/lib/doi-slug-301.ts. Giữ danh sách lại vì nó là bản ghi
+ * "23 địa chỉ này TỪNG tồn tại" — cần khi đọc lại log Search Console cũ.
  *
  * Đổi tên (ở trên) chỉ đổi thứ khách ĐỌC. Đổi slug là đổi ĐỊA CHỈ, mà địa chỉ
- * thì Google đang giữ chỉ mục và người khác đang đặt link. Nên hai việc phải đi
- * hai lượt: nếu đổi tên làm sập gì thì `tenCu` ngay trên đây là bản hoàn tác;
- * còn đổi slug mà quên 301 thì một trang đang có hạng thành 404, không hoàn tác
- * bằng dữ liệu được.
+ * thì Google đang giữ chỉ mục và người khác đang đặt link. Nên hai việc đã đi
+ * hai lượt: đổi tên thì `tenCu` ngay trên đây là bản hoàn tác; còn đổi slug mà
+ * quên 301 thì một trang đang có hạng thành 404, không hoàn tác bằng dữ liệu.
  *
- * Quy trình cho lượt sau, đúng thứ tự này:
- *   1. ghi slug mới vào DB
- *   2. thêm { source: '/cua-hang/<slug-cũ>', destination: '/cua-hang/<slug-mới>',
- *      permanent: true } vào redirects() trong koi-storefront/next.config.ts
- *   3. deploy CẢ HAI, rồi curl từng đường cũ xem có đúng 301 → 200 không
- * Làm bước 1 mà chưa có bước 2 trên production là 20 trang 404 trong lúc chờ.
+ * Quy trình đã dùng (giữ lại cho lượt đổi slug sau, nếu có):
+ *   1. đo GSC trước: trang nào đang có hiển thị thật, mất thì mất bao nhiêu
+ *   2. `node scripts/doi-slug.mjs` (chạy thử) → lấy khối 301 nó in ra
+ *   3. dán khối đó vào koi-storefront/src/lib/doi-slug-301.ts — ĐÍCH PHẢI CÓ "/"
+ *   4. `node scripts/doi-slug.mjs --ghi` rồi deploy koi-storefront NGAY SAU ĐÓ
+ *   5. `node scripts/kiem-301-slug.mjs` — phải ra đúng MỘT chặng mỗi đường
+ * Ghi DB trước rồi deploy, không ngược lại: xem lý do trong doi-slug.mjs.
  */
 export const SLUG_CON_NHAN_HIEU = [
   'bao-da-iphone-chanel-da-epsom-mau-o-burgundy-quilted',
