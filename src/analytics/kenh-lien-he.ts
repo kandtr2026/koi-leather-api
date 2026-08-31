@@ -58,6 +58,9 @@ export interface DongCheo {
   soLan: number;
 }
 
+/** Mot dong cua bang "theo trang" — cung khuon DongDem nhung khoa la path. */
+export type DongTrang = DongDem;
+
 export interface KenhLienHeRa {
   /** So LAN bam. Mot khach bam Zalo hai lan tinh hai. */
   tongLan: number;
@@ -72,12 +75,33 @@ export interface KenhLienHeRa {
   tongNguoi: number;
   theoKenh: DongDem[];
   theoNguon: DongDem[];
+  /**
+   * Top trang theo so lan bam. Khoa la path tho (vd "/dich-vu-boc-da-tai-nghe/").
+   * So nguoi dem theo visitorHash rieng biet, cung cua so cua theoKenh.
+   *
+   * Cat o top 25: trang san pham la duoi dai (~500 trang), top 25 du de thay
+   * trang tru nao an khach ma khong phinh bang 500 dong. Con duoi cut khong
+   * bang thong bao: du lieu goc van nguyen ven o bang "gan nhat".
+   */
+  theoTrang: DongTrang[];
   cheo: DongCheo[];
 }
 
 /** Dem len mot bac trong Map so dem. */
 function themLan(bang: Map<string, number>, khoa: string): void {
   bang.set(khoa, (bang.get(khoa) ?? 0) + 1);
+}
+
+/**
+ * Nhan doc cho mot path. Khong tu doan ten san pham (ton query, nhin se sai):
+ * chi rut gon slug cuoi thanh chu de nhin — "/dich-vu-boc-da-tai-nghe/" →
+ * "dich vu boc da tai nghe". Khong rut gon duoc thi de nguyen path.
+ */
+export function nhanTrang(path: string): string {
+  if (!path || path === "/") return "Trang chủ";
+  const cua = path.replace(/\/+$/, "").split("/").pop() ?? "";
+  const xau = cua.replace(/-/g, " ").trim();
+  return xau || path;
 }
 
 /** Them mot nguoi vao Map tap hop, tao tap neu chua co. */
@@ -116,6 +140,8 @@ export function gomKenhLienHe(
   const lanTheoKenh = new Map<string, number>();
   const nguoiTheoNguon = new Map<string, Set<string>>();
   const lanTheoNguon = new Map<string, number>();
+  const nguoiTheoTrang = new Map<string, Set<string>>();
+  const lanTheoTrang = new Map<string, number>();
   const moiNguoi = new Set<string>();
 
   // Bang cheo dung Map LONG NHAU chu khong ghep 'kenh + dau phan cach + nguon'
@@ -132,6 +158,9 @@ export function gomKenhLienHe(
 
     themLan(lanTheoNguon, c.source);
     themNguoi(nguoiTheoNguon, c.source, c.visitorHash);
+
+    themLan(lanTheoTrang, c.path);
+    themNguoi(nguoiTheoTrang, c.path, c.visitorHash);
 
     let theoNguon = cheoTheoKenh.get(c.channel);
     if (!theoNguon) {
@@ -160,6 +189,15 @@ export function gomKenhLienHe(
       // Nhieu nhat len dau; cung so thi theo ten cho thu tu on dinh giua hai lan
       // goi — bang nhay cho mot cach vo co la nhin nhu du lieu dang doi.
       .sort((a, b) => b.soLan - a.soLan || a.khoa.localeCompare(b.khoa)),
+    theoTrang: [...lanTheoTrang.entries()]
+      .map(([path, soLan]) => ({
+        khoa: path,
+        nhan: nhanTrang(path),
+        soLan,
+        soNguoi: nguoiTheoTrang.get(path)?.size ?? 0,
+      }))
+      .sort((a, b) => b.soLan - a.soLan || a.khoa.localeCompare(b.khoa))
+      .slice(0, 25),
     cheo: [...cheoTheoKenh.entries()]
       .flatMap(([channel, theoNguon]) =>
         [...theoNguon.entries()].map(([source, soLan]) => ({

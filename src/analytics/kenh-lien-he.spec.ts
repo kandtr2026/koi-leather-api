@@ -16,6 +16,7 @@ import {
   NHAN_KENH,
   gomKenhLienHe,
   laKenhHopLe,
+  nhanTrang,
   type CuBamTho,
 } from "./kenh-lien-he";
 
@@ -72,6 +73,7 @@ describe("gomKenhLienHe — bang rong", () => {
     // Nguoc lai voi theoKenh: danh sach nguon dai, mot cot 0 cho tiktok khi shop
     // khong chay tiktok chi lam roi bang.
     expect(ra.theoNguon).toEqual([]);
+    expect(ra.theoTrang).toEqual([]);
     expect(ra.cheo).toEqual([]);
   });
 });
@@ -225,5 +227,94 @@ describe("gomKenhLienHe — nhan va thu tu", () => {
       "google",
       "zalo",
     ]);
+  });
+});
+
+describe("gomKenhLienHe — theoTrang", () => {
+  it("khong co du lieu thi tra mang rong", () => {
+    const ra = gomKenhLienHe([]);
+    expect(ra.theoTrang).toEqual([]);
+  });
+
+  it("gom theo path, dem so lan va so nguoi rieng", () => {
+    const ra = gomKenhLienHe([
+      bam({ path: "/dich-vu-boc-da-tai-nghe/" }),
+      bam({ path: "/dich-vu-boc-da-tai-nghe/" }),
+      bam({ path: "/dich-vu-boc-da-tai-nghe/", visitorHash: "khach-b" }),
+      bam({ path: "/cua-hang/vi-da-nam/" }),
+    ]);
+    // Trang đầu: 3 lần / 2 người (khach-a bấm hai lần). Trang sau: 1 lần / 1 người.
+    expect(ra.theoTrang).toEqual([
+      {
+        khoa: "/dich-vu-boc-da-tai-nghe/",
+        nhan: "dich vu boc da tai nghe",
+        soLan: 3,
+        soNguoi: 2,
+      },
+      {
+        khoa: "/cua-hang/vi-da-nam/",
+        nhan: "vi da nam",
+        soLan: 1,
+        soNguoi: 1,
+      },
+    ]);
+  });
+
+  it("toi da 25 dong, trang nhieu nhat len dau", () => {
+    // 26 path khac nhau, moi path mot lan bam. Dung so du 25 nen cat het.
+    const duLieu = Array.from({ length: 26 }, (_, i) =>
+      bam({ path: `/trang-${i}/` }),
+    );
+    const ra = gomKenhLienHe(duLieu);
+    expect(ra.theoTrang).toHaveLength(25);
+  });
+
+  it("nhieu nhat len dau, cung so thi xep theo path", () => {
+    const ra = gomKenhLienHe([
+      bam({ path: "/b/" }),
+      bam({ path: "/a/" }),
+      bam({ path: "/a/" }),
+    ]);
+    expect(ra.theoTrang.map((d) => d.khoa)).toEqual(["/a/", "/b/"]);
+  });
+
+  it("khong dem kenh la vao bang trang", () => {
+    const ra = gomKenhLienHe([
+      bam({ path: "/dich-vu/" }),
+      bam({ path: "/dich-vu/", channel: "email" }),
+    ]);
+    expect(ra.theoTrang).toEqual([
+      { khoa: "/dich-vu/", nhan: "dich vu", soLan: 1, soNguoi: 1 },
+    ]);
+  });
+
+  it("tong so lan cua cac trang bang tongLan", () => {
+    // Moi cu bam deu co path, nen cong het cac dong trang lai phai bang tongLan
+    // (khong bi cat khi it hon 25 trang khac nhau).
+    const ra = gomKenhLienHe([
+      bam({ path: "/a/" }),
+      bam({ path: "/a/" }),
+      bam({ path: "/b/" }),
+      bam({ path: "/", channel: "phone" }),
+    ]);
+    const cong = ra.theoTrang.reduce((t, d) => t + d.soLan, 0);
+    expect(cong).toBe(ra.tongLan);
+  });
+});
+
+describe("nhanTrang", () => {
+  it("trang chu thi tra chu 'Trang chu'", () => {
+    expect(nhanTrang("/")).toBe("Trang chủ");
+  });
+
+  it("rut gon slug cuoi thanh chu de nhin", () => {
+    expect(nhanTrang("/dich-vu-boc-da-tai-nghe/")).toBe(
+      "dich vu boc da tai nghe",
+    );
+  });
+
+  it("khong co slug thi de nguyen path", () => {
+    expect(nhanTrang("/cua-hang/")).toBe("cua hang");
+    expect(nhanTrang("/")).toBe("Trang chủ");
   });
 });
