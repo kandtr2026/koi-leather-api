@@ -23,6 +23,7 @@ export class CategoryService {
         name: true,
         slug: true,
         description: true,
+        coverImage: true,
         displayOrder: true,
         isActive: true,
         createdAt: true,
@@ -115,6 +116,7 @@ export class CategoryService {
         slug: finalSlug,
         description: dto.description,
         specsSchema: JSON.stringify(dto.specsSchema || {}),
+        coverImage: dto.coverImage ?? null,
         metaTitle: dto.metaTitle,
         metaDescription: dto.metaDescription,
         displayOrder: dto.displayOrder ?? 0,
@@ -152,6 +154,7 @@ export class CategoryService {
       data.specsSchema = JSON.stringify(dto.specsSchema);
     if (dto.displayOrder !== undefined) data.displayOrder = dto.displayOrder;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    if (dto.coverImage !== undefined) data.coverImage = dto.coverImage;
 
     // Auto-generate SEO if not explicitly provided and no existing value
     if (dto.metaTitle !== undefined) {

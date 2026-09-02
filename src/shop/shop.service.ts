@@ -238,7 +238,7 @@ export class ShopService {
       parent_id: null,
       product_count: c._count?.categoryLinks ?? c.product_count ?? 0,
       is_hidden: c.isActive === false,
-      cover_image: cover ?? null,
+      cover_image: c.coverImage || cover || null,
     };
   }
 

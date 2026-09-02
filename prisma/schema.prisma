@@ -223,6 +223,7 @@ model KoiCategory {
   slug            String               @unique
   description     String?
   specsSchema     String               @default("{}")
+  coverImage      String?
   metaTitle       String?
   metaDescription String?
   displayOrder    Int                  @default(0)

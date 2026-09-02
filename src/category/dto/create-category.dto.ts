@@ -49,6 +49,13 @@ export class CreateCategoryDto {
   @IsString()
   metaDescription?: string;
 
+  @ApiPropertyOptional({
+    description: "URL ảnh bìa danh mục (paste từ Supabase/Cloudinary)",
+  })
+  @IsOptional()
+  @IsString()
+  coverImage?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
