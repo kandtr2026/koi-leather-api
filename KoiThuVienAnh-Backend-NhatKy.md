@@ -30,3 +30,13 @@
 1. **Env production:** đặt `KOI_MEDIA_READ_TOKEN` (chuỗi ≥32 ký tự) trên Vercel project `koi-leather-api` — GIỐNG HỆT giá trị đặt bên storefront. Chưa đặt thì storefront gọi vào sẽ 401.
 2. **Dữ liệu:** bảng `KoiImageVision` trên DB hiện có **336 dòng, TOÀN ảnh blog** (không phải ~5.622 như comment schema; CHƯA có ảnh sản phẩm). Code đúng — thư viện sẽ hiện đủ khi lượt quét vision sản phẩm được nạp vào DB.
 3. **Deploy:** commit chọn lọc CHỈ file feature (cây làm việc còn nhiều WIP khác chưa commit — KHÔNG gộp).
+
+---
+## GĐ2 — Alt ảnh sản phẩm bằng AI (08/09/2026, Claude tự code)
+- Mới: `src/image-library/dto/product-alt.dto.ts`, `src/image-library/product-alt.service.ts` (list SP + stats alt + sinhAlt qua OpenAiClient.sinhJson + apDungAlt qua MediaService.updateImageMetadata).
+- Sửa: `image-library.controller.ts` (route products/stats, products, products/:id/images, POST generate-alt, POST apply-alt — khai trước :id), `image-library.module.ts` (import KoiMediaModule + AiEditModule), `auth.guard.ts` (nhánh KOI_MEDIA_WRITE_TOKEN, chỉ 2 POST).
+- Tái dùng: OpenAiClient (AiEditModule export), MediaService (KoiMediaModule export). KHÔNG đổi schema.
+- Verify: build XANH; HTTP DB thật: GET products/stats/images 200 (read token); POST generate-alt (write token) → 201 alt AI thật gpt-4.1-mini (12 ảnh, alt phân biệt chất lượng); read POST→401, write GET→401, apply id giả→soDaGhi:0 (không đụng data), không token→401.
+- Review đối nghịch (workflow) fix: stats() loại altText "" khỏi nhóm trùng cho khớp filter chiTrung.
+- Stats thật: 4.696 ảnh SP, 314 thiếu alt, 2.688 ảnh alt trùng (317 nhóm).
+- ⚠️ Cần đặt `KOI_MEDIA_WRITE_TOKEN` trên Vercel koi-leather-api (khác read token). OPENAI_API_KEY đã có sẵn prod.

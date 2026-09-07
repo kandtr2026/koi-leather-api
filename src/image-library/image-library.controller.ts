@@ -1,7 +1,21 @@
-import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiTags, ApiOperation } from "@nestjs/swagger";
 import { ImageLibraryService } from "./image-library.service";
+import { ProductAltService } from "./product-alt.service";
 import { QueryImagesDto } from "./dto/query-images.dto";
+import {
+  QueryProductsDto,
+  GenerateAltDto,
+  ApplyAltDto,
+} from "./dto/product-alt.dto";
 import { RequireAuthGuard } from "./require-auth.guard";
 
 /**
@@ -20,12 +34,48 @@ import { RequireAuthGuard } from "./require-auth.guard";
 // PUBLIC_VIEW=1 mở phần đọc công khai (xem require-auth.guard.ts).
 @UseGuards(RequireAuthGuard)
 export class ImageLibraryController {
-  constructor(private readonly service: ImageLibraryService) {}
+  constructor(
+    private readonly service: ImageLibraryService,
+    private readonly alt: ProductAltService,
+  ) {}
 
   @Get("stats")
   @ApiOperation({ summary: "Thống kê kho ảnh (KoiImageVision)" })
   stats() {
     return this.service.stats();
+  }
+
+  // ---- GĐ2: Alt ảnh sản phẩm (KoiProductImage) ----
+  // Khai TRƯỚC @Get(":id") để route tĩnh "products" không bị :id nuốt.
+
+  @Get("products/stats")
+  @ApiOperation({ summary: "Thống kê alt ảnh sản phẩm (thiếu/trùng)" })
+  productStats() {
+    return this.alt.stats();
+  }
+
+  @Get("products")
+  @ApiOperation({ summary: "Danh sách sản phẩm có ảnh + số ảnh thiếu alt" })
+  products(@Query() dto: QueryProductsDto) {
+    return this.alt.dsSanPham(dto);
+  }
+
+  @Get("products/:productId/images")
+  @ApiOperation({ summary: "Ảnh của 1 sản phẩm (để sửa alt)" })
+  productImages(@Param("productId") productId: string) {
+    return this.alt.anhCuaSanPham(productId);
+  }
+
+  @Post("generate-alt")
+  @ApiOperation({ summary: "Sinh alt AI cho ảnh 1 sản phẩm (chưa ghi DB)" })
+  generateAlt(@Body() dto: GenerateAltDto) {
+    return this.alt.sinhAlt(dto.productId);
+  }
+
+  @Post("apply-alt")
+  @ApiOperation({ summary: "Ghi altText cho các ảnh đã duyệt" })
+  applyAlt(@Body() dto: ApplyAltDto) {
+    return this.alt.apDungAlt(dto.items);
   }
 
   @Get("duplicates")

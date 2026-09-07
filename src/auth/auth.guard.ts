@@ -266,6 +266,24 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
+    // Máy-gọi-máy GHI: storefront /quan-tri/anh sinh alt AI + ghi altText bằng
+    // token ghi riêng. CHỈ đúng 2 POST dưới /image-library (allow-list khớp
+    // chính xác). Tách khỏi token đọc theo đúng khuôn HEOIU đọc/ghi tách bạch.
+    if (token && this.laMediaWriteToken(token)) {
+      const d = chuanHoaDuong(path);
+      const duocPhep =
+        method === "POST" &&
+        (d === "/image-library/generate-alt" ||
+          d === "/image-library/apply-alt");
+      if (!duocPhep) {
+        throw new UnauthorizedException(
+          "Media write token chỉ dùng cho /image-library/generate-alt|apply-alt",
+        );
+      }
+      request.user = { service: "koi-media-write", chiGhi: true };
+      return true;
+    }
+
     // GET/HEAD/OPTIONS: đọc dữ liệu.
     if (["GET", "HEAD", "OPTIONS"].includes(method)) {
       let user: unknown = null;
@@ -329,6 +347,23 @@ export class AuthGuard implements CanActivate {
     if (
       mong === process.env.HEOIU_SERVICE_TOKEN ||
       mong === process.env.HEOIU_WRITE_TOKEN
+    ) {
+      return false;
+    }
+    return this.khopToken(token, mong);
+  }
+
+  /**
+   * Token GHI của Thư viện ảnh (áp alt sản phẩm). Fail-closed; từ chối nếu dán
+   * trùng bất kỳ token nào khác (đọc media / Heoiu) để không nới quyền chéo.
+   */
+  private laMediaWriteToken(token: string): boolean {
+    const mong = process.env.KOI_MEDIA_WRITE_TOKEN;
+    if (!mong) return false;
+    if (
+      mong === process.env.HEOIU_SERVICE_TOKEN ||
+      mong === process.env.HEOIU_WRITE_TOKEN ||
+      mong === process.env.KOI_MEDIA_READ_TOKEN
     ) {
       return false;
     }
