@@ -247,6 +247,25 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
+    // Máy-gọi-máy: trang Thư viện ảnh (storefront /quan-tri/anh) đọc kho ảnh
+    // bằng service token riêng, không phải người đăng nhập Google. CHỈ đọc, và
+    // chỉ nhóm /image-library. Token này khác hẳn HEOIU_* (đọc /analytics).
+    // Đặt trước nhánh GET chung vì token này không phải JWT — verifyToken sẽ
+    // ném lỗi và bị coi là ẩn danh rồi chặn.
+    if (token && this.laMediaReadToken(token)) {
+      const duong = chuanHoaDuong(path);
+      if (!["GET", "HEAD"].includes(method)) {
+        throw new UnauthorizedException("Media token chỉ được đọc");
+      }
+      if (duong !== "/image-library" && !duong.startsWith("/image-library/")) {
+        throw new UnauthorizedException(
+          "Media token chỉ đọc nhóm /image-library",
+        );
+      }
+      request.user = { service: "koi-media", chiDoc: true };
+      return true;
+    }
+
     // GET/HEAD/OPTIONS: đọc dữ liệu.
     if (["GET", "HEAD", "OPTIONS"].includes(method)) {
       let user: unknown = null;
@@ -295,6 +314,24 @@ export class AuthGuard implements CanActivate {
   private laTokenGhi(token: string): boolean {
     const mong = process.env.HEOIU_WRITE_TOKEN;
     if (mong && mong === process.env.HEOIU_SERVICE_TOKEN) return false;
+    return this.khopToken(token, mong);
+  }
+
+  /**
+   * Token ĐỌC của Thư viện ảnh (storefront gọi server-side). Fail-closed như
+   * token Heoiu, thêm một chốt: nếu ai dán trùng giá trị với token Heoiu (đọc
+   * hay ghi) thì coi như chưa cấu hình — tránh một biến môi trường lỡ tay nới
+   * quyền của biến kia.
+   */
+  private laMediaReadToken(token: string): boolean {
+    const mong = process.env.KOI_MEDIA_READ_TOKEN;
+    if (!mong) return false;
+    if (
+      mong === process.env.HEOIU_SERVICE_TOKEN ||
+      mong === process.env.HEOIU_WRITE_TOKEN
+    ) {
+      return false;
+    }
     return this.khopToken(token, mong);
   }
 

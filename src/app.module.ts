@@ -12,6 +12,7 @@ import { KoiCraftingSpecModule } from "./crafting-spec/crafting-spec.module";
 import { KoiSeoModule } from "./seo/seo.module";
 import { KoiInventoryModule } from "./inventory/inventory.module";
 import { KoiImageCategoryModule } from "./image-category/image-category.module";
+import { ImageLibraryModule } from "./image-library/image-library.module";
 import { MaterialCategoryModule } from "./material-category/material-category.module";
 import { AuthModule } from "./auth/auth.module";
 import { AuthGuard } from "./auth/auth.guard";
@@ -45,6 +46,7 @@ import { SeoWhitelistModule } from "./seo-whitelist/seo-whitelist.module";
     KoiSeoModule,
     KoiInventoryModule,
     KoiImageCategoryModule,
+    ImageLibraryModule,
     MaterialCategoryModule,
     ShopModule,
     AnalyticsModule,
