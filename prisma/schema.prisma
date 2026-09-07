@@ -551,6 +551,79 @@ model KoiImageCategory {
   @@schema("koi_free_style")
 }
 
+/// SO TAY DOC ANH — moi dong la mot buc anh goc da duoc AI doc mot lan (09/2026).
+/// Bao gom ca 4.273 anh san pham (Supabase + Cloudinary) va 1.308 anh blog.
+///
+/// KHAI O DAY DE PRISMA KHONG XOA. `prisma db push` coi bang khong co trong file
+/// nay la THUA va DROP no — dung chuyen da xay ra voi product_images.width/height
+/// (xem chu thich o model do). Bang nay ton 5.622 luot doc anh de dung nen, mat
+/// la phai tra lai tu dau.
+///
+/// KHONG phai nguon su that cho mat tien: cot imageType cua KoiProductImage moi
+/// la thu /dau-an-rieng/ doc. Bang nay la ket qua doc anh doc lap, dung de doi
+/// chieu va de OpenCode trich xuat.
+model KoiImageVision {
+  id           String   @id @default(uuid())
+  url          String   @unique
+  nguon        String
+  bucket       String?
+  storageKey   String?  @map("storage_key")
+  noiDungHash  String?  @map("noi_dung_hash")
+
+  loaiBanGhi   String   @map("loai_ban_ghi")
+  spId         String?  @map("sp_id")
+  spSlug       String?  @map("sp_slug")
+  spTen        String?  @map("sp_ten")
+  danhMuc      String?  @map("danh_muc")
+  postSlugs    String[] @default([]) @map("post_slugs")
+  laBiaBai     Boolean? @default(false) @map("la_bia_bai")
+  loaiCu       String?  @map("loai_cu")
+
+  width        Int?
+  height       Int?
+  tyLe         Decimal? @map("ty_le") @db.Decimal(7, 4)
+  huong        String?
+  coTep        Int?     @map("co_tep")
+
+  phanLoai     String?  @map("phan_loai")
+  doTinCay     Decimal? @map("do_tin_cay") @db.Decimal(3, 2)
+  laLifestyle  Boolean? @map("la_lifestyle")
+  diemLookbook Int?     @map("diem_lookbook") @db.SmallInt
+
+  coDauTen     Boolean? @map("co_dau_ten")
+  dauKieu      String?  @map("dau_kieu")
+  dauNoiDung   String?  @map("dau_noi_dung")
+  dauDoRo      String?  @map("dau_do_ro")
+  dauViTri     String?  @map("dau_vi_tri")
+
+  coLogoKoi    Boolean? @map("co_logo_koi")
+  coNguoi      Boolean? @map("co_nguoi")
+  vatTheChinh  String?  @map("vat_the_chinh")
+  chatDa       String[] @default([]) @map("chat_da")
+  mauChinh     String[] @default([]) @map("mau_chinh")
+  phuKien      String[] @default([]) @map("phu_kien")
+  phongCanh    String?  @map("phong_canh")
+  chuTrongAnh  String?  @map("chu_trong_anh")
+
+  moTa         String?  @map("mo_ta")
+  moTaEn       String?  @map("mo_ta_en")
+  altGoiY      String?  @map("alt_goi_y")
+  canhBao      String[] @default([]) @map("canh_bao")
+
+  model        String?
+  luot         Int?     @default(1) @db.SmallInt
+  beRongDoc    Int?     @map("be_rong_doc")
+  quetLuc      DateTime @default(now()) @map("quet_luc") @db.Timestamptz(6)
+
+  @@index([laLifestyle, diemLookbook])
+  @@index([coDauTen])
+  @@index([phanLoai])
+  @@index([spId])
+  @@index([noiDungHash])
+  @@map("koi_image_vision")
+  @@schema("koi_free_style")
+}
+
 model KoiMaterialCategory {
   id           String                       @id @default(uuid())
   code         String                       @unique
