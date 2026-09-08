@@ -128,6 +128,19 @@ const ADMIN_DOC_TIEN_TO = [
   "/material-categories",
 ];
 
+// GHI: bảng điều khiển admin storefront được ghi các nhóm dữ liệu quản trị này.
+// Cùng tập với ĐỌC (trừ chỗ khác biệt nếu có). Cấp theo tiền tố vì mỗi nhóm có
+// nhiều đường con (products/variants, products/:id/images, categories/:id/
+// toggle-status…) — liệt kê từng cái vừa dài vừa dễ sót; blast radius đúng bằng
+// "quản trị catalog", là chủ đích. Token chỉ chạy server-side sau khi storefront
+// đã gác mật khẩu.
+const ADMIN_GHI_TIEN_TO = [
+  "/products",
+  "/categories",
+  "/image-categories",
+  "/material-categories",
+];
+
 /**
  * Chuẩn hoá trước khi so khớp deny-list.
  *
@@ -330,10 +343,10 @@ export class AuthGuard implements CanActivate {
       const d = chuanHoaDuong(path);
       const duocPhep =
         !["GET", "HEAD", "OPTIONS"].includes(method) &&
-        (d === "/products" || d.startsWith("/products/"));
+        ADMIN_GHI_TIEN_TO.some((p) => d === p || d.startsWith(p + "/"));
       if (!duocPhep) {
         throw new UnauthorizedException(
-          "Admin write token chỉ ghi nhóm /products",
+          "Admin write token chỉ ghi nhóm catalog (products/categories/…)",
         );
       }
       request.user = { service: "koi-admin-write", chiGhi: true };
