@@ -25,6 +25,10 @@ import {
   ApiConsumes,
 } from "@nestjs/swagger";
 import { MediaService } from "./media.service";
+import {
+  isSupabaseStorageConfigured,
+  uploadImageWithVariants,
+} from "./supabase-storage";
 import * as path from "path";
 import * as fs from "fs";
 // Lazy Sharp — optional on platforms without native binaries (Vercel Lambda)
@@ -115,9 +119,9 @@ export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
   /**
-   * Xử lý 1 file ảnh: Sharp→WebP + thumb + medium (nếu có Sharp), rồi upload
-   * Cloudinary (fallback local). Trả về các URL + kích thước. Dùng chung cho
-   * cả upload mới và thay ảnh tại chỗ.
+   * Xử lý 1 file ảnh rồi lưu. ĐÍCH CHÍNH: Supabase Storage (bản nhỏ tĩnh). Chỉ
+   * lui về Cloudinary/local khi CHƯA cấu hình SUPABASE_SERVICE_ROLE_KEY — đường
+   * lui này sẽ bỏ hẳn sau khi migrate xong. Dùng chung cho upload mới + thay ảnh.
    */
   private async processAndStore(
     file: Express.Multer.File,
@@ -132,7 +136,75 @@ export class MediaController {
     mimeType: string;
     fileSize: number;
     onCloudinary: boolean;
+    onSupabase: boolean;
   }> {
+    if (isSupabaseStorageConfigured()) {
+      return this.storeToSupabase(file, productId);
+    }
+    return this.storeToCloudinaryOrLocal(file, productId);
+  }
+
+  /**
+   * Đẩy lên Supabase Storage: ảnh gốc (≤1600) + bản nhỏ w400/w800/w1200 (PHẢI
+   * khớp WIDTHS của koi-storefront/src/lib/image-loader.ts). Cả 3 cột
+   * url/thumbnailUrl/mediumUrl lưu CÙNG URL gốc — giống các ảnh Supabase hiện có;
+   * loader next/image tự chèn /w{N}/ để lấy bản nhỏ, không tốn hạn mức transform.
+   */
+  private async storeToSupabase(file: Express.Multer.File, productId: string) {
+    const timestamp = Date.now();
+    const sharpInstance = getSharp();
+
+    let baseBuf: Buffer, w400: Buffer, w800: Buffer, w1200: Buffer;
+    let width: number | undefined, height: number | undefined;
+
+    if (sharpInstance) {
+      const meta = await sharpInstance(file.buffer).metadata();
+      width = meta.width || undefined;
+      height = meta.height || undefined;
+      const mk = (w: number, q: number) =>
+        sharpInstance(file.buffer)
+          .resize(w, undefined, { fit: "inside", withoutEnlargement: true })
+          .webp({ quality: q })
+          .toBuffer();
+      [baseBuf, w400, w800, w1200] = await Promise.all([
+        mk(1600, 82),
+        mk(400, 80),
+        mk(800, 80),
+        mk(1200, 80),
+      ]);
+    } else {
+      baseBuf = w400 = w800 = w1200 = file.buffer;
+    }
+
+    const key = `${productId}/${timestamp}.webp`;
+    const { url } = await uploadImageWithVariants({
+      key,
+      base: baseBuf,
+      variants: [
+        { width: 400, buf: w400 },
+        { width: 800, buf: w800 },
+        { width: 1200, buf: w1200 },
+      ],
+    });
+
+    return {
+      publicUrl: url,
+      thumbUrl: url,
+      mediumUrl: url,
+      width,
+      height,
+      mimeType: sharpInstance ? "image/webp" : file.mimetype,
+      fileSize: baseBuf.length,
+      onCloudinary: false,
+      onSupabase: true,
+    };
+  }
+
+  /** Đường lui: Cloudinary (fallback local). Bỏ hẳn sau khi migrate xong. */
+  private async storeToCloudinaryOrLocal(
+    file: Express.Multer.File,
+    productId: string,
+  ) {
     const timestamp = Date.now();
     const slug = `${timestamp}`;
     const sharpInstance = getSharp();
@@ -177,6 +249,7 @@ export class MediaController {
         mimeType: sharpInstance ? "image/webp" : file.mimetype,
         fileSize: webpBuf.length,
         onCloudinary: true,
+        onSupabase: false,
       };
     }
 
@@ -196,6 +269,7 @@ export class MediaController {
       mimeType: sharpInstance ? "image/webp" : file.mimetype,
       fileSize: webpBuf.length,
       onCloudinary: false,
+      onSupabase: false,
     };
   }
 
@@ -233,7 +307,7 @@ export class MediaController {
     });
 
     this.logger.log(
-      `Replaced image ${imageId} for product ${productId}${stored.onCloudinary ? " (Cloudinary)" : " (local)"}`,
+      `Replaced image ${imageId} for product ${productId}${stored.onSupabase ? " (Supabase)" : stored.onCloudinary ? " (Cloudinary)" : " (local)"}`,
     );
     return result;
   }
@@ -292,7 +366,7 @@ export class MediaController {
     );
 
     this.logger.log(
-      `Uploaded & converted ${file.originalname} → WEBP for product ${productId}${stored.onCloudinary ? " (Cloudinary)" : " (local)"}`,
+      `Uploaded & converted ${file.originalname} → WEBP for product ${productId}${stored.onSupabase ? " (Supabase)" : stored.onCloudinary ? " (Cloudinary)" : " (local)"}`,
     );
     return result;
   }

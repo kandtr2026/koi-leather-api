@@ -6,6 +6,11 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { generateImageAltText } from "../seo/seo-generator.helper";
+import {
+  isSupabaseProductUrl,
+  keyFromPublicUrl,
+  removeImageWithVariants,
+} from "./supabase-storage";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -211,10 +216,24 @@ export class MediaService {
     thumbnailUrl: string;
     mediumUrl: string | null;
   }) {
-    // Try Cloudinary deletion first
+    // Supabase Storage: xoá ảnh gốc + w400/w800/w1200 theo key.
+    if (isSupabaseProductUrl(image.url)) {
+      const key = keyFromPublicUrl(image.url);
+      if (key) {
+        try {
+          await removeImageWithVariants(key);
+        } catch (err) {
+          this.logger.warn(
+            `Xoá ảnh Supabase thất bại (${key}): ${(err as Error).message}`,
+          );
+        }
+        return;
+      }
+    }
+    // Cloudinary
     const deletedFromCdn = await this.deleteFromCloudinary(image.url);
     if (!deletedFromCdn) {
-      // Fallback: delete from local storage
+      // Fallback: local
       this.deleteLocalFile(image.url);
       this.deleteLocalFile(image.thumbnailUrl);
       if (image.mediumUrl) this.deleteLocalFile(image.mediumUrl);
