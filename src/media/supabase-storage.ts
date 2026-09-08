@@ -18,13 +18,18 @@ export const VARIANT_WIDTHS = [400, 800, 1200] as const;
 
 let cachedClient: SupabaseClient | null | undefined;
 
-/** URL dự án Supabase: lấy từ SUPABASE_URL, hoặc suy từ DATABASE_URL (postgres.<ref>). */
+/** URL dự án Supabase: lấy từ SUPABASE_URL, hoặc suy từ DATABASE_URL. */
 function supabaseBaseUrl(): string | null {
   const explicit = process.env.SUPABASE_URL?.trim();
   if (explicit) return explicit.replace(/\/+$/, "");
-  // Pooler username có dạng postgres.<projectRef> → https://<ref>.supabase.co
-  const m = process.env.DATABASE_URL?.match(/postgres\.([a-z0-9]{16,}):/);
-  return m ? `https://${m[1]}.supabase.co` : null;
+  const db = process.env.DATABASE_URL || process.env.DATABASE_URL_POOL || "";
+  // Pooler: postgresql://postgres.<ref>:pw@...pooler.supabase.com
+  const fromUser = db.match(/postgres\.([a-z0-9]{16,})[:@]/);
+  if (fromUser) return `https://${fromUser[1]}.supabase.co`;
+  // Kết nối trực tiếp: postgresql://postgres:pw@db.<ref>.supabase.co
+  const fromHost = db.match(/@db\.([a-z0-9]{16,})\.supabase\.co/);
+  if (fromHost) return `https://${fromHost[1]}.supabase.co`;
+  return null;
 }
 
 function getClient(): SupabaseClient | null {
