@@ -40,30 +40,6 @@ export class TraLinkDto {
   link!: string;
 }
 
-export class SinhDto {
-  @IsString()
-  @MinLength(1)
-  @MaxLength(2048)
-  link!: string;
-
-  /**
-   * Yêu cầu của chủ shop. 4000 ký tự là thoải mái cho một lời dặn dài, mà vẫn
-   * chặn được ai đó dán cả một quyển sách vào rồi đốt token.
-   */
-  @IsString()
-  @MinLength(3)
-  @MaxLength(4000)
-  yeuCau!: string;
-
-  /** Không gửi = sửa mọi trường đang có chữ. */
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(10)
-  @IsString({ each: true })
-  @MaxLength(40, { each: true })
-  truongChon?: string[];
-}
-
 export class MotThayDoiDto {
   @IsString()
   @MinLength(1)

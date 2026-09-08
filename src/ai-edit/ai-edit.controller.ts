@@ -14,31 +14,30 @@ import {
   ApDungDto,
   HoanTacDto,
   LichSuDto,
-  SinhDto,
   TraLinkDto,
 } from "./dto/ai-edit.dto";
 
 /**
- * Sửa câu chữ toàn site bằng AI — CHỈ ADMIN.
+ * Sửa câu chữ nội dung site (bài viết/trang KoiBack) — CHỈ ADMIN.
+ *
+ * LƯU Ý: phần "viết lại bằng AI (GPT)" đã gỡ 09/2026 theo yêu cầu (khó dùng, sẽ
+ * dựng lại kiểu khác sau). Còn lại là bộ sửa chữ THỦ CÔNG: dán link ra bản ghi
+ * (/resolve), ghi chữ đã duyệt có lịch sử (/apply), hoàn tác (/revert) và xem
+ * lịch sử (/history).
  *
  * VÌ SAO NẰM DƯỚI /analytics CHỨ KHÔNG PHẢI /ai-edit:
- * koi-domain-router (api/index.js, hàm targetFor) chỉ đẩy một danh sách tiền tố
- * cố định về API này; mọi đường khác đi sang storefront Next.js. /analytics đã có
- * trong danh sách, /ai-edit thì chưa — dùng tiền tố mới là mọi lời gọi từ
- * koileather.com/admin trả về trang 404 của storefront, và phải sửa rồi deploy
- * thêm một repo nữa. Cùng lý do với AdsAdminController (ads.controller.ts:191).
+ * next.config.ts của storefront chỉ đẩy một danh sách tiền tố cố định về API này;
+ * mọi đường khác đi sang trang Next.js. /analytics đã có trong danh sách, /ai-edit
+ * thì chưa — dùng tiền tố mới là mọi lời gọi từ koileather.com/admin trả về trang
+ * 404 của storefront. Cùng lý do với AdsAdminController (ads.controller.ts:191).
  *
- * VÌ SAO MỌI ĐƯỜNG NẶNG ĐỀU LÀ POST, KỂ CẢ ĐƯỜNG CHỈ ĐỌC:
+ * VÌ SAO ĐƯỜNG GHI/ĐỌC-NẶNG ĐỀU LÀ POST:
  * AuthGuard có công tắc PUBLIC_VIEW=1 (auth.guard.ts:65) mở TOÀN BỘ phần GET cho
- * khách vãng lai — biến đó sinh ra để mở nội dung cửa hàng, và sẽ có ngày ai đó
- * bật nó lên vì lý do chính đáng. Nhưng POST/PUT/PATCH/DELETE thì guard đòi
- * Bearer hợp lệ trong MỌI trường hợp, không có công tắc nào bỏ qua được.
- * Nên:
- *  · /generate là POST vì nó TIÊU TIỀN THẬT trong tài khoản OpenAI của chủ shop.
- *    Là GET thì hôm PUBLIC_VIEW bật lên, người ngoài gọi vòng lặp là hết hạn mức.
+ * khách vãng lai. Nhưng POST/PUT/PATCH/DELETE thì guard đòi Bearer hợp lệ trong
+ * MỌI trường hợp, không có công tắc nào bỏ qua được. Nên:
  *  · /resolve là POST vì nó nhận link dài và trả nguyên văn nội dung bản ghi.
  *  · /apply, /revert là POST vì chúng GHI vào nội dung đang chạy trên site.
- * Chỉ /status và /history là GET, và cả hai vẫn tự đòi đăng nhập ở dòng đầu.
+ * Chỉ /history là GET, và nó vẫn tự đòi đăng nhập ở dòng đầu.
  */
 @ApiTags("Analytics (admin)")
 @Controller("analytics")
@@ -63,27 +62,10 @@ export class AiEditController {
     return user?.email || "";
   }
 
-  @Get("ai-edit/status")
-  @ApiOperation({
-    summary: "Máy chủ đã có key OpenAI chưa, đang dùng model nào",
-  })
-  trangThai(@Req() req: Request) {
-    this.doiAdmin(req);
-    // Chỉ trả CÓ/KHÔNG và tên model. Không bao giờ trả key, không trả cả một
-    // phần key: bốn ký tự cuối cũng là bốn ký tự người ngoài không cần biết.
-    return this.svc.trangThai();
-  }
-
   @Post("ai-edit/resolve")
   @ApiOperation({ summary: "Dán link → ra bản ghi và nội dung hiện tại" })
   tra(@Body() dto: TraLinkDto) {
     return this.svc.tra(dto.link);
-  }
-
-  @Post("ai-edit/generate")
-  @ApiOperation({ summary: "Gọi AI viết lại — CHƯA ghi vào cơ sở dữ liệu" })
-  sinh(@Body() dto: SinhDto) {
-    return this.svc.sinh(dto.link, dto.yeuCau, dto.truongChon);
   }
 
   @Post("ai-edit/apply")

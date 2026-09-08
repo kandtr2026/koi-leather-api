@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { GoogleAdsClient } from "./google-ads.client";
-import { OpenAiClient } from "../ai-edit/openai.client";
+import { OpenAiClient } from "../openai/openai.client";
 import { PrismaService } from "../prisma/prisma.service";
 
 /**

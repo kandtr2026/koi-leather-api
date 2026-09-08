@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { MediaService } from "../media/media.service";
-import { OpenAiClient } from "../ai-edit/openai.client";
+import { OpenAiClient } from "../openai/openai.client";
 import { QueryProductsDto } from "./dto/product-alt.dto";
 
 // So anh toi da gui AI cho 1 san pham trong 1 luot (alt ngan, nhung nhieu anh

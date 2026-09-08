@@ -9,7 +9,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { dauNgayVN, ngayVNCuaDate, ngayVNString } from "../common/ngay-vn";
 import { GoogleAdsClient } from "./google-ads.client";
-import { OpenAiClient } from "../ai-edit/openai.client";
+import { OpenAiClient } from "../openai/openai.client";
 
 /**
  * Nối cú bấm quảng cáo Google với hội thoại Zalo.
@@ -192,7 +192,7 @@ export class AdsService {
   constructor(
     private prisma: PrismaService,
     private ads: GoogleAdsClient,
-    // OpenAiClient lấy từ AiEditModule (ads.module.ts đã import) — cùng client
+    // OpenAiClient lấy từ OpenAiModule (ads.module.ts đã import) — cùng client
     // GPT mà LandingSeoService dùng, cho tính năng "AI mentor chiến dịch".
     private openai: OpenAiClient,
   ) {}

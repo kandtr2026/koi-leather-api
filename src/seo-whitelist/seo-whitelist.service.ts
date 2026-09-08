@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AdsService } from "../ads/ads.service";
-import { OpenAiClient } from "../ai-edit/openai.client";
+import { OpenAiClient } from "../openai/openai.client";
 
 // Lệch múi giờ VN (UTC+7, Việt Nam không có DST nên số này là hằng số).
 const LE_VN_MS = 7 * 60 * 60 * 1000;
