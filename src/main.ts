@@ -40,13 +40,10 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Serve admin dashboard at root
+  // Phục vụ tài nguyên tĩnh trong public/ (vd build-meta.json cho health).
+  // SPA admin đã KHAI TỬ 08/09/2026: toàn bộ /admin/* nay là trang Next của
+  // storefront, backend KHÔNG còn phục vụ index.html nữa.
   app.use("/", express.static(path.join(process.cwd(), "public")));
-
-  // SPA fallback — serve index.html for all /admin/* paths (path-based routing)
-  app.use("/admin", (req: express.Request, res: express.Response) => {
-    res.sendFile(path.join(process.cwd(), "public", "index.html"));
-  });
 
   // Serve uploaded media
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
