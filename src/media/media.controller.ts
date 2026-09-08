@@ -15,6 +15,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { IsArray } from "class-validator";
 import {
   ApiTags,
   ApiOperation,
@@ -98,6 +99,11 @@ class UploadResult {
 }
 
 class ReorderDto {
+  // PHẢI có decorator class-validator: ValidationPipe toàn cục bật
+  // forbidNonWhitelisted, nên property không được whitelist (không decorator)
+  // bị loại → "property items should not exist". SPA cũ không gọi reorder nên
+  // bug này ẩn tới khi trang quản ảnh mới dùng.
+  @IsArray()
   items: { id: string; displayOrder: number }[];
 }
 
