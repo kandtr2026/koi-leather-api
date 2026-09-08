@@ -323,6 +323,36 @@ export class MediaController {
     return this.mediaService.setPrimaryImage(productId, imageId);
   }
 
+  // ⚠️ Route TĨNH phải khai TRƯỚC route động ":imageId": NestJS/Express khớp
+  // theo thứ tự khai báo, nên nếu ":imageId" đứng trước thì "reorder" và
+  // "bulk-metadata" bị nuốt vào handler đó → ParseUUIDPipe ném 400 "uuid is
+  // expected". SPA cũ không gọi reorder/bulk nên bug này ẩn tới khi trang quản
+  // ảnh mới (storefront /admin/products) dùng reorder mới lộ.
+  @Patch("reorder")
+  @ApiOperation({ summary: "Reorder product images" })
+  reorder(
+    @Param("productId", ParseUUIDPipe) productId: string,
+    @Body() dto: ReorderDto,
+  ) {
+    if (!dto.items || !Array.isArray(dto.items)) {
+      throw new BadRequestException("items array is required");
+    }
+    return this.mediaService.reorderImages(productId, dto.items);
+  }
+
+  @Patch("bulk-metadata")
+  @ApiOperation({ summary: "Bulk update image metadata (types, alt texts)" })
+  bulkUpdateMetadata(
+    @Param("productId", ParseUUIDPipe) productId: string,
+    @Body("items")
+    items: { id: string; imageType?: string; altText?: string }[],
+  ) {
+    if (!items || !Array.isArray(items)) {
+      throw new BadRequestException("items array is required");
+    }
+    return this.mediaService.bulkUpdateImageMetadata(productId, items);
+  }
+
   @Patch(":imageId/type")
   @ApiOperation({
     summary:
@@ -348,30 +378,5 @@ export class MediaController {
     @Body() dto: { imageType?: string; altText?: string },
   ) {
     return this.mediaService.updateImageMetadata(imageId, dto);
-  }
-
-  @Patch("reorder")
-  @ApiOperation({ summary: "Reorder product images" })
-  reorder(
-    @Param("productId", ParseUUIDPipe) productId: string,
-    @Body() dto: ReorderDto,
-  ) {
-    if (!dto.items || !Array.isArray(dto.items)) {
-      throw new BadRequestException("items array is required");
-    }
-    return this.mediaService.reorderImages(productId, dto.items);
-  }
-
-  @Patch("bulk-metadata")
-  @ApiOperation({ summary: "Bulk update image metadata (types, alt texts)" })
-  bulkUpdateMetadata(
-    @Param("productId", ParseUUIDPipe) productId: string,
-    @Body("items")
-    items: { id: string; imageType?: string; altText?: string }[],
-  ) {
-    if (!items || !Array.isArray(items)) {
-      throw new BadRequestException("items array is required");
-    }
-    return this.mediaService.bulkUpdateImageMetadata(productId, items);
   }
 }
