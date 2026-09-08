@@ -113,6 +113,21 @@ const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   ["POST", /^\/analytics\/seo\/review$/],
 ];
 
+// Máy-gọi-máy: bảng điều khiển admin của storefront (/admin/products…) đọc/ghi
+// sản phẩm bằng service token riêng, KHÔNG phải người đăng nhập Google. Storefront
+// đã gác mật khẩu (cookie koi_content_editor) trước khi gọi, nên token này là
+// "cánh tay" của phiên admin đó. Tách ĐỌC/GHI theo đúng khuôn HEOIU và KOI_MEDIA.
+//
+// ĐỌC: chỉ GET, chỉ các nhóm dữ liệu bảng điều khiển cần đổ ra màn hình (danh
+// sách sản phẩm admin + dropdown danh mục/loại da/loại ảnh). Màu lấy qua
+// /shop/color-families (đã công khai, không cần token).
+const ADMIN_DOC_TIEN_TO = [
+  "/products",
+  "/categories",
+  "/image-categories",
+  "/material-categories",
+];
+
 /**
  * Chuẩn hoá trước khi so khớp deny-list.
  *
@@ -284,6 +299,47 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
+    // Máy-gọi-máy ĐỌC: bảng điều khiển admin storefront (/admin/products…) đọc
+    // danh sách sản phẩm admin + các bảng phụ để đổ dropdown. CHỈ GET, chỉ nhóm
+    // trong ADMIN_DOC_TIEN_TO. Storefront đã gác mật khẩu trước khi gọi. Đặt
+    // trước nhánh GET chung vì token này không phải JWT (verifyToken sẽ ném lỗi).
+    if (token && this.laAdminReadToken(token)) {
+      const d = chuanHoaDuong(path);
+      if (!["GET", "HEAD"].includes(method)) {
+        throw new UnauthorizedException("Admin read token chỉ được đọc");
+      }
+      const duocPhep = ADMIN_DOC_TIEN_TO.some(
+        (p) => d === p || d.startsWith(p + "/"),
+      );
+      if (!duocPhep) {
+        throw new UnauthorizedException(
+          "Admin read token chỉ đọc nhóm sản phẩm/danh mục",
+        );
+      }
+      request.user = { service: "koi-admin", chiDoc: true };
+      return true;
+    }
+
+    // Máy-gọi-máy GHI: bảng điều khiển admin ghi sản phẩm (tạo/sửa/xoá, biến thể,
+    // ảnh, dọn mô tả). Mọi đường đều nằm dưới /products nên cấp theo TIỀN TỐ
+    // /products — KHÁC khuôn allowlist-chính-xác của HEOIU: sản phẩm có quá nhiều
+    // đường con (images/:id/type, variants/:id, descriptions/clean…), liệt kê
+    // từng cái vừa dài vừa dễ sót; blast radius đúng bằng "quản lý sản phẩm", là
+    // chủ đích. Token chỉ chạy server-side sau khi storefront đã gác mật khẩu.
+    if (token && this.laAdminWriteToken(token)) {
+      const d = chuanHoaDuong(path);
+      const duocPhep =
+        !["GET", "HEAD", "OPTIONS"].includes(method) &&
+        (d === "/products" || d.startsWith("/products/"));
+      if (!duocPhep) {
+        throw new UnauthorizedException(
+          "Admin write token chỉ ghi nhóm /products",
+        );
+      }
+      request.user = { service: "koi-admin-write", chiGhi: true };
+      return true;
+    }
+
     // GET/HEAD/OPTIONS: đọc dữ liệu.
     if (["GET", "HEAD", "OPTIONS"].includes(method)) {
       let user: unknown = null;
@@ -364,6 +420,45 @@ export class AuthGuard implements CanActivate {
       mong === process.env.HEOIU_SERVICE_TOKEN ||
       mong === process.env.HEOIU_WRITE_TOKEN ||
       mong === process.env.KOI_MEDIA_READ_TOKEN
+    ) {
+      return false;
+    }
+    return this.khopToken(token, mong);
+  }
+
+  /**
+   * Token ĐỌC của bảng điều khiển admin storefront (sản phẩm + danh mục phụ).
+   * Fail-closed; từ chối nếu dán trùng bất kỳ token nào khác để không nới quyền
+   * chéo (một biến lỡ tay không được thừa hưởng scope của biến kia).
+   */
+  private laAdminReadToken(token: string): boolean {
+    const mong = process.env.KOI_ADMIN_READ_TOKEN;
+    if (!mong) return false;
+    if (
+      mong === process.env.HEOIU_SERVICE_TOKEN ||
+      mong === process.env.HEOIU_WRITE_TOKEN ||
+      mong === process.env.KOI_MEDIA_READ_TOKEN ||
+      mong === process.env.KOI_MEDIA_WRITE_TOKEN
+    ) {
+      return false;
+    }
+    return this.khopToken(token, mong);
+  }
+
+  /**
+   * Token GHI của bảng điều khiển admin (tạo/sửa/xoá sản phẩm). Fail-closed; từ
+   * chối nếu dán trùng bất kỳ token nào khác (gồm cả token đọc admin) — mất token
+   * đọc vẫn không ghi được, và ngược lại.
+   */
+  private laAdminWriteToken(token: string): boolean {
+    const mong = process.env.KOI_ADMIN_WRITE_TOKEN;
+    if (!mong) return false;
+    if (
+      mong === process.env.HEOIU_SERVICE_TOKEN ||
+      mong === process.env.HEOIU_WRITE_TOKEN ||
+      mong === process.env.KOI_MEDIA_READ_TOKEN ||
+      mong === process.env.KOI_MEDIA_WRITE_TOKEN ||
+      mong === process.env.KOI_ADMIN_READ_TOKEN
     ) {
       return false;
     }
