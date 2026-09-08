@@ -41,38 +41,6 @@ function getSharp() {
   }
 }
 
-// Lazy Cloudinary helper — only loads when env has real keys
-function getCloudinary() {
-  const name = process.env.CLOUDINARY_CLOUD_NAME;
-  const key = process.env.CLOUDINARY_API_KEY;
-  const secret = process.env.CLOUDINARY_API_SECRET;
-  if (!name || name === "your_cloud_name" || !key || !secret) return null;
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const cloudinary = require("cloudinary").v2;
-  cloudinary.config({ cloud_name: name, api_key: key, api_secret: secret });
-  return cloudinary;
-}
-
-async function uploadToCloudinary(
-  buf: Buffer,
-  folder: string,
-  filename: string,
-): Promise<{ url: string; publicId: string } | null> {
-  const cloudinary = getCloudinary();
-  if (!cloudinary) return null;
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader
-      .upload_stream(
-        { folder, public_id: filename, resource_type: "image", format: "webp" },
-        (err, result) => {
-          if (err || !result) return reject(err || new Error("Upload failed"));
-          resolve({ url: result.secure_url, publicId: result.public_id });
-        },
-      )
-      .end(buf);
-  });
-}
-
 class RegisterImageDto {
   cloudinaryPublicId?: string;
   cloudinaryUrl: string;
@@ -119,9 +87,9 @@ export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
   /**
-   * Xử lý 1 file ảnh rồi lưu. ĐÍCH CHÍNH: Supabase Storage (bản nhỏ tĩnh). Chỉ
-   * lui về Cloudinary/local khi CHƯA cấu hình SUPABASE_SERVICE_ROLE_KEY — đường
-   * lui này sẽ bỏ hẳn sau khi migrate xong. Dùng chung cho upload mới + thay ảnh.
+   * Xử lý 1 file ảnh rồi lưu vào Supabase Storage (bản nhỏ tĩnh). Chỉ lui về đĩa
+   * local khi CHƯA cấu hình SUPABASE_SERVICE_ROLE_KEY (dev). Dùng chung cho
+   * upload mới + thay ảnh.
    */
   private async processAndStore(
     file: Express.Multer.File,
@@ -130,18 +98,16 @@ export class MediaController {
     publicUrl: string;
     thumbUrl: string;
     mediumUrl: string;
-    cloudinaryPublicId?: string;
     width?: number;
     height?: number;
     mimeType: string;
     fileSize: number;
-    onCloudinary: boolean;
     onSupabase: boolean;
   }> {
     if (isSupabaseStorageConfigured()) {
       return this.storeToSupabase(file, productId);
     }
-    return this.storeToCloudinaryOrLocal(file, productId);
+    return this.storeToLocal(file, productId);
   }
 
   /**
@@ -195,16 +161,12 @@ export class MediaController {
       height,
       mimeType: sharpInstance ? "image/webp" : file.mimetype,
       fileSize: baseBuf.length,
-      onCloudinary: false,
       onSupabase: true,
     };
   }
 
-  /** Đường lui: Cloudinary (fallback local). Bỏ hẳn sau khi migrate xong. */
-  private async storeToCloudinaryOrLocal(
-    file: Express.Multer.File,
-    productId: string,
-  ) {
+  /** Đường lui khi chưa cấu hình Supabase (chỉ dev): ghi ra đĩa local. */
+  private async storeToLocal(file: Express.Multer.File, productId: string) {
     const timestamp = Date.now();
     const slug = `${timestamp}`;
     const sharpInstance = getSharp();
@@ -231,29 +193,6 @@ export class MediaController {
       mediumBuf = file.buffer;
     }
 
-    const folder = `koi/products/${productId}`;
-    const [fullResult, thumbResult, mediumResult] = await Promise.all([
-      uploadToCloudinary(webpBuf, folder, slug),
-      uploadToCloudinary(thumbBuf, folder, `${slug}-thumb`),
-      uploadToCloudinary(mediumBuf, folder, `${slug}-medium`),
-    ]);
-
-    if (fullResult) {
-      return {
-        publicUrl: fullResult.url,
-        thumbUrl: thumbResult?.url || fullResult.url,
-        mediumUrl: mediumResult?.url || fullResult.url,
-        cloudinaryPublicId: fullResult.publicId,
-        width,
-        height,
-        mimeType: sharpInstance ? "image/webp" : file.mimetype,
-        fileSize: webpBuf.length,
-        onCloudinary: true,
-        onSupabase: false,
-      };
-    }
-
-    // Fallback local
     const ext = path.extname(file.originalname) || ".jpg";
     const uploadDir = path.join(process.cwd(), "uploads", "products", productId);
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -268,7 +207,6 @@ export class MediaController {
       height,
       mimeType: sharpInstance ? "image/webp" : file.mimetype,
       fileSize: webpBuf.length,
-      onCloudinary: false,
       onSupabase: false,
     };
   }
@@ -307,7 +245,7 @@ export class MediaController {
     });
 
     this.logger.log(
-      `Replaced image ${imageId} for product ${productId}${stored.onSupabase ? " (Supabase)" : stored.onCloudinary ? " (Cloudinary)" : " (local)"}`,
+      `Replaced image ${imageId} for product ${productId}${stored.onSupabase ? " (Supabase)" : " (local)"}`,
     );
     return result;
   }
@@ -350,7 +288,6 @@ export class MediaController {
     const result = await this.mediaService.registerImage(
       productId,
       {
-        cloudinaryPublicId: stored.cloudinaryPublicId,
         cloudinaryUrl: stored.publicUrl,
         thumbnailUrl: stored.thumbUrl,
         mediumUrl: stored.mediumUrl,
@@ -366,7 +303,7 @@ export class MediaController {
     );
 
     this.logger.log(
-      `Uploaded & converted ${file.originalname} → WEBP for product ${productId}${stored.onSupabase ? " (Supabase)" : stored.onCloudinary ? " (Cloudinary)" : " (local)"}`,
+      `Uploaded & converted ${file.originalname} → WEBP for product ${productId}${stored.onSupabase ? " (Supabase)" : " (local)"}`,
     );
     return result;
   }

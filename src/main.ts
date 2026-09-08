@@ -55,7 +55,7 @@ async function bootstrap() {
     )
     .setVersion("1.0")
     .addTag("KoiProducts", "Quản lý sản phẩm & thông số kỹ thuật JSONB")
-    .addTag("Media", "Quản lý ảnh sản phẩm (Cloudinary CDN)")
+    .addTag("Media", "Quản lý ảnh sản phẩm (Supabase Storage)")
     .addTag(
       "Raw Materials",
       "Quản lý nguyên liệu (da, chỉ, khóa) & đồng bộ tồn kho",

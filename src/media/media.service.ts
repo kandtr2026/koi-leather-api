@@ -230,40 +230,10 @@ export class MediaService {
         return;
       }
     }
-    // Cloudinary
-    const deletedFromCdn = await this.deleteFromCloudinary(image.url);
-    if (!deletedFromCdn) {
-      // Fallback: local
-      this.deleteLocalFile(image.url);
-      this.deleteLocalFile(image.thumbnailUrl);
-      if (image.mediumUrl) this.deleteLocalFile(image.mediumUrl);
-    }
-  }
-
-  private async deleteFromCloudinary(url: string): Promise<boolean> {
-    const publicId = this.extractCloudinaryPublicId(url);
-    if (!publicId) return false;
-
-    try {
-      const cloudinary = this.getCloudinaryInstance();
-      if (!cloudinary) return false;
-      await cloudinary.uploader.destroy(publicId);
-      return true;
-    } catch (err) {
-      this.logger.warn(
-        `Failed to delete from Cloudinary: ${(err as Error).message}`,
-      );
-      return false;
-    }
-  }
-
-  private extractCloudinaryPublicId(url: string): string | null {
-    // Cloudinary URLs contain the public ID, e.g.:
-    // https://res.cloudinary.com/.../image/upload/v123456/koi/products/xxx/yyy
-    const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
-    if (!match) return null;
-    // Remove format suffix if present
-    return match[1].replace(/\.[^.]+$/, "");
+    // Đường lui: file local (dev).
+    this.deleteLocalFile(image.url);
+    this.deleteLocalFile(image.thumbnailUrl);
+    if (image.mediumUrl) this.deleteLocalFile(image.mediumUrl);
   }
 
   private deleteLocalFile(url: string) {
@@ -381,16 +351,5 @@ export class MediaService {
       results.push(updated);
     }
     return results;
-  }
-
-  private getCloudinaryInstance() {
-    const name = process.env.CLOUDINARY_CLOUD_NAME;
-    const key = process.env.CLOUDINARY_API_KEY;
-    const secret = process.env.CLOUDINARY_API_SECRET;
-    if (!name || name === "your_cloud_name" || !key || !secret) return null;
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const cloudinary = require("cloudinary").v2;
-    cloudinary.config({ cloud_name: name, api_key: key, api_secret: secret });
-    return cloudinary;
   }
 }
