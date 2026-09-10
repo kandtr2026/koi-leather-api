@@ -5393,16 +5393,28 @@ init();
      endpoint /api/gop-y và cùng bảng public.koi_gop_y, nên A Khoa mentor ở màn
      nào cũng được, Claude chỉ canh một chỗ.
 
-     GÁC CỬA: hỏi /api/gop-y/phien (cookie phiên của storefront) chứ KHÔNG dùng
-     JWT Google của SPA — endpoint nằm bên storefront, nó không đọc được JWT
-     này. Nghĩa là phải đăng nhập một lần ở koileather.com/admin/noi-dung/ thì
-     nút mới hiện. Chưa đăng nhập thì im lặng không vẽ gì.
+     GÁC CỬA: hỏi /api/gop-y/phien, GỬI KÈM JWT Google của SPA (localStorage
+     auth_token). Bản đầu chỉ dựa vào cookie phiên storefront nên A Khoa đang
+     đăng nhập Google trong SPA mà nút vẫn không hiện — hai kiểu đăng nhập không
+     biết đến nhau. Nay endpoint bên storefront nhận cả hai: cookie, hoặc Bearer
+     token (nó hỏi lại KoiBack /auth/me để xác minh). Chưa đăng nhập kiểu nào
+     thì im lặng không vẽ gì.
 
      Viết bằng JS thuần, không khung: file này là SPA vanilla, đừng kéo thêm gì. -->
 <script>
 (function () {
   var API_GOPY = '/api/gop-y';
   var nut, hop, oNhap, oLoi, oDem, nutGui, daGui = 0, dangGui = false;
+
+  // Cùng khoá localStorage với hàm api() của SPA. Có thì gửi kèm, không có thì
+  // vẫn gọi bình thường và trông vào cookie phiên storefront.
+  function dauHeader() {
+    var h = { 'Content-Type': 'application/json' };
+    var t = null;
+    try { t = localStorage.getItem('auth_token'); } catch (e) {}
+    if (t) h['Authorization'] = 'Bearer ' + t;
+    return h;
+  }
 
   function el(tag, css, html) {
     var e = document.createElement(tag);
@@ -5459,7 +5471,7 @@ init();
     dangGui = true; nutGui.textContent = 'Đang gửi…'; baoLoi('');
     fetch(API_GOPY, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: dauHeader(),
       body: JSON.stringify({ noiDung: t, duongDan: location.pathname + location.search, tieuDe: document.title })
     })
       .then(function (r) { return r.json().catch(function () { return null; }).then(function (j) { return { r: r, j: j }; }); })
@@ -5476,11 +5488,22 @@ init();
       .finally(function () { dangGui = false; nutGui.textContent = 'Gửi'; });
   }
 
-  // Chỉ vẽ khi storefront xác nhận có phiên quản trị.
-  fetch('/api/gop-y/phien', { cache: 'no-store' })
-    .then(function (r) { return r.ok ? r.json() : { admin: false }; })
-    .then(function (j) { if (j && j.admin) ve(); })
-    .catch(function () { /* không có thì thôi, im lặng */ });
+  // Chỉ vẽ khi xác nhận có phiên quản trị (cookie storefront HOẶC JWT của SPA).
+  // Chờ init() đăng nhập xong rồi mới hỏi: lúc script này chạy, loginGate có thể
+  // chưa kịp nhận token từ Google nên localStorage còn trống.
+  function hoiRoiVe() {
+    fetch('/api/gop-y/phien', { cache: 'no-store', headers: dauHeader() })
+      .then(function (r) { return r.ok ? r.json() : { admin: false }; })
+      .then(function (j) { if (j && j.admin && !nut) ve(); })
+      .catch(function () { /* không có thì thôi, im lặng */ });
+  }
+  hoiRoiVe();
+  // Hỏi lại vài nhịp để bắt trường hợp A Khoa vừa bấm đăng nhập Google xong.
+  var lan = 0;
+  var canh = setInterval(function () {
+    if (nut || ++lan > 10) { clearInterval(canh); return; }
+    hoiRoiVe();
+  }, 3000);
 })();
 </script>
 </body>
