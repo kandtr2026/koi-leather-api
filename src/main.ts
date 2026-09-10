@@ -41,9 +41,16 @@ async function bootstrap() {
   });
 
   // Phục vụ tài nguyên tĩnh trong public/ (vd build-meta.json cho health).
-  // SPA admin đã KHAI TỬ 08/09/2026: toàn bộ /admin/* nay là trang Next của
-  // storefront, backend KHÔNG còn phục vụ index.html nữa.
   app.use("/", express.static(path.join(process.cwd(), "public")));
+
+  // SPA admin cũ, DỰNG LẠI 10/09/2026 để A Khoa đối chiếu với khu /admin/ mới
+  // bên storefront Next (A Khoa thấy bản cũ dễ dùng hơn). Chỉ sống trên tên
+  // miền API này; koileather.com/admin vẫn là trang Next, hai bên không đụng
+  // nhau. SPA tự định tuyến bằng pushState nên phải hứng cả /admin/*.
+  // Cửa vào là đăng nhập Google (POST /auth/google + ADMIN_EMAILS).
+  app.use("/admin", (req: express.Request, res: express.Response) => {
+    res.sendFile(path.join(process.cwd(), "public", "index.html"));
+  });
 
   // Serve uploaded media
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));

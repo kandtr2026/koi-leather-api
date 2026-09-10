@@ -45,9 +45,12 @@ async function bootstrapServer() {
     credentials: true,
   });
 
-  // SPA admin đã KHAI TỬ 08/09/2026: /admin/* nay là trang Next storefront.
-  // Giữ static để phục vụ tài nguyên public/ còn dùng (vd build-meta.json).
   app.use("/", express.static(path.join(process.cwd(), "public")));
+  // SPA admin cũ dựng lại 10/09/2026 để đối chiếu — xem chú thích ở main.ts.
+  // Giữ y hệt main.ts để chạy trên Vercel giống hệt chạy máy nhà.
+  app.use("/admin", (_req: any, res: any) => {
+    res.sendFile(path.join(process.cwd(), "public", "index.html"));
+  });
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
   // Swagger doc generation scans every controller/DTO and adds noticeable
