@@ -5386,5 +5386,102 @@ async function init() {
 }
 init();
 </script>
+
+<!-- ===== Ô nổi "Góp ý cho Claude" =====
+     Bản SPA của cùng một ô có trong storefront Next
+     (koi-storefront/src/components/gop-y-widget.tsx). Cả hai bắn vào cùng một
+     endpoint /api/gop-y và cùng bảng public.koi_gop_y, nên A Khoa mentor ở màn
+     nào cũng được, Claude chỉ canh một chỗ.
+
+     GÁC CỬA: hỏi /api/gop-y/phien (cookie phiên của storefront) chứ KHÔNG dùng
+     JWT Google của SPA — endpoint nằm bên storefront, nó không đọc được JWT
+     này. Nghĩa là phải đăng nhập một lần ở koileather.com/admin/noi-dung/ thì
+     nút mới hiện. Chưa đăng nhập thì im lặng không vẽ gì.
+
+     Viết bằng JS thuần, không khung: file này là SPA vanilla, đừng kéo thêm gì. -->
+<script>
+(function () {
+  var API_GOPY = '/api/gop-y';
+  var nut, hop, oNhap, oLoi, oDem, nutGui, daGui = 0, dangGui = false;
+
+  function el(tag, css, html) {
+    var e = document.createElement(tag);
+    if (css) e.style.cssText = css;
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+
+  function ve() {
+    nut = el('button', 'position:fixed;right:16px;bottom:24px;z-index:9999;width:56px;height:56px;' +
+      'border-radius:9999px;border:1px solid rgba(255,255,255,.15);background:#f59e0b;color:#000;' +
+      'font-size:22px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35)', '💬');
+    nut.title = 'Góp ý cho Claude';
+    nut.onclick = function () { hop.style.display = hop.style.display === 'none' ? 'flex' : 'none'; if (hop.style.display !== 'none') oNhap.focus(); nut.innerHTML = hop.style.display === 'none' ? '💬' : '×'; };
+
+    hop = el('div', 'display:none;position:fixed;right:16px;bottom:92px;z-index:9999;width:min(380px,calc(100vw - 32px));' +
+      'flex-direction:column;gap:8px;padding:12px;border-radius:16px;border:1px solid rgba(255,255,255,.15);' +
+      'background:rgba(23,23,23,.97);color:#fff;box-shadow:0 20px 50px rgba(0,0,0,.45)');
+
+    var dau = el('div', 'display:flex;gap:8px;font-size:12px;opacity:.75');
+    dau.appendChild(el('span', 'font-weight:700;color:#fcd34d', '💬 Góp ý cho Claude'));
+    dau.appendChild(el('span', 'margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap', 'màn: ' + location.pathname));
+    hop.appendChild(dau);
+
+    oNhap = el('textarea', 'width:100%;min-height:76px;resize:vertical;border-radius:12px;padding:8px 12px;' +
+      'border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:14px;outline:none');
+    oNhap.placeholder = 'Đang xem thấy gì cần sửa? Gõ ở đây… (Enter để gửi · Shift+Enter xuống dòng)';
+    oNhap.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); gui(); }
+      if (e.key === 'Escape') { hop.style.display = 'none'; nut.innerHTML = '💬'; }
+    });
+    hop.appendChild(oNhap);
+
+    oLoi = el('p', 'margin:0;font-size:12px;color:#fca5a5;display:none');
+    hop.appendChild(oLoi);
+
+    var chan = el('div', 'display:flex;align-items:center;gap:8px');
+    oDem = el('span', 'font-size:12px;color:#6ee7b7;display:none');
+    nutGui = el('button', 'margin-left:auto;min-height:40px;padding:0 16px;border-radius:8px;border:0;' +
+      'background:#f59e0b;color:#000;font-weight:700;font-size:14px;cursor:pointer', 'Gửi');
+    nutGui.onclick = gui;
+    chan.appendChild(oDem); chan.appendChild(nutGui);
+    hop.appendChild(chan);
+
+    document.body.appendChild(hop);
+    document.body.appendChild(nut);
+  }
+
+  function baoLoi(msg) { oLoi.textContent = msg; oLoi.style.display = msg ? 'block' : 'none'; }
+
+  function gui() {
+    var t = (oNhap.value || '').trim();
+    if (!t || dangGui) return;
+    dangGui = true; nutGui.textContent = 'Đang gửi…'; baoLoi('');
+    fetch(API_GOPY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ noiDung: t, duongDan: location.pathname + location.search, tieuDe: document.title })
+    })
+      .then(function (r) { return r.json().catch(function () { return null; }).then(function (j) { return { r: r, j: j }; }); })
+      .then(function (k) {
+        if (!k.r.ok || !k.j || !k.j.ok) {
+          baoLoi(k.r.status === 401
+            ? 'Phiên hết hạn. Đăng nhập lại ở /admin/noi-dung/ rồi gửi lại.'
+            : (k.j && k.j.loi) || 'Không gửi được.');
+          return;
+        }
+        oNhap.value = ''; daGui++; oDem.textContent = 'đã gửi ' + daGui + ' ✓'; oDem.style.display = 'inline';
+      })
+      .catch(function () { baoLoi('Mất mạng — thử lại.'); })
+      .finally(function () { dangGui = false; nutGui.textContent = 'Gửi'; });
+  }
+
+  // Chỉ vẽ khi storefront xác nhận có phiên quản trị.
+  fetch('/api/gop-y/phien', { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : { admin: false }; })
+    .then(function (j) { if (j && j.admin) ve(); })
+    .catch(function () { /* không có thì thôi, im lặng */ });
+})();
+</script>
 </body>
 </html>
