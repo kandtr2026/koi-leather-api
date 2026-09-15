@@ -129,6 +129,26 @@ export class AnalyticsController {
   }
 
   /**
+   * Lượt đọc theo TỪNG sản phẩm / TỪNG bài viết — tab "Thống kê traffic".
+   *
+   * Phải nằm ở /analytics (chỉ admin) chứ không phải /shop, cùng lý do với
+   * hanh-vi ở dưới: auth.guard.ts cho qua vô điều kiện mọi đường /shop/*, đặt
+   * sang đó là phơi bảng xếp hạng sản phẩm bán chạy cho bất kỳ ai gọi đúng địa
+   * chỉ.
+   *
+   * Kẹp `days`/`limit` ngay tại cửa theo mẫu hanh-vi (mẫu `Number(x) || 30` của
+   * route summary không chặn số âm); service kẹp lại y hệt một lần nữa — cố ý
+   * trùng, vì service là hàm công khai còn gọi từ chỗ khác và từ test.
+   */
+  @Get("noi-dung")
+  @ApiOperation({ summary: "Lượt đọc theo từng sản phẩm và từng bài viết" })
+  noiDung(@Query("days") days?: string, @Query("limit") limit?: string) {
+    const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 30), 1), 365);
+    const gioiHan = Math.min(Math.max(Math.trunc(Number(limit) || 50), 1), 200);
+    return this.analytics.noiDung(soNgay, gioiHan);
+  }
+
+  /**
    * Hành vi khách: nguồn dẫn khách, khách vào trang nào, đi tiếp đường nào.
    *
    * Phải nằm ở /analytics chứ KHÔNG phải /shop: auth.guard.ts:101 cho qua vô

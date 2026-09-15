@@ -299,6 +299,7 @@
     <button class="tab-btn" data-tab="prodcats"><i class="fas fa-layer-group mr-2 text-amber-500"></i>Loại sản phẩm</button>
     <button class="tab-btn" data-tab="imgcats"><i class="fas fa-tags mr-2 text-amber-500"></i>Loại ảnh</button>
     <button class="tab-btn" data-tab="matcats"><i class="fas fa-gem mr-2 text-amber-500"></i>Loại da</button>
+    <button class="tab-btn" data-tab="traffic"><i class="fas fa-chart-line mr-2 text-amber-500"></i>Thống kê traffic</button>
     <!-- Sáu màn còn lại (nội dung, thư viện ảnh, SEO, từ khoá, việc cần làm) nằm
          ở storefront Next, SPA này không có. Trước đây có một đường sang ngay
          đây cho khỏi phải nhớ địa chỉ. Ranh giới hai bên ghi ở
@@ -445,6 +446,49 @@
           <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
           <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
           <div class="h-6 bg-gray-50 rounded animate-pulse w-1/2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- THỐNG KÊ TRAFFIC PANEL
+         Đặt hàng của A Khoa 15/09/2026 (góp ý #3, gửi ngay tại màn Sản phẩm):
+         "Cho menu để theo dõi traffic khách hàng đọc từng sản phẩm/bài viết".
+
+         Khác panel "Lưu lượng" đã gỡ hồi 02/09 (số tổng: lượt xem, nguồn, thiết
+         bị — nay ở heoiu.vercel.app): màn này trả lời đúng MỘT câu hỏi khác,
+         "món nào / bài nào đang được đọc", nên nằm cạnh bảng sản phẩm mới có
+         nghĩa. Đọc /analytics/noi-dung, xem src/analytics/noi-dung.ts. -->
+    <div class="panel" id="panel-traffic">
+      <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+        <p class="text-sm text-gray-500">Khách đang đọc sản phẩm nào, bài viết nào</p>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-400 uppercase tracking-wide">Khoảng</span>
+          <select id="trafficDays" onchange="loadTraffic()"
+            class="border border-gray-300 rounded-lg text-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+            <option value="7">7 ngày</option>
+            <option value="30" selected>30 ngày</option>
+            <option value="90">90 ngày</option>
+            <option value="365">1 năm</option>
+          </select>
+          <button onclick="loadTraffic(true)" title="Tải lại số mới nhất"
+            class="border border-gray-300 bg-white hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+            <i class="fas fa-rotate text-amber-500"></i> Tải lại
+          </button>
+        </div>
+      </div>
+
+      <div id="trafficSummary" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4"></div>
+
+      <div id="trafficBody" class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="bg-white rounded-xl shadow-sm border p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border p-6 space-y-3">
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-100 rounded animate-pulse"></div>
+          <div class="h-6 bg-gray-50 rounded animate-pulse w-3/4"></div>
         </div>
       </div>
     </div>
@@ -1062,10 +1106,15 @@ const ROUTE_MAP = {
   '/admin/categories':  { panel: 'prodcats', label: 'Loại sản phẩm' },
   '/admin/media-types': { panel: 'imgcats',  label: 'Loại ảnh' },
   '/admin/material-categories': { panel: 'matcats', label: 'Loại da' },
-  // /admin/traffic, /admin/ads và /admin/leads đã xoá — cả ba báo cáo nay ở
-  // heoiu.vercel.app. Endpoint thì VẪN CÒN nguyên (/analytics/summary,
-  // /analytics/realtime, /analytics/ads/*, /analytics/leads): heoiu đọc và ghi
-  // qua chính chúng, xoá endpoint là chết trang báo cáo.
+  // /admin/traffic DỰNG LẠI 15/09/2026 theo góp ý #3 của A Khoa, nhưng KHÁC bản
+  // đã xoá: bản cũ vẽ số tổng (lượt xem/nguồn/thiết bị) nên trùng hẳn với
+  // heoiu.vercel.app; bản này liệt kê TỪNG sản phẩm / TỪNG bài viết, đọc
+  // /analytics/noi-dung — heoiu không có màn nào trả lời câu đó.
+  '/admin/traffic': { panel: 'traffic', label: 'Thống kê traffic' },
+  // /admin/ads và /admin/leads vẫn đã xoá — hai báo cáo đó ở heoiu.vercel.app.
+  // Endpoint thì VẪN CÒN nguyên (/analytics/summary, /analytics/realtime,
+  // /analytics/ads/*, /analytics/leads): heoiu đọc và ghi qua chính chúng, xoá
+  // endpoint là chết trang báo cáo.
   // Đã xoá thêm 6 route theo yêu cầu 02/09/2026 (ai-edit, noi-dung, seo-plan,
   // tu-khoa, seokw, viec) — mở thẳng URL đó sẽ rơi về DEFAULT_ROUTE. Endpoint
   // /quan-tri/* của storefront vẫn còn nguyên, truy cập trực tiếp.
@@ -1090,8 +1139,14 @@ function applyRoute(route) {
     p.classList.toggle('active', p.id === 'panel-' + entry.panel);
   });
 
-  // Panel Lưu lượng đã xoá cùng nhịp realtime của nó. Không còn nhịp nào cần
-  // tắt khi rời tab nên applyRoute hết việc ở đây.
+  // Nạp LƯỜI: chỉ gọi khi thật sự mở tab Thống kê traffic. Bảng này quét cả
+  // bảng lượt xem nên không đáng chạy mỗi lần đăng nhập, trong khi đại đa số
+  // lượt vào admin là để sửa sản phẩm. Tự nhớ đã nạp chưa để bấm qua bấm lại
+  // giữa các tab không gọi lại — muốn số mới thì có nút Tải lại.
+  if (entry.panel === 'traffic' && !trafficDaTai) loadTraffic();
+
+  // Panel Lưu lượng cũ đã xoá cùng nhịp realtime của nó; tab traffic mới không
+  // có nhịp nào chạy nền nên vẫn không có gì cần tắt khi rời tab.
 }
 
 function navigateTo(route) {
@@ -1330,6 +1385,13 @@ function applyAuth(user) {
   loadImgCats().then(updateHeaderStatus).catch(() => {});
   loadMatCats().then(updateHeaderStatus).catch(() => {});
   loadColorFamilies().then(() => { if (products.length) renderProducts(); }).catch(() => {});
+  // Tab traffic nạp lười nên không gọi sẵn ở đây — TRỪ khi A Khoa đang đứng
+  // ngay trên nó. Vào thẳng /admin/traffic lúc chưa đăng nhập thì lượt nạp đầu
+  // ăn 401 và panel hiện "Cần đăng nhập"; không gọi lại ở đây thì đăng nhập
+  // xong màn vẫn y nguyên dòng báo lỗi cho tới khi bấm Tải lại.
+  if (document.getElementById('panel-traffic').classList.contains('active')) {
+    loadTraffic(true);
+  }
 }
 
 function logout() {
@@ -5158,6 +5220,139 @@ async function deleteMatCat(id) {
   } catch(e) { toast('Lỗi: ' + e.message); }
 }
 
+
+// ========== THỐNG KÊ TRAFFIC ==========
+// Bảng "khách đọc sản phẩm nào / bài viết nào" — góp ý #3 của A Khoa 15/09/2026.
+// Toàn bộ phép phân loại đường dẫn nằm ở backend (src/analytics/noi-dung.ts);
+// chỗ này chỉ vẽ. Đừng đoán loại nội dung từ đường dẫn ở đây: /san-pham/* trông
+// như sản phẩm nhưng là trang danh mục.
+
+/**
+ * Nạp rồi thì thôi, trừ khi bấm Tải lại hoặc đổi khoảng ngày.
+ *
+ * `var` chứ không `let` là CỐ Ý. applyRoute() (dòng ~1131) đọc biến này nhưng
+ * khai báo lại nằm tận đây, dưới nó hơn bốn nghìn dòng. Hiện vẫn chạy được vì
+ * applyRoute() chỉ được gọi từ init(), mà init() nằm ở dòng cuối script — tức
+ * là sự an toàn đang phụ thuộc vào VỊ TRÍ của một lời gọi ở file khác đoạn.
+ * Ai đó dời init() lên trên, hay thêm một applyRoute() lúc dựng trang, là `let`
+ * rơi vào vùng chết và cả màn admin đứng hình chứ không chỉ hỏng tab traffic.
+ * `var` được kéo lên đầu với giá trị undefined — đúng nghĩa "chưa nạp".
+ */
+var trafficDaTai = false;
+
+const TRAFFIC_SITE = 'https://koileather.com';
+
+async function loadTraffic(buocTaiLai = false) {
+  const days = Number(document.getElementById('trafficDays').value) || 30;
+  const than = document.getElementById('trafficBody');
+  const dau = document.getElementById('trafficSummary');
+  than.innerHTML = '<div class="bg-white rounded-xl shadow-sm border p-6 text-sm text-gray-400">Đang đọc số…</div>';
+  dau.innerHTML = '';
+  try {
+    // noCache khi bấm Tải lại: lớp cache 60 giây của api() làm nút Tải lại
+    // trông như hỏng — bấm mà số y nguyên.
+    const d = await api('/analytics/noi-dung?days=' + days + '&limit=50', {
+      noCache: buocTaiLai,
+      // Quét cả bảng lượt xem, chậm hơn một lượt GET thường. 12 giây mặc định
+      // đủ cho 30 ngày nhưng mốc 1 năm thì hụt — cắt sớm hơn máy chủ thì A Khoa
+      // thấy "Failed to fetch" thay vì bảng.
+      timeoutMs: 30000,
+    });
+    trafficDaTai = true;
+    renderTraffic(d);
+  } catch (e) {
+    trafficDaTai = false;
+    const loi = e && e.status === 401
+      ? 'Cần đăng nhập để xem số liệu.'
+      : 'Không đọc được số liệu: ' + esc(e && e.message ? e.message : String(e));
+    than.innerHTML = '<div class="bg-white rounded-xl shadow-sm border p-6 text-sm text-red-500">' + loi + '</div>';
+  }
+}
+
+function trafficThe(nhan, so, phu) {
+  return '<div class="bg-white rounded-xl shadow-sm border px-4 py-3">'
+    + '<p class="text-xs uppercase tracking-wide text-gray-400">' + esc(nhan) + '</p>'
+    + '<p class="text-2xl font-bold text-gray-800 mt-1">' + Number(so).toLocaleString('vi-VN') + '</p>'
+    + '<p class="text-xs text-gray-400 mt-0.5">' + esc(phu) + '</p>'
+    + '</div>';
+}
+
+/**
+ * Một bảng xếp hạng. `moPhanTram` chia theo TỔNG CỦA NHÓM chứ không phải tổng
+ * toàn site: câu hỏi ở đây là "trong số người xem sản phẩm, bao nhiêu phần xem
+ * món này", trộn mẫu số với trang chủ thì mọi thanh đều lùn tịt như nhau.
+ */
+function trafficBang(tieuDe, icon, ds, tongNhom, dungSua) {
+  let h = '<div class="bg-white rounded-xl shadow-sm border overflow-hidden">'
+    + '<div class="px-5 py-3 border-b bg-gray-50 flex items-center justify-between">'
+    + '<h3 class="text-sm font-semibold text-gray-700"><i class="fas ' + icon + ' text-amber-500 mr-2"></i>' + esc(tieuDe) + '</h3>'
+    + '<span class="text-xs text-gray-400">' + ds.length + ' mục</span>'
+    + '</div>';
+  if (!ds.length) {
+    return h + '<p class="px-5 py-8 text-sm text-gray-400 text-center">Chưa có lượt xem nào trong khoảng này.</p></div>';
+  }
+  h += '<div class="divide-y">';
+  ds.forEach(function (x, i) {
+    const pt = tongNhom > 0 ? Math.round((x.luot / tongNhom) * 100) : 0;
+    const url = TRAFFIC_SITE + x.duongDan;
+    h += '<div class="px-5 py-3 flex items-center gap-3 hover:bg-gray-50">'
+      + '<span class="w-6 shrink-0 text-xs font-semibold text-gray-400 text-right">' + (i + 1) + '</span>'
+      + '<div class="min-w-0 flex-1">'
+      + '<a href="' + escAttr(url) + '" target="_blank" rel="noopener"'
+      + ' class="text-sm text-gray-800 hover:text-amber-600 font-medium block truncate" title="' + escAttr(x.ten) + '">'
+      + esc(x.ten) + '</a>'
+      + '<div class="mt-1 h-1 bg-gray-100 rounded overflow-hidden"><div class="h-full bg-amber-400" style="width:' + pt + '%"></div></div>'
+      + '</div>'
+      + '<div class="shrink-0 text-right">'
+      + '<p class="text-sm font-semibold text-gray-800">' + Number(x.luot).toLocaleString('vi-VN') + '</p>'
+      + '<p class="text-xs text-gray-400">' + Number(x.khach).toLocaleString('vi-VN') + ' khách</p>'
+      + '</div>';
+    // Chỉ sản phẩm mới mở được modal sửa; bài viết nằm ở bảng posts, SPA này
+    // không có màn sửa bài.
+    if (dungSua && x.id) {
+      h += '<button onclick="editProduct(\'' + escAttr(x.id) + '\')" title="Mở sửa sản phẩm"'
+        + ' class="shrink-0 w-8 h-8 rounded-lg text-gray-300 hover:text-amber-600 hover:bg-amber-50 transition requires-auth">'
+        + '<i class="fas fa-pen text-xs"></i></button>';
+    }
+    h += '</div>';
+  });
+  return h + '</div></div>';
+}
+
+function renderTraffic(d) {
+  const t = d.tong || {};
+  document.getElementById('trafficSummary').innerHTML =
+      trafficThe('Tổng lượt xem', t.tatCa || 0, d.days + ' ngày gần nhất')
+    + trafficThe('Xem sản phẩm', t.sanPham || 0, (t.soSanPham || 0) + ' sản phẩm có người xem')
+    + trafficThe('Đọc bài viết', t.baiViet || 0, (t.soBaiViet || 0) + ' bài có người đọc')
+    + trafficThe('Trang khác', t.khac || 0, 'trang chủ, danh mục, trang tĩnh');
+
+  let h = trafficBang('Sản phẩm khách xem nhiều', 'fa-box', d.sanPham || [], t.sanPham || 0, true)
+        + trafficBang('Bài viết khách đọc nhiều', 'fa-newspaper', d.baiViet || [], t.baiViet || 0, false);
+
+  // Trang khác để cuối và chiếm cả hàng: cần có mặt để tổng bốn thẻ trên cộng
+  // đủ (nếu không, A Khoa cộng hai bảng thấy hụt và tưởng mất số), nhưng không
+  // phải thứ A Khoa hỏi nên không tranh chỗ với hai bảng chính.
+  const khac = (d.trangKhac || []).slice(0, 12);
+  if (khac.length) {
+    h += '<div class="xl:col-span-2 bg-white rounded-xl shadow-sm border overflow-hidden">'
+      + '<div class="px-5 py-3 border-b bg-gray-50">'
+      + '<h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-file-lines text-gray-400 mr-2"></i>Trang khác</h3>'
+      + '<p class="text-xs text-gray-400 mt-0.5">Trang chủ, trang danh mục (/san-pham/…), trang tĩnh và bản tiếng Anh — không phải sản phẩm hay bài viết.</p>'
+      + '</div><div class="divide-y">';
+    khac.forEach(function (x) {
+      h += '<div class="px-5 py-2.5 flex items-center gap-3 hover:bg-gray-50">'
+        + '<a href="' + escAttr(TRAFFIC_SITE + x.duongDan) + '" target="_blank" rel="noopener"'
+        + ' class="min-w-0 flex-1 text-sm text-gray-600 hover:text-amber-600 truncate">' + esc(x.duongDan) + '</a>'
+        + '<span class="shrink-0 text-sm font-semibold text-gray-700">' + Number(x.luot).toLocaleString('vi-VN') + '</span>'
+        + '<span class="shrink-0 text-xs text-gray-400 w-20 text-right">' + Number(x.khach).toLocaleString('vi-VN') + ' khách</span>'
+        + '</div>';
+    });
+    h += '</div></div>';
+  }
+
+  document.getElementById('trafficBody').innerHTML = h;
+}
 
 // ========== SPECS ==========
 async function loadSpecs() {

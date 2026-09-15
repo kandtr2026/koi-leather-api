@@ -15,6 +15,7 @@ import {
 import { docIpNoiBo, gopIpNoiBo, laIpNoiBo, type IpNoiBo } from "./ip-noi-bo";
 import { khuVuc } from "./geo";
 import { gomKhachIp, gomTheoKhuVuc, type LuotKhachIp } from "./khach-ip";
+import { docChu, gomNoiDung } from "./noi-dung";
 
 /**
  * Theo dõi lưu lượng truy cập storefront.
@@ -721,6 +722,141 @@ export class AnalyticsService {
       topPages: topTrang,
       sources: theoNguon,
       devices: theoThietBi,
+    };
+  }
+
+  /**
+   * "Khách đang đọc sản phẩm nào, bài viết nào" — cho tab Thống kê traffic
+   * trong admin (A Khoa đặt hàng 15/09/2026).
+   *
+   * Khác `summary().topPages` ở chỗ trả về TÊN sản phẩm / TIÊU ĐỀ bài viết chứ
+   * không phải đường dẫn thô, và biết phân biệt chi tiết sản phẩm với trang
+   * danh mục. Vì sao việc đó không hiển nhiên: xem đầu file noi-dung.ts.
+   *
+   * MỘT câu SQL rồi gom ở JS, không gom sẵn trong SQL. Lý do giống hanhVi():
+   * luật đọc đường dẫn phải test được mà không cần cơ sở dữ liệu, và viết nó hai
+   * lần (một bản regex trong SQL, một bản trong TS) là cách chắc chắn để hai bên
+   * lệch nhau sau lần sửa thứ ba. Số dòng nhỏ: đường dẫn KHÁC NHAU trong 30 ngày
+   * chỉ khoảng một nghìn, không phải số lượt xem.
+   */
+  async noiDung(days = 30, limit = 50) {
+    const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 30), 1), 365);
+    const gioiHan = Math.min(Math.max(Math.trunc(Number(limit) || 50), 1), 200);
+    const tu = this.dauNgayVN(soNgay - 1);
+
+    const theoTrang = await this.prisma.$queryRaw<
+      { path: string; luot: number; khach: number; moiNhat: Date | null }[]
+    >`
+      SELECT "path",
+             COUNT(*)::int AS luot,
+             COUNT(DISTINCT "visitorHash")::int AS khach,
+             MAX("createdAt") AS "moiNhat"
+      FROM koi_free_style.koi_page_views
+      WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+      GROUP BY 1
+      ORDER BY 2 DESC
+      LIMIT 3000
+    `;
+
+    const { cum, khac } = gomNoiDung(theoTrang);
+
+    const slugSanPham: string[] = [];
+    const slugTrangGoc: string[] = [];
+    for (const c of cum.values()) {
+      (c.loai === "san-pham" ? slugSanPham : slugTrangGoc).push(c.slug);
+    }
+
+    // Đối chiếu với dữ liệu thật để biết slug nào là sản phẩm/bài viết CÓ THẬT.
+    // Không đoán theo hình dạng đường dẫn — xem ghi chú ở noi-dung.ts.
+    const [sanPhamDb, baiVietDb] = await Promise.all([
+      slugSanPham.length
+        ? this.prisma.koiProduct.findMany({
+            where: { slug: { in: slugSanPham } },
+            select: { id: true, slug: true, name: true, status: true, isDeleted: true },
+          })
+        : Promise.resolve([]),
+      slugTrangGoc.length
+        ? this.prisma.posts.findMany({
+            where: { slug: { in: slugTrangGoc } },
+            select: { slug: true, title: true, is_published: true, published_at: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const mocSanPham = new Map(sanPhamDb.map((p) => [p.slug, p] as const));
+    const mocBaiViet = new Map(baiVietDb.map((p) => [p.slug, p] as const));
+
+    const sanPham: unknown[] = [];
+    const baiViet: unknown[] = [];
+    // Trang một tầng KHÔNG khớp bảng posts (trang tĩnh: /lookbook/, /lien-he/…)
+    // gộp chung với đường dẫn không bóc được slug (/san-pham/* là danh mục, /en/*).
+    // Giữ lại để tổng trong bảng cộng đủ, không âm thầm nuốt lưu lượng.
+    const trangKhac: { duongDan: string; luot: number; khach: number }[] = khac.map((k) => ({
+      duongDan: k.path,
+      luot: k.luot,
+      khach: k.khach,
+    }));
+
+    for (const c of cum.values()) {
+      const chung = {
+        slug: c.slug,
+        luot: c.luot,
+        khach: c.khach,
+        moiNhat: c.moiNhat ? c.moiNhat.toISOString() : null,
+        duongDan: c.duongDan[0],
+      };
+      if (c.loai === "san-pham") {
+        const p = mocSanPham.get(c.slug);
+        if (!p) {
+          // Sản phẩm đã xoá hẳn khỏi bảng, hoặc slug đổi sau khi khách đã xem.
+          trangKhac.push({ duongDan: chung.duongDan, luot: c.luot, khach: c.khach });
+          continue;
+        }
+        sanPham.push({
+          ...chung,
+          id: p.id,
+          // name là JSON song ngữ chứ không phải chuỗi — xem docChu().
+          ten: docChu(p.name) || c.slug,
+          trangThai: p.isDeleted ? "DELETED" : p.status,
+        });
+      } else {
+        const b = mocBaiViet.get(c.slug);
+        if (!b) {
+          trangKhac.push({ duongDan: chung.duongDan, luot: c.luot, khach: c.khach });
+          continue;
+        }
+        baiViet.push({
+          ...chung,
+          ten: docChu(b.title) || c.slug,
+          trangThai: b.is_published ? "PUBLISHED" : "DRAFT",
+          dangLuc: b.published_at ? b.published_at.toISOString() : null,
+        });
+      }
+    }
+
+    const xepGiam = (a: { luot: number }, b: { luot: number }) => b.luot - a.luot;
+    sanPham.sort(xepGiam as never);
+    baiViet.sort(xepGiam as never);
+    trangKhac.sort(xepGiam);
+
+    const cong = (ds: { luot: number }[]) => ds.reduce((t, x) => t + x.luot, 0);
+
+    return {
+      days: soNgay,
+      from: tu.toISOString(),
+      tong: {
+        // Tổng lượt của TOÀN khoảng thời gian, không phải tổng của phần cắt
+        // `limit` bên dưới — để A Khoa thấy ngay ba nhóm chiếm bao nhiêu phần.
+        tatCa: cong(theoTrang),
+        sanPham: cong(sanPham as { luot: number }[]),
+        baiViet: cong(baiViet as { luot: number }[]),
+        khac: cong(trangKhac),
+        soSanPham: sanPham.length,
+        soBaiViet: baiViet.length,
+      },
+      sanPham: sanPham.slice(0, gioiHan),
+      baiViet: baiViet.slice(0, gioiHan),
+      trangKhac: trangKhac.slice(0, gioiHan),
     };
   }
 
