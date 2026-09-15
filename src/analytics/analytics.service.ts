@@ -15,7 +15,13 @@ import {
 import { docIpNoiBo, gopIpNoiBo, laIpNoiBo, type IpNoiBo } from "./ip-noi-bo";
 import { khuVuc } from "./geo";
 import { gomKhachIp, gomTheoKhuVuc, type LuotKhachIp } from "./khach-ip";
-import { docChu, gomNoiDung } from "./noi-dung";
+import {
+  docChu,
+  gomChieu,
+  gomNoiDung,
+  khoaDong,
+  type DongTrangKhac,
+} from "./noi-dung";
 
 /**
  * Theo dõi lưu lượng truy cập storefront.
@@ -744,21 +750,42 @@ export class AnalyticsService {
     const gioiHan = Math.min(Math.max(Math.trunc(Number(limit) || 50), 1), 200);
     const tu = this.dauNgayVN(soNgay - 1);
 
-    const theoTrang = await this.prisma.$queryRaw<
-      { path: string; luot: number; khach: number; moiNhat: Date | null }[]
-    >`
-      SELECT "path",
-             COUNT(*)::int AS luot,
-             COUNT(DISTINCT "visitorHash")::int AS khach,
-             MAX("createdAt") AS "moiNhat"
-      FROM koi_free_style.koi_page_views
-      WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
-      GROUP BY 1
-      ORDER BY 2 DESC
-      LIMIT 3000
-    `;
+    // Ba câu, không gộp làm một. Câu đầu phải đứng riêng vì `khach` là
+    // COUNT(DISTINCT visitorHash): gom sẵn theo nguồn rồi cộng lại thì một
+    // khách vào từ hai nguồn hoá hai khách, và con số in trên dòng sẽ không
+    // khớp với chính nó ở khoảng ngày khác. Hai câu sau chỉ đếm lượt nên cộng
+    // kiểu gì cũng đúng — xem gomChieu().
+    const [theoTrang, theoNguon, theoThietBi] = await Promise.all([
+      this.prisma.$queryRaw<
+        { path: string; luot: number; khach: number; moiNhat: Date | null }[]
+      >`
+        SELECT "path",
+               COUNT(*)::int AS luot,
+               COUNT(DISTINCT "visitorHash")::int AS khach,
+               MAX("createdAt") AS "moiNhat"
+        FROM koi_free_style.koi_page_views
+        WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+        GROUP BY 1
+        ORDER BY 2 DESC
+        LIMIT 3000
+      `,
+      this.prisma.$queryRaw<{ path: string; nhom: string; luot: number }[]>`
+        SELECT "path", "source" AS nhom, COUNT(*)::int AS luot
+        FROM koi_free_style.koi_page_views
+        WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+        GROUP BY 1, 2
+      `,
+      this.prisma.$queryRaw<{ path: string; nhom: string; luot: number }[]>`
+        SELECT "path", "device" AS nhom, COUNT(*)::int AS luot
+        FROM koi_free_style.koi_page_views
+        WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+        GROUP BY 1, 2
+      `,
+    ]);
 
     const { cum, khac } = gomNoiDung(theoTrang);
+    const nguonTheoDong = gomChieu(theoNguon);
+    const thietBiTheoDong = gomChieu(theoThietBi);
 
     const slugSanPham: string[] = [];
     const slugTrangGoc: string[] = [];
@@ -786,30 +813,48 @@ export class AnalyticsService {
     const mocSanPham = new Map(sanPhamDb.map((p) => [p.slug, p] as const));
     const mocBaiViet = new Map(baiVietDb.map((p) => [p.slug, p] as const));
 
+    // Bóc nguồn/thiết bị của một dòng. Nhận KHOÁ chứ không nhận đường dẫn: cụm
+    // sản phẩm gộp nhiều đường dẫn (bản Việt + bản Anh) nên tra theo đường dẫn
+    // đầu tiên sẽ hụt mất phần của những đường còn lại.
+    const chieuCua = (khoa: string) => ({
+      nguon: nguonTheoDong.get(khoa) ?? {},
+      thietBi: thietBiTheoDong.get(khoa) ?? {},
+    });
+
     const sanPham: unknown[] = [];
     const baiViet: unknown[] = [];
     // Trang một tầng KHÔNG khớp bảng posts (trang tĩnh: /lookbook/, /lien-he/…)
     // gộp chung với đường dẫn không bóc được slug (/san-pham/* là danh mục, /en/*).
     // Giữ lại để tổng trong bảng cộng đủ, không âm thầm nuốt lưu lượng.
-    const trangKhac: { duongDan: string; luot: number; khach: number }[] = khac.map((k) => ({
+    const trangKhac: DongTrangKhac[] = khac.map((k) => ({
       duongDan: k.path,
       luot: k.luot,
       khach: k.khach,
+      ...chieuCua(khoaDong(k.path)),
     }));
 
     for (const c of cum.values()) {
+      const khoa = `${c.loai}:${c.slug}`;
+      const chieu = chieuCua(khoa);
       const chung = {
         slug: c.slug,
         luot: c.luot,
         khach: c.khach,
         moiNhat: c.moiNhat ? c.moiNhat.toISOString() : null,
         duongDan: c.duongDan[0],
+        ...chieu,
       };
       if (c.loai === "san-pham") {
         const p = mocSanPham.get(c.slug);
         if (!p) {
           // Sản phẩm đã xoá hẳn khỏi bảng, hoặc slug đổi sau khi khách đã xem.
-          trangKhac.push({ duongDan: chung.duongDan, luot: c.luot, khach: c.khach });
+          // Tra chiều theo KHOÁ CỤM, không theo đường dẫn: dòng này gộp sẵn rồi.
+          trangKhac.push({
+            duongDan: chung.duongDan,
+            luot: c.luot,
+            khach: c.khach,
+            ...chieu,
+          });
           continue;
         }
         sanPham.push({
@@ -822,7 +867,12 @@ export class AnalyticsService {
       } else {
         const b = mocBaiViet.get(c.slug);
         if (!b) {
-          trangKhac.push({ duongDan: chung.duongDan, luot: c.luot, khach: c.khach });
+          trangKhac.push({
+            duongDan: chung.duongDan,
+            luot: c.luot,
+            khach: c.khach,
+            ...chieu,
+          });
           continue;
         }
         baiViet.push({

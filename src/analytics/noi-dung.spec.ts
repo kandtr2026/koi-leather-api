@@ -1,4 +1,80 @@
-import { docChu, docKhoa, gomNoiDung, type LuotTheoTrang } from "./noi-dung";
+import {
+  docChu,
+  docKhoa,
+  gomChieu,
+  gomNoiDung,
+  khoaDong,
+  type LuotTheoTrang,
+} from "./noi-dung";
+
+describe("khoaDong", () => {
+  it("sản phẩm và bài viết gộp theo slug", () => {
+    expect(khoaDong("/cua-hang/vi-da-nam/")).toBe("san-pham:vi-da-nam");
+    expect(khoaDong("/en/shop/vi-da-nam/")).toBe("san-pham:vi-da-nam");
+    expect(khoaDong("/sua-tui-lv/")).toBe("trang-goc:sua-tui-lv");
+  });
+
+  it("trang khác giữ nguyên đường dẫn làm khoá", () => {
+    expect(khoaDong("/san-pham/tui-da-cho-nu/")).toBe(
+      "trang:/san-pham/tui-da-cho-nu/",
+    );
+    expect(khoaDong("/")).toBe("trang:/");
+  });
+});
+
+describe("gomChieu", () => {
+  it("cộng lượt theo từng nguồn cho mỗi dòng", () => {
+    const m = gomChieu([
+      { path: "/cua-hang/vi-da-nam/", nhom: "google_organic", luot: 30 },
+      { path: "/cua-hang/vi-da-nam/", nhom: "google_ads", luot: 12 },
+      { path: "/cua-hang/vi-da-nam/", nhom: "direct", luot: 5 },
+      { path: "/sua-tui-lv/", nhom: "facebook", luot: 8 },
+    ]);
+    expect(m.get("san-pham:vi-da-nam")).toEqual({
+      google_organic: 30,
+      google_ads: 12,
+      direct: 5,
+    });
+    expect(m.get("trang-goc:sua-tui-lv")).toEqual({ facebook: 8 });
+  });
+
+  it("gộp bản Việt + bản Anh của cùng sản phẩm vào một dòng", () => {
+    const m = gomChieu([
+      { path: "/cua-hang/x/", nhom: "google_organic", luot: 30 },
+      { path: "/en/shop/x/", nhom: "google_organic", luot: 4 },
+    ]);
+    expect(m.get("san-pham:x")).toEqual({ google_organic: 34 });
+  });
+
+  it("gộp cả biến thể thiếu gạch chéo cuối", () => {
+    const m = gomChieu([
+      { path: "/blog/", nhom: "direct", luot: 10 },
+      { path: "/blog", nhom: "direct", luot: 2 },
+    ]);
+    expect(m.get("trang-goc:blog")).toEqual({ direct: 12 });
+  });
+
+  it("tổng các nguồn của một dòng bằng tổng lượt của dòng đó", () => {
+    // Bất biến quan trọng nhất: bảng in "47 lượt" mà tooltip cộng ra 52 thì
+    // A Khoa mất tin vào cả màn hình.
+    const dong = [
+      { path: "/cua-hang/x/", nhom: "google_organic", luot: 30 },
+      { path: "/en/shop/x/", nhom: "google_ads", luot: 12 },
+      { path: "/cua-hang/x/", nhom: "direct", luot: 5 },
+    ];
+    const m = gomChieu(dong);
+    const tongChieu = Object.values(m.get("san-pham:x")!).reduce(
+      (a, b) => a + b,
+      0,
+    );
+    expect(tongChieu).toBe(dong.reduce((t, d) => t + d.luot, 0));
+  });
+
+  it("bỏ qua dòng thiếu nhóm, không đẻ khoá rỗng", () => {
+    const m = gomChieu([{ path: "/cua-hang/x/", nhom: "", luot: 9 }]);
+    expect(m.size).toBe(0);
+  });
+});
 
 describe("docChu", () => {
   it("đọc tên sản phẩm từ khối song ngữ", () => {

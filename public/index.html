@@ -18,6 +18,28 @@
     .tab-btn:hover { background: #e2e8f0; }
     .tab-btn.active { background: #1e293b; color: white; }
 
+    /* Bảng bóc nguồn/thiết bị hiện khi rê chuột lên một dòng Thống kê traffic.
+       Gắn thẳng vào <body> và định vị bằng JS, KHÔNG đặt trong dòng: thẻ bọc
+       bảng có overflow-hidden để bo góc, nên tooltip nằm trong đó sẽ bị cắt cụt
+       ở mép thẻ — đúng chỗ dòng đầu và dòng cuối, tức là hỏng ở nơi hay rê nhất. */
+    .tf-tip {
+      position: fixed; z-index: 70; pointer-events: none;
+      min-width: 232px; max-width: 300px;
+      background: #1e293b; color: #e2e8f0;
+      border-radius: 10px; padding: 10px 12px;
+      font-size: 12px; line-height: 1.5;
+      box-shadow: 0 10px 28px rgba(15,23,42,.32);
+      opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s;
+    }
+    .tf-tip.hien { opacity: 1; transform: translateY(0); }
+    .tf-tip .tf-muc { color: #94a3b8; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+    .tf-tip .tf-muc + .tf-muc, .tf-tip .tf-dong + .tf-muc { margin-top: 9px; }
+    .tf-tip .tf-dong { display: flex; align-items: baseline; gap: 8px; }
+    .tf-tip .tf-ten { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tf-tip .tf-so { font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; }
+    .tf-tip .tf-pt { width: 34px; text-align: right; color: #94a3b8; font-variant-numeric: tabular-nums; }
+    .tf-tip .tf-khong { color: #64748b; }
+
     /* Nếu sau này thêm thẻ <a> nào vào hàng tab, ĐỪNG đặt lớp .tab-btn cho nó:
        hai chỗ quét querySelectorAll('.tab-btn') — applyRoute() bật/tắt 'active',
        và bộ gắn click coi mọi .tab-btn là tab trong trang. Thẻ <a> không có
@@ -460,7 +482,7 @@
          nghĩa. Đọc /analytics/noi-dung, xem src/analytics/noi-dung.ts. -->
     <div class="panel" id="panel-traffic">
       <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
-        <p class="text-sm text-gray-500">Khách đang đọc sản phẩm nào, bài viết nào</p>
+        <p class="text-sm text-gray-500">Khách đang đọc sản phẩm nào, bài viết nào — <span class="text-gray-400">rê chuột lên một dòng để xem nguồn khách</span></p>
         <div class="flex items-center gap-2">
           <span class="text-xs text-gray-400 uppercase tracking-wide">Khoảng</span>
           <select id="trafficDays" onchange="loadTraffic()"
@@ -5242,6 +5264,111 @@ var trafficDaTai = false;
 
 const TRAFFIC_SITE = 'https://koileather.com';
 
+/**
+ * Nhãn tiếng Việt cho mã nguồn khách. Mã do nguon() ở analytics.service.ts đẻ
+ * ra — thêm mã mới bên đó thì thêm nhãn ở đây, thiếu nhãn thì hiện mã trần chứ
+ * không rỗng.
+ */
+const NHAN_NGUON = {
+  google_organic: 'Google tự nhiên',
+  google_ads:     'Google Ads',
+  direct:         'Gõ thẳng / lưu sẵn',
+  facebook:       'Facebook',
+  zalo:           'Zalo',
+  instagram:      'Instagram',
+  tiktok:         'TikTok',
+  search_khac:    'Tìm kiếm khác',
+  internal:       'Bấm từ trang khác trong web',
+  other:          'Nguồn khác',
+};
+
+const NHAN_THIET_BI = { mobile: 'Điện thoại', desktop: 'Máy tính', tablet: 'Máy tính bảng' };
+
+/**
+ * Dữ liệu bóc nhỏ của các dòng đang hiện, tra theo data-tt trên thẻ dòng.
+ *
+ * Nhét JSON vào thuộc tính HTML thì tên sản phẩm có dấu nháy là vỡ thẻ, nên giữ
+ * ở đây và chỉ gắn số thứ tự.
+ */
+let trafficDong = [];
+
+/** Một mục trong tooltip: tên — số lượt — phần trăm. */
+function tfDongTip(ten, so, tong) {
+  const pt = tong > 0 ? Math.round((so / tong) * 100) : 0;
+  return '<div class="tf-dong"><span class="tf-ten">' + esc(ten) + '</span>'
+    + '<span class="tf-so' + (so ? '' : ' tf-khong') + '">' + Number(so).toLocaleString('vi-VN') + '</span>'
+    + '<span class="tf-pt">' + pt + '%</span></div>';
+}
+
+function tfNoiDungTip(d) {
+  let h = '<div class="tf-muc">Nguồn khách</div>';
+  const nguon = Object.entries(d.nguon || {}).filter(function (e) { return e[1] > 0; });
+  nguon.sort(function (a, b) { return b[1] - a[1]; });
+  // LUÔN hiện Google Ads kể cả khi bằng 0. A Khoa hỏi thẳng "Ads bao nhiu" —
+  // vắng dòng đó thì không phân biệt được "Ads không ra lượt nào" với "màn này
+  // không đo Ads", mà hai chuyện đó dẫn tới hai quyết định khác hẳn nhau.
+  if (!nguon.some(function (e) { return e[0] === 'google_ads'; })) nguon.push(['google_ads', 0]);
+  if (!nguon.length) {
+    h += '<div class="tf-dong tf-khong">Chưa có dữ liệu nguồn</div>';
+  } else {
+    nguon.forEach(function (e) { h += tfDongTip(NHAN_NGUON[e[0]] || e[0], e[1], d.luot); });
+  }
+
+  const tb = Object.entries(d.thietBi || {}).filter(function (e) { return e[1] > 0; });
+  if (tb.length) {
+    tb.sort(function (a, b) { return b[1] - a[1]; });
+    h += '<div class="tf-muc">Thiết bị</div>';
+    tb.forEach(function (e) { h += tfDongTip(NHAN_THIET_BI[e[0]] || e[0], e[1], d.luot); });
+  }
+  return h;
+}
+
+/**
+ * Bám chuột bằng MỘT thẻ dùng chung, gắn sự kiện ở thẻ cha.
+ *
+ * Gắn listener cho từng dòng thì mỗi lần vẽ lại bảng (đổi khoảng ngày, bấm Tải
+ * lại) lại chồng thêm một lớp listener lên các dòng cũ chưa kịp thu hồi.
+ */
+function tfGanTip() {
+  let tip = document.getElementById('trafficTip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'trafficTip';
+    tip.className = 'tf-tip';
+    document.body.appendChild(tip);
+  }
+  const than = document.getElementById('trafficBody');
+  if (than.dataset.tipDaGan) return;
+  than.dataset.tipDaGan = '1';
+
+  const dat = function (ev) {
+    const dong = ev.target.closest ? ev.target.closest('[data-tt]') : null;
+    if (!dong) { tip.classList.remove('hien'); return; }
+    const d = trafficDong[Number(dong.dataset.tt)];
+    if (!d) { tip.classList.remove('hien'); return; }
+    tip.innerHTML = tfNoiDungTip(d);
+    tip.classList.add('hien');
+    // Đo SAU khi đổ nội dung: chiều cao đổi theo số nguồn của từng dòng.
+    const o = tip.getBoundingClientRect();
+    const r = dong.getBoundingClientRect();
+    // Mặc định nằm bên phải dòng; hết chỗ thì lật sang trái, vẫn hết thì ép vào
+    // trong màn hình. Không bao giờ để tooltip tràn ra ngoài rồi bị cắt.
+    let x = r.right + 12;
+    if (x + o.width > window.innerWidth - 8) x = r.left - o.width - 12;
+    if (x < 8) x = Math.max(8, window.innerWidth - o.width - 8);
+    let y = r.top + r.height / 2 - o.height / 2;
+    y = Math.min(Math.max(8, y), window.innerHeight - o.height - 8);
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  };
+
+  than.addEventListener('mouseover', dat);
+  than.addEventListener('mouseleave', function () { tip.classList.remove('hien'); });
+  // Cuộn trang thì toạ độ đã đo hết đúng — ẩn đi thay vì để tooltip treo lơ lửng
+  // cạnh một dòng khác và chú số của dòng này.
+  window.addEventListener('scroll', function () { tip.classList.remove('hien'); }, true);
+}
+
 async function loadTraffic(buocTaiLai = false) {
   const days = Number(document.getElementById('trafficDays').value) || 30;
   const than = document.getElementById('trafficBody');
@@ -5295,7 +5422,7 @@ function trafficBang(tieuDe, icon, ds, tongNhom, dungSua) {
   ds.forEach(function (x, i) {
     const pt = tongNhom > 0 ? Math.round((x.luot / tongNhom) * 100) : 0;
     const url = TRAFFIC_SITE + x.duongDan;
-    h += '<div class="px-5 py-3 flex items-center gap-3 hover:bg-gray-50">'
+    h += '<div data-tt="' + (trafficDong.push(x) - 1) + '" class="px-5 py-3 flex items-center gap-3 hover:bg-gray-50">'
       + '<span class="w-6 shrink-0 text-xs font-semibold text-gray-400 text-right">' + (i + 1) + '</span>'
       + '<div class="min-w-0 flex-1">'
       + '<a href="' + escAttr(url) + '" target="_blank" rel="noopener"'
@@ -5320,6 +5447,11 @@ function trafficBang(tieuDe, icon, ds, tongNhom, dungSua) {
 }
 
 function renderTraffic(d) {
+  // Dọn trước mỗi lượt vẽ. Không dọn thì đổi khoảng ngày vài lần là data-tt của
+  // bảng mới trỏ vào dữ liệu của lần xem trước — tooltip vẫn hiện, vẫn có số,
+  // chỉ là số của khoảng ngày cũ. Sai kiểu đó không ai nhìn ra.
+  trafficDong = [];
+
   const t = d.tong || {};
   document.getElementById('trafficSummary').innerHTML =
       trafficThe('Tổng lượt xem', t.tatCa || 0, d.days + ' ngày gần nhất')
@@ -5341,7 +5473,7 @@ function renderTraffic(d) {
       + '<p class="text-xs text-gray-400 mt-0.5">Trang chủ, trang danh mục (/san-pham/…), trang tĩnh và bản tiếng Anh — không phải sản phẩm hay bài viết.</p>'
       + '</div><div class="divide-y">';
     khac.forEach(function (x) {
-      h += '<div class="px-5 py-2.5 flex items-center gap-3 hover:bg-gray-50">'
+      h += '<div data-tt="' + (trafficDong.push(x) - 1) + '" class="px-5 py-2.5 flex items-center gap-3 hover:bg-gray-50">'
         + '<a href="' + escAttr(TRAFFIC_SITE + x.duongDan) + '" target="_blank" rel="noopener"'
         + ' class="min-w-0 flex-1 text-sm text-gray-600 hover:text-amber-600 truncate">' + esc(x.duongDan) + '</a>'
         + '<span class="shrink-0 text-sm font-semibold text-gray-700">' + Number(x.luot).toLocaleString('vi-VN') + '</span>'
@@ -5352,6 +5484,7 @@ function renderTraffic(d) {
   }
 
   document.getElementById('trafficBody').innerHTML = h;
+  tfGanTip();
 }
 
 // ========== SPECS ==========

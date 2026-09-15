@@ -136,6 +136,67 @@ export function gomNoiDung(dong: LuotTheoTrang[]): {
 }
 
 /**
+ * Khoá định danh MỘT dòng trên mặt bảng, dùng chung cho cả ba nhóm.
+ *
+ * Sản phẩm/bài viết gộp theo slug (nhiều đường dẫn về một dòng), còn "Trang
+ * khác" thì mỗi đường dẫn là một dòng nên lấy luôn đường dẫn làm khoá. Tiền tố
+ * `trang:` để một trang tĩnh tên "x" không đụng khoá với bài viết slug "x".
+ */
+export function khoaDong(duongDan: string): string {
+  const k = docKhoa(duongDan);
+  return k ? `${k.loai}:${k.slug}` : `trang:${duongDan}`;
+}
+
+/**
+ * Một dòng trong nhóm "Trang khác" (trang chủ, danh mục, trang tĩnh).
+ *
+ * Khai ở tầng module chứ KHÔNG trong thân noiDung(): kiểu khai trong hàm không
+ * đặt tên được khi sinh .d.ts, `tsc --noEmit` cho qua nhưng `nest build` (có
+ * declaration) gãy với TS4053/TS4055 — tức là lỗi chỉ lộ ra lúc build deploy.
+ */
+export interface DongTrangKhac {
+  duongDan: string;
+  luot: number;
+  khach: number;
+  nguon: Record<string, number>;
+  thietBi: Record<string, number>;
+}
+
+/** Một dòng thô đã gom theo (đường dẫn × một chiều nào đó: nguồn, thiết bị…). */
+export interface LuotChiaNho {
+  path: string;
+  /** Giá trị của chiều đang bóc: "google_organic", "mobile"… */
+  nhom: string;
+  luot: number;
+}
+
+/**
+ * Bóc lượt xem của từng dòng theo một chiều (nguồn khách, thiết bị…).
+ *
+ * A Khoa đặt hàng 15/09/2026 (góp ý #4, gửi ngay tại màn Thống kê traffic):
+ * "Khi rê chuột lên trên thì hiện lên Organic bao nhiu, Ads bao nhiu… Để t xem
+ * nhanh cần chỉnh cái gì."
+ *
+ * Chỉ đếm LƯỢT, không đếm khách riêng: khách riêng cộng theo chiều thì một
+ * người vào hai lần từ hai nguồn bị đếm hai lần, mà tổng các phần lại không
+ * bằng con số khách in trên dòng — hai số đá nhau ngay trước mắt người đọc.
+ * Lượt thì cộng bao nhiêu chiều cũng luôn khớp với tổng.
+ */
+export function gomChieu(
+  dong: LuotChiaNho[],
+): Map<string, Record<string, number>> {
+  const ra = new Map<string, Record<string, number>>();
+  for (const d of dong) {
+    if (!d.nhom) continue;
+    const k = khoaDong(d.path);
+    const o = ra.get(k) ?? {};
+    o[d.nhom] = (o[d.nhom] ?? 0) + d.luot;
+    ra.set(k, o);
+  }
+  return ra;
+}
+
+/**
  * Lấy chữ hiển thị từ một trường có thể là chuỗi trần HOẶC khối song ngữ.
  *
  * `KoiProduct.name` khai `String` trong schema Prisma nhưng cột thật là JSON
