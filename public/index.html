@@ -5356,7 +5356,11 @@ function tfGanTip() {
     let x = r.right + 12;
     if (x + o.width > window.innerWidth - 8) x = r.left - o.width - 12;
     if (x < 8) x = Math.max(8, window.innerWidth - o.width - 8);
-    let y = r.top + r.height / 2 - o.height / 2;
+    // Neo theo CON TRỎ chứ không theo giữa dòng. Bảng này cao hơn một dòng
+    // nhiều (có dòng bóc ra tới 8 nguồn), nên neo giữa dòng thì khi rê ở nửa
+    // dưới màn hình nó bị kẹp ngược lên trên và đứng cách chỗ tay đang trỏ cả
+    // trăm pixel — nhìn như đang chú cho dòng khác.
+    let y = ev.clientY - 28;
     y = Math.min(Math.max(8, y), window.innerHeight - o.height - 8);
     tip.style.left = x + 'px';
     tip.style.top = y + 'px';
