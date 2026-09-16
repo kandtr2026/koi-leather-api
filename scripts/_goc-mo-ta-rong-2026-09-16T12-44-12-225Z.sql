@@ -1,0 +1,19 @@
+-- Hoàn tác viet-mo-ta-sp-rong.mjs lúc 2026-09-16T12-44-12-225Z: trả description/metaDescription/metaTitle cũ
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = 'e8fe742e-7559-418f-8002-c352378088f6';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = '28ed9fb5-f892-458b-8527-4fb30c3a81f3';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = 'de15d5d4-4672-4997-9a38-83abbc5545c5';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = '61f9bd3e-38d2-45b2-8d1e-05fc42d7d04a';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = '2e4a1b25-f2e2-4fec-922b-d7b231dd3974';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = '60657bd4-33cb-4d25-a794-889f1b8d25de';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = '5b8a44b9-e847-4822-9b1b-6fc5f21abccd';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = 'f895c76b-e6c3-4f6b-b8ee-af65ae42baec';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = 'ad23519e-4237-4604-8248-7e18df5bc9ef';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = 'c9a66971-47a1-4cfd-bb34-e4ac9dca6e8e';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = '099976b5-dc7c-45a8-b800-ee42cbcac94a';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = 'a15daade-a37c-43ae-9d38-0cf0a84ea26d';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = '2be6a3fa-fa31-4023-ab02-6945d2b083e8';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = '82f6cd61-6e57-45a2-aff9-848b74e1b550';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = '88a95417-7332-4c29-8b20-caf56467acef';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = 'aa75b4ac-20ef-48a9-8fb1-4c1ab01354ce';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = '87f723c4-237a-46c2-bc99-3271fc59caa8';
+UPDATE koi_free_style.koi_products SET description = NULL, "metaDescription" = NULL, "metaTitle" = NULL WHERE id = 'f1f8f55e-8cf4-4417-b5b4-c4ff20b5d748';
