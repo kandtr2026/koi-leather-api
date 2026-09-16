@@ -1,0 +1,20 @@
+-- Hoàn tác bu-lien-ket-danh-muc.mjs lúc 2026-09-16T13-01-09-487Z
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = 'e8fe742e-7559-418f-8002-c352378088f6' AND "categoryId" = 'a93fcbc7-742f-433b-a14d-fdfb3f372f7a';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '38285197-6281-4d3f-bc64-a078193f25cd' AND "categoryId" = '387c4986-3aa9-4980-b293-06e168cc8f3c';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '28ed9fb5-f892-458b-8527-4fb30c3a81f3' AND "categoryId" = '387c4986-3aa9-4980-b293-06e168cc8f3c';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '2e4a1b25-f2e2-4fec-922b-d7b231dd3974' AND "categoryId" = '03ca2989-2980-40bd-baaf-62120324ca95';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = 'c9a66971-47a1-4cfd-bb34-e4ac9dca6e8e' AND "categoryId" = 'e1e97382-07ce-489b-904b-37bba049d9d3';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = 'a15daade-a37c-43ae-9d38-0cf0a84ea26d' AND "categoryId" = 'c4a53bca-d4a2-4114-a137-c663589ec6af';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '82f6cd61-6e57-45a2-aff9-848b74e1b550' AND "categoryId" = '387c4986-3aa9-4980-b293-06e168cc8f3c';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = 'f1f8f55e-8cf4-4417-b5b4-c4ff20b5d748' AND "categoryId" = '03ca2989-2980-40bd-baaf-62120324ca95';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = 'de15d5d4-4672-4997-9a38-83abbc5545c5' AND "categoryId" = '03ca2989-2980-40bd-baaf-62120324ca95';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '61f9bd3e-38d2-45b2-8d1e-05fc42d7d04a' AND "categoryId" = '03ca2989-2980-40bd-baaf-62120324ca95';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '60657bd4-33cb-4d25-a794-889f1b8d25de' AND "categoryId" = 'e1e97382-07ce-489b-904b-37bba049d9d3';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '5b8a44b9-e847-4822-9b1b-6fc5f21abccd' AND "categoryId" = '387c4986-3aa9-4980-b293-06e168cc8f3c';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = 'f895c76b-e6c3-4f6b-b8ee-af65ae42baec' AND "categoryId" = 'c4a53bca-d4a2-4114-a137-c663589ec6af';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = 'ad23519e-4237-4604-8248-7e18df5bc9ef' AND "categoryId" = '03ca2989-2980-40bd-baaf-62120324ca95';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '099976b5-dc7c-45a8-b800-ee42cbcac94a' AND "categoryId" = 'e1e97382-07ce-489b-904b-37bba049d9d3';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '2be6a3fa-fa31-4023-ab02-6945d2b083e8' AND "categoryId" = 'c4a53bca-d4a2-4114-a137-c663589ec6af';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '88a95417-7332-4c29-8b20-caf56467acef' AND "categoryId" = '03ca2989-2980-40bd-baaf-62120324ca95';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = 'aa75b4ac-20ef-48a9-8fb1-4c1ab01354ce' AND "categoryId" = 'a93fcbc7-742f-433b-a14d-fdfb3f372f7a';
+DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = '87f723c4-237a-46c2-bc99-3271fc59caa8' AND "categoryId" = '03ca2989-2980-40bd-baaf-62120324ca95';
