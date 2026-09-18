@@ -142,10 +142,17 @@ export class AnalyticsController {
    */
   @Get("noi-dung")
   @ApiOperation({ summary: "Lượt đọc theo từng sản phẩm và từng bài viết" })
-  noiDung(@Query("days") days?: string, @Query("limit") limit?: string) {
+  noiDung(
+    @Query("days") days?: string,
+    @Query("limit") limit?: string,
+    @Query("ketThuc") ketThuc?: string,
+  ) {
     const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 30), 1), 365);
     const gioiHan = Math.min(Math.max(Math.trunc(Number(limit) || 50), 1), 200);
-    return this.analytics.noiDung(soNgay, gioiHan);
+    // ketThuc = khoảng dừng ở đầu ngày (ketThuc) ngày trước; 0 = chạy tới bây
+    // giờ. "Hôm qua" là days=1&ketThuc=1 — xem mocThoiGian() trong noi-dung.ts.
+    const luiCuoi = Math.min(Math.max(Math.trunc(Number(ketThuc) || 0), 0), 365);
+    return this.analytics.noiDung(soNgay, gioiHan, luiCuoi);
   }
 
   /**

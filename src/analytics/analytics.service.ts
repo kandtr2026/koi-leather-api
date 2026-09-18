@@ -20,6 +20,7 @@ import {
   gomChieu,
   gomNoiDung,
   khoaDong,
+  mocThoiGian,
   type DongTrangKhac,
 } from "./noi-dung";
 
@@ -745,10 +746,17 @@ export class AnalyticsService {
    * lệch nhau sau lần sửa thứ ba. Số dòng nhỏ: đường dẫn KHÁC NHAU trong 30 ngày
    * chỉ khoảng một nghìn, không phải số lượt xem.
    */
-  async noiDung(days = 30, limit = 50) {
+  async noiDung(days = 30, limit = 50, ketThuc = 0) {
     const soNgay = Math.min(Math.max(Math.trunc(Number(days) || 30), 1), 365);
     const gioiHan = Math.min(Math.max(Math.trunc(Number(limit) || 50), 1), 200);
-    const tu = this.dauNgayVN(soNgay - 1);
+    // `ketThuc` KHÔNG dùng mẫu `Number(x) || 0`: mẫu đó biến 0 thành 0 thì đúng,
+    // nhưng cũng nuốt luôn mọi giá trị rác thành 0 mà không ai biết. Ở đây 0 là
+    // giá trị hợp lệ và hay dùng nhất nên cứ kẹp thẳng.
+    const luiCuoi = Math.min(Math.max(Math.trunc(Number(ketThuc) || 0), 0), 365);
+
+    // Khoảng có CẢ mốc đầu lẫn mốc cuối — "hôm qua" cần mốc cuối để không lấn
+    // sang hôm nay. Phép tính ở mocThoiGian() cho test được không cần đồng hồ.
+    const { tu, den } = mocThoiGian(soNgay, luiCuoi, (n) => this.dauNgayVN(n));
 
     // Ba câu, không gộp làm một. Câu đầu phải đứng riêng vì `khach` là
     // COUNT(DISTINCT visitorHash): gom sẵn theo nguồn rồi cộng lại thì một
@@ -765,6 +773,7 @@ export class AnalyticsService {
                MAX("createdAt") AS "moiNhat"
         FROM koi_free_style.koi_page_views
         WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+          AND "createdAt" <  ${den}::timestamptz AT TIME ZONE 'UTC'
         GROUP BY 1
         ORDER BY 2 DESC
         LIMIT 3000
@@ -773,12 +782,14 @@ export class AnalyticsService {
         SELECT "path", "source" AS nhom, COUNT(*)::int AS luot
         FROM koi_free_style.koi_page_views
         WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+          AND "createdAt" <  ${den}::timestamptz AT TIME ZONE 'UTC'
         GROUP BY 1, 2
       `,
       this.prisma.$queryRaw<{ path: string; nhom: string; luot: number }[]>`
         SELECT "path", "device" AS nhom, COUNT(*)::int AS luot
         FROM koi_free_style.koi_page_views
         WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+          AND "createdAt" <  ${den}::timestamptz AT TIME ZONE 'UTC'
         GROUP BY 1, 2
       `,
     ]);
@@ -893,7 +904,12 @@ export class AnalyticsService {
 
     return {
       days: soNgay,
+      // Trả CẢ hai mốc ra ngoài. Chỉ trả `from` như trước thì màn admin không
+      // cách nào biết khoảng đã kết thúc hay còn chạy tới bây giờ, mà đó đúng là
+      // khác biệt giữa "hôm qua" và "hôm nay".
+      ketThuc: luiCuoi,
       from: tu.toISOString(),
+      to: den.toISOString(),
       tong: {
         // Tổng lượt của TOÀN khoảng thời gian, không phải tổng của phần cắt
         // `limit` bên dưới — để A Khoa thấy ngay ba nhóm chiếm bao nhiêu phần.

@@ -136,6 +136,38 @@ export function gomNoiDung(dong: LuotTheoTrang[]): {
 }
 
 /**
+ * Tính mốc ĐẦU và mốc CUỐI của khoảng thời gian cần đọc.
+ *
+ * A Khoa đặt hàng 18/09/2026 (góp ý #5): "Cho khung ngày hôm nay, với ngày hôm
+ * qua đi. Để biết khách đang xem gì trong hôm nay để mà tiếp đón."
+ *
+ * Vì sao phải có hàm riêng chứ không cộng trừ tại chỗ: mọi khoảng cũ đều là "N
+ * ngày tính tới BÂY GIỜ" nên chỉ cần một mốc đầu. "Hôm qua" là khoảng đầu tiên
+ * có mốc cuối thật — bỏ mốc cuối thì nó lặng lẽ biến thành "hôm qua tới giờ",
+ * tức là gộp luôn hôm nay vào và A Khoa đọc ra một con số không sai rõ ràng,
+ * chỉ hơi to. Lỗi kiểu đó không ai phát hiện được bằng mắt.
+ *
+ * `luiCuoi` = khoảng kết thúc lúc đầu của ngày (luiCuoi) ngày trước; 0 nghĩa là
+ * chạy tới bây giờ. `dauNgay`/`bayGio` truyền vào để test được không cần đồng hồ
+ * thật.
+ *
+ *   hôm nay          soNgay=1  luiCuoi=0 -> [đầu hôm nay, bây giờ)
+ *   hôm qua          soNgay=1  luiCuoi=1 -> [đầu hôm qua, đầu hôm nay)
+ *   7 ngày gần nhất  soNgay=7  luiCuoi=0 -> [đầu ngày thứ 7 trước, bây giờ)
+ */
+export function mocThoiGian(
+  soNgay: number,
+  luiCuoi: number,
+  dauNgay: (luiNgay: number) => Date,
+  bayGio: () => Date = () => new Date(),
+): { tu: Date; den: Date } {
+  return {
+    tu: dauNgay(luiCuoi + soNgay - 1),
+    den: luiCuoi > 0 ? dauNgay(luiCuoi - 1) : bayGio(),
+  };
+}
+
+/**
  * Khoá định danh MỘT dòng trên mặt bảng, dùng chung cho cả ba nhóm.
  *
  * Sản phẩm/bài viết gộp theo slug (nhiều đường dẫn về một dòng), còn "Trang

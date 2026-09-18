@@ -487,6 +487,8 @@
           <span class="text-xs text-gray-400 uppercase tracking-wide">Khoảng</span>
           <select id="trafficDays" onchange="loadTraffic()"
             class="border border-gray-300 rounded-lg text-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400">
+            <option value="hom-nay">Hôm nay</option>
+            <option value="hom-qua">Hôm qua</option>
             <option value="7">7 ngày</option>
             <option value="30" selected>30 ngày</option>
             <option value="90">90 ngày</option>
@@ -1165,7 +1167,10 @@ function applyRoute(route) {
   // bảng lượt xem nên không đáng chạy mỗi lần đăng nhập, trong khi đại đa số
   // lượt vào admin là để sửa sản phẩm. Tự nhớ đã nạp chưa để bấm qua bấm lại
   // giữa các tab không gọi lại — muốn số mới thì có nút Tải lại.
-  if (entry.panel === 'traffic' && !trafficDaTai) loadTraffic();
+  if (entry.panel === 'traffic' && !trafficDaTai) {
+    trafficNhoLai();
+    loadTraffic();
+  }
 
   // Panel Lưu lượng cũ đã xoá cùng nhịp realtime của nó; tab traffic mới không
   // có nhịp nào chạy nền nên vẫn không có gì cần tắt khi rời tab.
@@ -1412,6 +1417,7 @@ function applyAuth(user) {
   // ăn 401 và panel hiện "Cần đăng nhập"; không gọi lại ở đây thì đăng nhập
   // xong màn vẫn y nguyên dòng báo lỗi cho tới khi bấm Tải lại.
   if (document.getElementById('panel-traffic').classList.contains('active')) {
+    trafficNhoLai();
     loadTraffic(true);
   }
 }
@@ -5265,6 +5271,39 @@ var trafficDaTai = false;
 const TRAFFIC_SITE = 'https://koileather.com';
 
 /**
+ * Các khoảng thời gian chọn được.
+ *
+ * `ketThuc` = khoảng dừng ở đầu ngày (ketThuc) ngày trước; 0 = chạy tới bây giờ.
+ * "Hôm qua" phải là {days:1, ketThuc:1} chứ KHÔNG phải days=2 — days=2 là "hôm
+ * qua tới giờ", gộp luôn hôm nay. Xem mocThoiGian() ở src/analytics/noi-dung.ts.
+ */
+const TRAFFIC_KHOANG = {
+  'hom-nay': { days: 1,   ketThuc: 0, nhan: 'hôm nay, tính tới lúc này' },
+  'hom-qua': { days: 1,   ketThuc: 1, nhan: 'cả ngày hôm qua' },
+  '7':       { days: 7,   ketThuc: 0, nhan: '7 ngày gần nhất' },
+  '30':      { days: 30,  ketThuc: 0, nhan: '30 ngày gần nhất' },
+  '90':      { days: 90,  ketThuc: 0, nhan: '90 ngày gần nhất' },
+  '365':     { days: 365, ketThuc: 0, nhan: '1 năm gần nhất' },
+};
+
+/**
+ * Nhớ khoảng A Khoa chọn lần trước.
+ *
+ * A Khoa xin hai khung này để "biết khách đang xem gì trong hôm nay mà tiếp
+ * đón" — việc đó làm mỗi ngày, mà mặc định lại là 30 ngày nên lần nào mở tab
+ * cũng phải bấm lại. Không đổi thẳng mặc định thành Hôm nay vì bảng 30 ngày vẫn
+ * là cái trả lời "nội dung nào ăn khách"; để máy nhớ thì cả hai nhu cầu đều gọn.
+ */
+const TRAFFIC_KHOA_NHO = 'koi_traffic_khoang';
+
+/** Đặt lại ô chọn về khoảng lần trước. Giá trị lạ / lưu hỏng thì giữ nguyên. */
+function trafficNhoLai() {
+  let k;
+  try { k = localStorage.getItem(TRAFFIC_KHOA_NHO); } catch (e) { return; }
+  if (k && TRAFFIC_KHOANG[k]) document.getElementById('trafficDays').value = k;
+}
+
+/**
  * Nhãn tiếng Việt cho mã nguồn khách. Mã do nguon() ở analytics.service.ts đẻ
  * ra — thêm mã mới bên đó thì thêm nhãn ở đây, thiếu nhãn thì hiện mã trần chứ
  * không rỗng.
@@ -5374,7 +5413,11 @@ function tfGanTip() {
 }
 
 async function loadTraffic(buocTaiLai = false) {
-  const days = Number(document.getElementById('trafficDays').value) || 30;
+  const o = document.getElementById('trafficDays');
+  const k = TRAFFIC_KHOANG[o.value] ? o.value : '30';
+  const khoang = TRAFFIC_KHOANG[k];
+  try { localStorage.setItem(TRAFFIC_KHOA_NHO, k); } catch (e) { /* chế độ riêng tư */ }
+
   const than = document.getElementById('trafficBody');
   const dau = document.getElementById('trafficSummary');
   than.innerHTML = '<div class="bg-white rounded-xl shadow-sm border p-6 text-sm text-gray-400">Đang đọc số…</div>';
@@ -5382,15 +5425,18 @@ async function loadTraffic(buocTaiLai = false) {
   try {
     // noCache khi bấm Tải lại: lớp cache 60 giây của api() làm nút Tải lại
     // trông như hỏng — bấm mà số y nguyên.
-    const d = await api('/analytics/noi-dung?days=' + days + '&limit=50', {
-      noCache: buocTaiLai,
-      // Quét cả bảng lượt xem, chậm hơn một lượt GET thường. 12 giây mặc định
-      // đủ cho 30 ngày nhưng mốc 1 năm thì hụt — cắt sớm hơn máy chủ thì A Khoa
-      // thấy "Failed to fetch" thay vì bảng.
-      timeoutMs: 30000,
-    });
+    const d = await api(
+      '/analytics/noi-dung?days=' + khoang.days + '&ketThuc=' + khoang.ketThuc + '&limit=50',
+      {
+        noCache: buocTaiLai,
+        // Quét cả bảng lượt xem, chậm hơn một lượt GET thường. 12 giây mặc định
+        // đủ cho 30 ngày nhưng mốc 1 năm thì hụt — cắt sớm hơn máy chủ thì A Khoa
+        // thấy "Failed to fetch" thay vì bảng.
+        timeoutMs: 30000,
+      },
+    );
     trafficDaTai = true;
-    renderTraffic(d);
+    renderTraffic(d, khoang.nhan);
   } catch (e) {
     trafficDaTai = false;
     const loi = e && e.status === 401
@@ -5450,7 +5496,7 @@ function trafficBang(tieuDe, icon, ds, tongNhom, dungSua) {
   return h + '</div></div>';
 }
 
-function renderTraffic(d) {
+function renderTraffic(d, nhanKhoang) {
   // Dọn trước mỗi lượt vẽ. Không dọn thì đổi khoảng ngày vài lần là data-tt của
   // bảng mới trỏ vào dữ liệu của lần xem trước — tooltip vẫn hiện, vẫn có số,
   // chỉ là số của khoảng ngày cũ. Sai kiểu đó không ai nhìn ra.
@@ -5458,7 +5504,7 @@ function renderTraffic(d) {
 
   const t = d.tong || {};
   document.getElementById('trafficSummary').innerHTML =
-      trafficThe('Tổng lượt xem', t.tatCa || 0, d.days + ' ngày gần nhất')
+      trafficThe('Tổng lượt xem', t.tatCa || 0, nhanKhoang || (d.days + ' ngày gần nhất'))
     + trafficThe('Xem sản phẩm', t.sanPham || 0, (t.soSanPham || 0) + ' sản phẩm có người xem')
     + trafficThe('Đọc bài viết', t.baiViet || 0, (t.soBaiViet || 0) + ' bài có người đọc')
     + trafficThe('Trang khác', t.khac || 0, 'trang chủ, danh mục, trang tĩnh');

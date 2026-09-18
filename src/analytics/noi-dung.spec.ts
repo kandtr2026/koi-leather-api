@@ -4,8 +4,58 @@ import {
   gomChieu,
   gomNoiDung,
   khoaDong,
+  mocThoiGian,
   type LuotTheoTrang,
 } from "./noi-dung";
+
+describe("mocThoiGian", () => {
+  // Đồng hồ giả: đầu ngày N ngày trước = 2026-09-18 trừ N ngày, lúc 00:00 giờ ta.
+  const dauNgay = (lui: number) =>
+    new Date(Date.UTC(2026, 8, 18 - lui, 0, 0, 0) - 7 * 3600 * 1000);
+  const bayGio = () => new Date(Date.UTC(2026, 8, 18, 3, 52, 0));
+
+  it("hôm nay = từ đầu hôm nay tới bây giờ", () => {
+    const { tu, den } = mocThoiGian(1, 0, dauNgay, bayGio);
+    expect(tu).toEqual(dauNgay(0));
+    expect(den).toEqual(bayGio());
+  });
+
+  it("hôm qua có mốc cuối thật, KHÔNG chạy lấn sang hôm nay", () => {
+    // Bẫy chính của góp ý #5: quên mốc cuối thì "hôm qua" hoá "hôm qua tới giờ",
+    // gộp luôn hôm nay — con số chỉ hơi to chứ không sai lộ liễu, không ai soi ra.
+    const { tu, den } = mocThoiGian(1, 1, dauNgay, bayGio);
+    expect(tu).toEqual(dauNgay(1));
+    expect(den).toEqual(dauNgay(0));
+    expect(den.getTime() - tu.getTime()).toBe(24 * 3600 * 1000);
+  });
+
+  it("7 ngày gần nhất vẫn chạy tới bây giờ như cũ", () => {
+    const { tu, den } = mocThoiGian(7, 0, dauNgay, bayGio);
+    expect(tu).toEqual(dauNgay(6));
+    expect(den).toEqual(bayGio());
+  });
+
+  it("khoảng nhiều ngày kết thúc ở hôm qua phủ đúng số ngày", () => {
+    const { tu, den } = mocThoiGian(7, 1, dauNgay, bayGio);
+    expect(tu).toEqual(dauNgay(7));
+    expect(den).toEqual(dauNgay(0));
+    expect(den.getTime() - tu.getTime()).toBe(7 * 24 * 3600 * 1000);
+  });
+
+  it("mốc đầu luôn trước mốc cuối", () => {
+    for (const [n, lui] of [
+      [1, 0],
+      [1, 1],
+      [7, 0],
+      [30, 0],
+      [365, 0],
+      [1, 30],
+    ]) {
+      const { tu, den } = mocThoiGian(n, lui, dauNgay, bayGio);
+      expect(tu.getTime()).toBeLessThan(den.getTime());
+    }
+  });
+});
 
 describe("khoaDong", () => {
   it("sản phẩm và bài viết gộp theo slug", () => {
