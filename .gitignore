@@ -16,4 +16,13 @@ public/build-meta.json
 # tep do dac tam thoi (khong thuoc san pham)
 _scratch/
 
+# Nhat ky cua scripts/viet-mo-ta-hang-loat.mjs — sinh ra luc chay, khong phai ma
+# nguon. Chua chu AI de xuat va ma batch de hoan tac, giu lai tren may la du.
+scripts/_log-*.jsonl
+
+# Ban sao luu + nhat ky cua bo soat van phong trong tools/. La DU LIEU sinh ra
+# luc chay (ban dump ~10 MB moi lan), khong phai ma nguon. Ban sao thuc su nam
+# trong bang koi_free_style.koi_copy_backup_20260922.
+tools/_*.json
+
 .env*
