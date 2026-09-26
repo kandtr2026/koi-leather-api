@@ -40,6 +40,61 @@
     .tf-tip .tf-pt { width: 34px; text-align: right; color: #94a3b8; font-variant-numeric: tabular-nums; }
     .tf-tip .tf-khong { color: #64748b; }
 
+    /* Biểu đồ "Khách đến từ đâu" (tab Thống kê traffic) — A Khoa đặt hàng 26/09/2026.
+       CSS viết tay ở đây chứ không bằng lớp Tailwind: màu theo nhóm nguồn và mấy
+       chi tiết cỡ 2px không có sẵn trong bộ Tailwind biên dịch tĩnh.
+
+       Màu: 5 màu đầu bảng phân loại chuẩn, ĐÃ CHẠY bộ kiểm tra mù màu trên nền
+       trắng (khoảng cách cặp kề nhau ΔE ≥ 9,1 kể cả người mù màu đỏ-lục). THỨ TỰ
+       màu là thứ tự chồng cột — đổi chỗ hai nhóm là phải kiểm lại, vì cặp nào
+       nằm cạnh nhau mới là cặp phải phân biệt được. Nhóm 6 "Nguồn khác" là xám
+       cố ý: phần gom đuôi, không đáng tranh màu. Ba màu sáng (xanh ngọc, vàng,
+       hồng) dưới 3:1 so với nền nên con số luôn in bằng chữ ở danh sách bên
+       cạnh và bảng số — màu không bao giờ là đường duy nhất để đọc số. */
+    /* Khai cả trên .tf-tip: tooltip gắn thẳng vào <body>, nằm ngoài .ng-root nên
+       không thừa hưởng biến màu — thiếu dòng này là vạch màu trong tooltip trắng trơn. */
+    .ng-root, .tf-tip { --ng-1:#2a78d6; --ng-2:#eb6834; --ng-3:#1baf7a; --ng-4:#eda100; --ng-5:#e87ba4; --ng-6:#a8a29e; }
+    .ng-bg1 { background: var(--ng-1); } .ng-bg2 { background: var(--ng-2); } .ng-bg3 { background: var(--ng-3); }
+    .ng-bg4 { background: var(--ng-4); } .ng-bg5 { background: var(--ng-5); } .ng-bg6 { background: var(--ng-6); }
+    .ng-than { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 16px 20px 12px; }
+    @media (min-width: 1280px) { .ng-than { grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; } }
+    .ng-plot { position: relative; height: 240px; margin-left: 44px; }
+    .ng-luoi { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid #eef0f3; }
+    .ng-luoi.ng-day { border-top-color: #d1d5db; }
+    .ng-luoi span { position: absolute; right: calc(100% + 8px); top: -7px; font-size: 11px; line-height: 14px; color: #9ca3af; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ng-cols { position: absolute; inset: 0; display: flex; }
+    /* Cả khe là vùng rê chuột, không riêng thân cột: cột 90 ngày chỉ rộng vài pixel. */
+    .ng-col { flex: 1 1 0; min-width: 0; height: 100%; display: flex; flex-direction: column-reverse; align-items: center; }
+    /* Cột mảnh, không lấp đầy khe (trần 24px). Khe trắng 2px giữa các lớp chồng
+       là nét viền của nền chứ không phải nét vẽ quanh cột. */
+    .ng-seg { width: min(24px, 66%); flex: none; transition: opacity .12s; }
+    .ng-seg + .ng-seg { border-bottom: 2px solid #fff; }
+    .ng-seg:last-child { border-radius: 4px 4px 0 0; }
+    .ng-cols:hover .ng-col:not(:hover) .ng-seg { opacity: .38; }
+    .ng-root[data-noi="1"] .ng-seg:not(.ng-bg1), .ng-root[data-noi="2"] .ng-seg:not(.ng-bg2),
+    .ng-root[data-noi="3"] .ng-seg:not(.ng-bg3), .ng-root[data-noi="4"] .ng-seg:not(.ng-bg4),
+    .ng-root[data-noi="5"] .ng-seg:not(.ng-bg5), .ng-root[data-noi="6"] .ng-seg:not(.ng-bg6) { opacity: .14; }
+    .ng-x { display: flex; margin: 6px 0 0 44px; height: 16px; }
+    .ng-x span { flex: 1 1 0; min-width: 0; display: flex; justify-content: center; font-size: 11px; line-height: 16px; color: #9ca3af; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .ng-x span.ng-chua { color: #d1d5db; }
+    /* Nhãn cột cuối (hôm nay) căn phải: căn giữa thì nửa chữ tràn khỏi mép khung. */
+    .ng-x span:last-child { justify-content: flex-end; }
+    .ng-muc { padding: 7px 8px; margin: 0 -8px; border-radius: 8px; cursor: default; }
+    .ng-muc:hover { background: #f8fafc; }
+    .ng-o { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+    .ng-thanh { height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-top: 5px; }
+    .ng-thanh > div { height: 100%; border-radius: 2px; }
+    .ng-so { font-variant-numeric: tabular-nums; }
+    .tf-tip .ng-dong { display: flex; align-items: center; gap: 8px; }
+    .tf-tip .ng-key { width: 10px; height: 2px; border-radius: 1px; flex: none; }
+    .tf-tip .ng-dong .tf-so { min-width: 38px; text-align: right; }
+    .tf-tip .ng-dong .tf-ten { color: #cbd5e1; }
+    .tf-tip .ng-tong { color: #fff; font-size: 13px; margin-bottom: 6px; }
+    .ng-bang { border-collapse: collapse; width: 100%; font-size: 12px; }
+    .ng-bang th { font-weight: 500; color: #9ca3af; text-align: right; padding: 4px 8px; white-space: nowrap; }
+    .ng-bang td { color: #374151; text-align: right; padding: 3px 8px; border-top: 1px solid #f1f5f9; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ng-bang th:first-child, .ng-bang td:first-child { text-align: left; }
+
     /* Nếu sau này thêm thẻ <a> nào vào hàng tab, ĐỪNG đặt lớp .tab-btn cho nó:
        hai chỗ quét querySelectorAll('.tab-btn') — applyRoute() bật/tắt 'active',
        và bộ gắn click coi mọi .tab-btn là tab trong trang. Thẻ <a> không có
@@ -502,6 +557,10 @@
       </div>
 
       <div id="trafficSummary" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4"></div>
+
+      <!-- Biểu đồ "Khách đến từ đâu" — renderNguon(). Trống khi dữ liệu cũ trong
+           cache chưa có khoá bieuDo. -->
+      <div id="trafficNguon" class="mb-4"></div>
 
       <div id="trafficBody" class="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div class="bg-white rounded-xl shadow-sm border p-6 space-y-3">
@@ -5268,6 +5327,14 @@ async function deleteMatCat(id) {
  */
 var trafficDaTai = false;
 
+/**
+ * Số thứ tự lượt đọc gần nhất. Bấm "1 năm" (chậm) rồi đổi ngay sang "7 ngày"
+ * (nhanh) thì phản hồi 1 năm về SAU và vẽ đè lên — ô chọn ghi 7 ngày mà bảng
+ * là số cả năm. Lượt nào không còn là lượt mới nhất thì bỏ kết quả. `var` cùng
+ * lý do với trafficDaTai ở trên.
+ */
+var trafficLan = 0;
+
 const TRAFFIC_SITE = 'https://koileather.com';
 
 /**
@@ -5319,6 +5386,10 @@ const NHAN_NGUON = {
   search_khac:    'Tìm kiếm khác',
   internal:       'Bấm từ trang khác trong web',
   other:          'Nguồn khác',
+  // Mã cũ trước 16/08/2026, hồi chưa tách Ads khỏi Google. tools/
+  // tach-qc-luot-xem.mjs quy nó về google_ads / google_organic; nhãn còn đây
+  // phòng dòng nào sót, hoặc sau khi chạy --hoan trả số cũ.
+  google:         'Google (số cũ, chưa tách Ads)',
 };
 
 const NHAN_THIET_BI = { mobile: 'Điện thoại', desktop: 'Máy tính', tablet: 'Máy tính bảng' };
@@ -5368,7 +5439,8 @@ function tfNoiDungTip(d) {
  * Gắn listener cho từng dòng thì mỗi lần vẽ lại bảng (đổi khoảng ngày, bấm Tải
  * lại) lại chồng thêm một lớp listener lên các dòng cũ chưa kịp thu hồi.
  */
-function tfGanTip() {
+/** Thẻ tooltip dùng chung cho cả bảng lẫn biểu đồ — một thẻ, tạo lười. */
+function tfLayTip() {
   let tip = document.getElementById('trafficTip');
   if (!tip) {
     tip = document.createElement('div');
@@ -5376,6 +5448,11 @@ function tfGanTip() {
     tip.className = 'tf-tip';
     document.body.appendChild(tip);
   }
+  return tip;
+}
+
+function tfGanTip() {
+  const tip = tfLayTip();
   const than = document.getElementById('trafficBody');
   if (than.dataset.tipDaGan) return;
   than.dataset.tipDaGan = '1';
@@ -5422,6 +5499,11 @@ async function loadTraffic(buocTaiLai = false) {
   const dau = document.getElementById('trafficSummary');
   than.innerHTML = '<div class="bg-white rounded-xl shadow-sm border p-6 text-sm text-gray-400">Đang đọc số…</div>';
   dau.innerHTML = '';
+  // Biểu đồ giữ nguyên khung cũ, chỉ mờ đi trong lúc đọc số mới — xoá trắng
+  // rồi vẽ lại thì cả trang giật lên giật xuống mỗi lần đổi khoảng ngày.
+  const bieuDo = document.getElementById('trafficNguon');
+  bieuDo.style.opacity = '.45';
+  const lan = ++trafficLan;
   try {
     // noCache khi bấm Tải lại: lớp cache 60 giây của api() làm nút Tải lại
     // trông như hỏng — bấm mà số y nguyên.
@@ -5435,10 +5517,15 @@ async function loadTraffic(buocTaiLai = false) {
         timeoutMs: 30000,
       },
     );
+    if (lan !== trafficLan) return;
     trafficDaTai = true;
     renderTraffic(d, khoang.nhan);
   } catch (e) {
+    if (lan !== trafficLan) return;
     trafficDaTai = false;
+    // Số cũ mà vẫn hiện cạnh thông báo lỗi thì nhìn như số của khoảng mới.
+    bieuDo.innerHTML = '';
+    bieuDo.style.opacity = '';
     const loi = e && e.status === 401
       ? 'Cần đăng nhập để xem số liệu.'
       : 'Không đọc được số liệu: ' + esc(e && e.message ? e.message : String(e));
@@ -5509,6 +5596,8 @@ function renderTraffic(d, nhanKhoang) {
     + trafficThe('Đọc bài viết', t.baiViet || 0, (t.soBaiViet || 0) + ' bài có người đọc')
     + trafficThe('Trang khác', t.khac || 0, 'trang chủ, danh mục, trang tĩnh');
 
+  renderNguon(d, nhanKhoang);
+
   let h = trafficBang('Sản phẩm khách xem nhiều', 'fa-box', d.sanPham || [], t.sanPham || 0, true)
         + trafficBang('Bài viết khách đọc nhiều', 'fa-newspaper', d.baiViet || [], t.baiViet || 0, false);
 
@@ -5535,6 +5624,314 @@ function renderTraffic(d, nhanKhoang) {
 
   document.getElementById('trafficBody').innerHTML = h;
   tfGanTip();
+}
+
+// ---------- Biểu đồ "Khách đến từ đâu" ----------
+// A Khoa đặt hàng 26/09/2026: "Bổ sung chart traffic, theo organic, theo google
+// hay theo các nguồn khác để trực quan hơn". Số lấy từ khoá `bieuDo` của
+// /analytics/noi-dung — phần xếp cột nằm ở src/analytics/bieu-do-nguon.ts,
+// chỗ này chỉ gom mã nguồn thành nhóm và vẽ.
+
+/**
+ * Sáu nhóm nguồn, THỨ TỰ CỐ ĐỊNH — cũng là thứ tự chồng cột từ dưới lên và thứ
+ * tự màu .ng-bg1…6. Màu đi theo NHÓM chứ không theo thứ hạng: tuần nào Facebook
+ * vượt Google thì Facebook vẫn giữ màu cũ, người đã quen mắt không bị lừa.
+ *
+ * Hai nhóm Google đứng liền nhau ở đáy cột: nhìn một lần thấy được cả "Google
+ * nói chung" lẫn phần tự nhiên / phần quảng cáo — đúng câu A Khoa hỏi.
+ *
+ * `ma: null` là nhóm hứng MỌI mã còn lại. Backend thêm mã nguồn mới mà quên
+ * thêm ở đây thì nó rơi vào "Nguồn khác" chứ không biến khỏi tổng.
+ */
+const NHOM_NGUON = [
+  // 'google' là mã cũ trước 16/08 — phần không phải quảng cáo của nó chính là
+  // Google tự nhiên (đúng cách tach-qc-luot-xem.mjs quy về). Để đây phòng khi
+  // số cũ được trả lại bằng --hoan: vẫn đứng cùng nhóm Google chứ không lạc
+  // sang ô xám "Nguồn khác".
+  { k: 1, ten: 'Google tự nhiên', ma: ['google_organic', 'google'] },
+  { k: 2, ten: 'Google Ads', ma: ['google_ads'] },
+  { k: 3, ten: 'Facebook', ma: ['facebook'] },
+  { k: 4, ten: 'Gõ thẳng / lưu sẵn', ma: ['direct'] },
+  { k: 5, ten: 'Instagram · Zalo · TikTok', ma: ['instagram', 'zalo', 'tiktok'] },
+  { k: 6, ten: 'Nguồn khác', ma: null },
+];
+
+/** Tên ngắn của từng mã khi kể thành phần bên trong một nhóm gộp. */
+const NHAN_NGAN = {
+  instagram: 'Instagram', zalo: 'Zalo', tiktok: 'TikTok',
+  search_khac: 'Cốc Cốc/Bing…', other: 'web khác', internal: 'bấm trong web',
+  google: 'Google số cũ',
+};
+
+function ngNhomCua(ma) {
+  for (let i = 0; i < NHOM_NGUON.length; i++) {
+    if (NHOM_NGUON[i].ma && NHOM_NGUON[i].ma.indexOf(ma) >= 0) return i;
+  }
+  return NHOM_NGUON.length - 1;
+}
+
+/** {mã: lượt} → mảng sáu số theo thứ tự NHOM_NGUON. */
+function ngGom(nguon) {
+  const ra = NHOM_NGUON.map(function () { return 0; });
+  Object.keys(nguon || {}).forEach(function (m) { ra[ngNhomCua(m)] += Number(nguon[m]) || 0; });
+  return ra;
+}
+
+/** Cột đang vẽ, tra theo data-i — cùng lý do với trafficDong. */
+let ngCot = [];
+let ngDon = 'ngay';
+
+const NG_THU = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+/** "2026-09-26" → "26/09" (hoặc "26/09/2026"). */
+function ngNgay(s, coNam) {
+  const p = String(s || '').split('-');
+  if (p.length !== 3) return String(s || '');
+  return p[2] + '/' + p[1] + (coNam ? '/' + p[0] : '');
+}
+
+function ngThu(s) {
+  const p = String(s || '').split('-').map(Number);
+  const d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+  return isNaN(d) ? '' : NG_THU[d.getUTCDay()];
+}
+
+/** Nhãn đầy đủ một cột, cho tooltip và bảng số. */
+function ngNhanCot(c) {
+  if (ngDon === 'gio') {
+    const h = Number(c.moc);
+    const hai = function (x) { return (x < 10 ? '0' : '') + x; };
+    return hai(h) + ':00–' + hai(h + 1) + ':00, ' + ngThu(c.tu) + ' ' + ngNgay(c.tu);
+  }
+  if (ngDon === 'tuan') return 'Tuần ' + ngNgay(c.tu) + ' – ' + ngNgay(c.den);
+  return ngThu(c.moc) + ', ' + ngNgay(c.moc, true);
+}
+
+/**
+ * Trần trục đứng và bước lưới. Bước là 1/2/5 × 10ⁿ để vạch đọc được ngay
+ * (0 · 50 · 100 · 150) chứ không ra 0 · 37 · 74; không bao giờ lẻ dưới 1 vì
+ * lượt xem là số nguyên.
+ */
+function ngTruc(max) {
+  if (!(max > 0)) return { tran: 4, buoc: 1 };
+  const tho = max / 4;
+  const mu = Math.pow(10, Math.floor(Math.log10(tho)));
+  let buoc = 10 * mu;
+  [1, 2, 5].some(function (b) { if (b * mu >= tho) { buoc = b * mu; return true; } return false; });
+  buoc = Math.max(1, Math.round(buoc));
+  return { tran: Math.ceil(max / buoc) * buoc, buoc: buoc };
+}
+
+function ngSo(n) { return Number(n || 0).toLocaleString('vi-VN'); }
+
+function ngNoiDungTip(c) {
+  let h = '<div class="tf-muc">' + esc(ngNhanCot(c)) + '</div>';
+  if (c.daQua === false) return h + '<div class="tf-dong tf-khong">Chưa tới giờ này</div>';
+  h += '<div class="ng-tong"><b>' + ngSo(c.tong) + '</b> lượt xem</div>';
+  // Kể ĐỦ sáu nhóm kể cả nhóm bằng 0, thứ tự cố định: mắt đã quen dòng nào
+  // nằm ở đâu thì rê qua các cột chỉ còn phải đọc số.
+  NHOM_NGUON.forEach(function (g, i) {
+    const v = c.nhom[i];
+    const pt = c.tong ? Math.round((v / c.tong) * 100) : 0;
+    h += '<div class="ng-dong"><span class="ng-key ng-bg' + g.k + '"></span>'
+      + '<span class="tf-so' + (v ? '' : ' tf-khong') + '">' + ngSo(v) + '</span>'
+      + '<span class="tf-ten">' + esc(g.ten) + '</span>'
+      + '<span class="tf-pt">' + pt + '%</span></div>';
+  });
+  return h;
+}
+
+/** Gắn một lần: tooltip theo cột + làm nổi một nhóm khi rê lên danh sách. */
+function ngGanTip() {
+  const hop = document.getElementById('trafficNguon');
+  if (hop.dataset.tipDaGan) return;
+  hop.dataset.tipDaGan = '1';
+  const tip = tfLayTip();
+
+  hop.addEventListener('mousemove', function (ev) {
+    const goc = hop.querySelector('.ng-root');
+    const muc = ev.target.closest ? ev.target.closest('.ng-muc') : null;
+    if (goc) {
+      if (muc) goc.dataset.noi = muc.dataset.nhom;
+      else delete goc.dataset.noi;
+    }
+
+    const cot = ev.target.closest ? ev.target.closest('.ng-col') : null;
+    const c = cot ? ngCot[Number(cot.dataset.i)] : null;
+    if (!c) { tip.classList.remove('hien'); return; }
+    tip.innerHTML = ngNoiDungTip(c);
+    tip.classList.add('hien');
+    // Neo theo con trỏ, lật sang trái khi sát mép phải. Đo SAU khi đổ nội dung.
+    const o = tip.getBoundingClientRect();
+    let x = ev.clientX + 16;
+    if (x + o.width > window.innerWidth - 8) x = ev.clientX - o.width - 16;
+    if (x < 8) x = 8;
+    const y = Math.min(Math.max(8, ev.clientY - 28), window.innerHeight - o.height - 8);
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  });
+  hop.addEventListener('mouseleave', function () {
+    tip.classList.remove('hien');
+    const goc = hop.querySelector('.ng-root');
+    if (goc) delete goc.dataset.noi;
+  });
+}
+
+function renderNguon(d, nhanKhoang) {
+  const hop = document.getElementById('trafficNguon');
+  hop.style.opacity = '';
+  const b = d && d.bieuDo;
+  // Phản hồi cũ trong cache 60 giây của api() chưa có khoá này — ẩn, không vỡ.
+  if (!b || !Array.isArray(b.cot)) { hop.innerHTML = ''; return; }
+
+  // Giữ trạng thái đóng/mở của bảng số qua các lần đổi khoảng ngày.
+  const bangDangMo = !!(hop.querySelector('details') && hop.querySelector('details').open);
+
+  ngDon = b.don;
+  ngCot = b.cot.map(function (c) { return Object.assign({}, c, { nhom: ngGom(c.nguon) }); });
+
+  // Tổng cả khoảng theo nhóm lấy từ b.nguon (máy chủ đếm một lượt trên CẢ
+  // khoảng, có khách riêng) — cộng khách của các cột là đếm trùng người.
+  const luot = NHOM_NGUON.map(function () { return 0; });
+  const khach = NHOM_NGUON.map(function () { return 0; });
+  const thanhPhan = NHOM_NGUON.map(function () { return []; });
+  (b.nguon || []).forEach(function (x) {
+    const i = ngNhomCua(x.nguon);
+    luot[i] += x.luot;
+    khach[i] += x.khach;
+    thanhPhan[i].push(x);
+  });
+  const tong = luot.reduce(function (t, x) { return t + x; }, 0);
+  const cuBam = Number(b.cuBamQuangCao) || 0;
+
+  const truc = ngTruc(ngCot.reduce(function (m, c) { return Math.max(m, c.tong); }, 0));
+  const CAO = 240; // khớp .ng-plot { height }
+
+  let luoi = '';
+  for (let v = 0; v <= truc.tran; v += truc.buoc) {
+    luoi += '<div class="ng-luoi' + (v === 0 ? ' ng-day' : '') + '" style="bottom:' + ((v / truc.tran) * 100) + '%">'
+      + '<span>' + ngSo(v) + '</span></div>';
+  }
+
+  let cot = '';
+  ngCot.forEach(function (c, i) {
+    cot += '<div class="ng-col" data-i="' + i + '">';
+    if (c.daQua !== false) {
+      let dayCot = true;
+      c.nhom.forEach(function (v, k) {
+        if (!v) return;
+        // Lớp nhỏ vẫn phải thấy được: lớp đáy tối thiểu 2px, lớp trên 4px (2px
+        // trong đó là khe trắng ngăn cách, còn 2px màu).
+        const cao = Math.max((v / truc.tran) * CAO, dayCot ? 2 : 4);
+        cot += '<div class="ng-seg ng-bg' + (k + 1) + '" style="height:' + cao.toFixed(1) + 'px"></div>';
+        dayCot = false;
+      });
+    }
+    cot += '</div>';
+  });
+
+  // Nhãn trục ngang thưa (~10 nhãn), đếm từ cột CUỐI để hôm nay / tuần này
+  // luôn có nhãn — đó là cột người xem tìm đầu tiên.
+  // Thưa theo BỀ RỘNG thật của vùng vẽ (mỗi nhãn cần ~44px): cố định ~10
+  // nhãn thì trên điện thoại các ngày dính vào nhau thành một dải không đọc
+  // nổi. Vùng vẽ = khung trừ lề, trừ cột danh sách bên phải khi màn rộng.
+  const n = ngCot.length;
+  const rongVe = Math.max(160, hop.clientWidth - 84 - (window.innerWidth >= 1280 ? 328 : 0));
+  const canThua = Math.ceil((n * 44) / rongVe);
+  const thua = ngDon === 'gio'
+    ? (canThua <= 3 ? 3 : canThua <= 6 ? 6 : 12)
+    : Math.max(1, Math.ceil(n / 10), canThua);
+  let x = '';
+  ngCot.forEach(function (c, i) {
+    const ghi = ngDon === 'gio' ? i % thua === 0 : (n - 1 - i) % thua === 0;
+    const nhan = ngDon === 'gio' ? Number(c.moc) + 'h' : ngNgay(ngDon === 'tuan' ? c.tu : c.moc);
+    x += '<span' + (c.daQua === false ? ' class="ng-chua"' : '') + '>' + (ghi ? esc(nhan) : '') + '</span>';
+  });
+
+  const ghiChu = [];
+  if (!tong) ghiChu.push('Chưa có lượt xem nào trong khoảng này.');
+  if (b.batDauDo) {
+    ghiChu.push('Bảng lượt xem bắt đầu đo từ ' + ngNgay(b.batDauDo, true)
+      + ' — trước đó là chưa có số, không phải web vắng khách.');
+  }
+  // Lưới an toàn: bảng cú bấm quảng cáo có số mà lượt xem không tách ra được
+  // Ads nào là dấu hiệu bộ đo hỏng lại (lỗi 26/09/2026: gclid rụng khỏi đường
+  // dẫn nên mọi lượt quảng cáo bị ghi thành Google tự nhiên). Nói thẳng ra
+  // thay vì để A Khoa đọc "Ads = 0" rồi kết luận quảng cáo không ra khách.
+  if (cuBam > 0 && luot[1] === 0) {
+    ghiChu.push('⚠ Có ' + ngSo(cuBam) + ' cú bấm quảng cáo Google trong khoảng này nhưng lượt xem chưa tách ra được Ads — '
+      + 'phần đó đang nằm lẫn trong Google tự nhiên / Gõ thẳng.');
+  }
+
+  let ds = '';
+  NHOM_NGUON.forEach(function (g, i) {
+    // Nhóm rỗng giấu cho gọn — TRỪ Google Ads: vắng dòng đó thì không phân
+    // biệt được "Ads không ra lượt nào" với "màn này không đo Ads".
+    if (!luot[i] && g.k !== 2) return;
+    const pt = tong > 0 ? Math.round((luot[i] / tong) * 100) : 0;
+    // Khách riêng chỉ ghi khi cả nhóm thật sự chỉ có MỘT mã có lượt: cộng khách
+    // riêng của nhiều mã là đếm hai lần người vào từ hai mã trong cùng nhóm.
+    // Nhiều mã thì kể từng mã ra thay cho con số khách.
+    const coMat = thanhPhan[i]
+      .filter(function (t) { return t.luot > 0; })
+      .sort(function (a, c) { return c.luot - a.luot; });
+    const phu = [];
+    if (coMat.length <= 1) phu.push(ngSo(khach[i]) + ' khách');
+    if (g.k === 2) phu.push(ngSo(cuBam) + ' cú bấm quảng cáo');
+    // Khách bấm link trong app Zalo/Messenger thường tới tay KHÔNG kèm nguồn
+    // (app không gửi referrer) — nên Zalo gần như luôn 0 còn Gõ thẳng phình to.
+    if (g.k === 4) phu.push('gồm cả link mở từ app Zalo, Messenger');
+    if (coMat.length > 1) {
+      coMat.forEach(function (t) { phu.push((NHAN_NGAN[t.nguon] || NHAN_NGUON[t.nguon] || t.nguon) + ' ' + ngSo(t.luot)); });
+    } else if (coMat.length === 1 && !(g.ma && coMat[0].nguon === g.ma[0])) {
+      // Nhóm gộp mà chỉ một mã phụ có lượt: nói rõ là mã nào ("toàn bộ là
+      // Instagram"). Mã chính của nhóm thì tên nhóm đã nói rồi.
+      phu.push('toàn bộ là ' + (NHAN_NGAN[coMat[0].nguon] || NHAN_NGUON[coMat[0].nguon] || coMat[0].nguon));
+    }
+    ds += '<div class="ng-muc" data-nhom="' + g.k + '">'
+      + '<div class="flex items-center gap-2">'
+      + '<span class="ng-o ng-bg' + g.k + '"></span>'
+      + '<span class="flex-1 min-w-0 truncate text-sm text-gray-700">' + esc(g.ten) + '</span>'
+      + '<span class="ng-so text-sm font-semibold text-gray-800">' + ngSo(luot[i]) + '</span>'
+      + '<span class="ng-so w-10 text-right text-xs text-gray-400">' + pt + '%</span>'
+      + '</div>'
+      + '<div class="ng-thanh"><div class="ng-bg' + g.k + '" style="width:' + pt + '%"></div></div>'
+      + '<p class="text-xs text-gray-400 mt-1">' + esc(phu.join(' · ')) + '</p>'
+      + '</div>';
+  });
+
+  // Bảng số: bản chữ của biểu đồ — đọc được mọi con số mà không cần rê chuột.
+  // Mới nhất lên đầu; giờ chưa tới thì bỏ.
+  let bang = '';
+  ngCot.slice().reverse().forEach(function (c) {
+    if (c.daQua === false) return;
+    bang += '<tr><td>' + esc(ngNhanCot(c)) + '</td><td>' + ngSo(c.tong) + '</td>'
+      + c.nhom.map(function (v) { return '<td>' + (v ? ngSo(v) : '·') + '</td>'; }).join('') + '</tr>';
+  });
+
+  const donTen = ngDon === 'gio' ? 'giờ' : ngDon === 'tuan' ? 'tuần' : 'ngày';
+  hop.innerHTML = '<div class="ng-root bg-white rounded-xl shadow-sm border">'
+    + '<div class="px-5 py-3 border-b bg-gray-50 rounded-t-xl flex flex-wrap items-center justify-between gap-2">'
+    + '<div><h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-column text-amber-500 mr-2"></i>Khách đến từ đâu</h3>'
+    + '<p class="text-xs text-gray-400 mt-0.5">Lượt xem chia theo nguồn khách, ' + esc(nhanKhoang || '') + ' · mỗi cột là một ' + donTen
+    + ' — rê chuột lên cột để xem số</p></div>'
+    + '<p class="text-sm text-gray-500"><span class="font-semibold text-gray-800">' + ngSo(tong) + '</span> lượt xem</p>'
+    + '</div>'
+    + '<div class="ng-than">'
+    + '<div class="min-w-0"><div class="ng-plot">' + luoi + '<div class="ng-cols">' + cot + '</div></div>'
+    + '<div class="ng-x">' + x + '</div>'
+    + (ghiChu.length ? '<div class="mt-3 space-y-1">' + ghiChu.map(function (g) { return '<p class="text-xs text-gray-500">' + esc(g) + '</p>'; }).join('') + '</div>' : '')
+    + '</div>'
+    + '<div>' + ds + '</div>'
+    + '</div>'
+    + '<details class="px-5 pb-4"' + (bangDangMo ? ' open' : '') + '>'
+    + '<summary class="text-xs text-gray-500 cursor-pointer select-none">Xem bảng số theo ' + donTen + '</summary>'
+    + '<div class="mt-2 overflow-x-auto max-h-80 overflow-y-auto"><table class="ng-bang"><thead><tr><th>' + (ngDon === 'gio' ? 'Giờ' : ngDon === 'tuan' ? 'Tuần' : 'Ngày') + '</th><th>Tổng</th>'
+    + NHOM_NGUON.map(function (g) { return '<th>' + esc(g.ten) + '</th>'; }).join('')
+    + '</tr></thead><tbody>' + bang + '</tbody></table></div></details>'
+    + '</div>';
+
+  ngGanTip();
 }
 
 // ========== SPECS ==========

@@ -16,6 +16,12 @@ import { docIpNoiBo, gopIpNoiBo, laIpNoiBo, type IpNoiBo } from "./ip-noi-bo";
 import { khuVuc } from "./geo";
 import { gomKhachIp, gomTheoKhuVuc, type LuotKhachIp } from "./khach-ip";
 import {
+  chuoiNgayVN,
+  donViCot,
+  dungCot,
+  type DongCotTho,
+} from "./bieu-do-nguon";
+import {
   docChu,
   gomChieu,
   gomNoiDung,
@@ -763,7 +769,20 @@ export class AnalyticsService {
     // khách vào từ hai nguồn hoá hai khách, và con số in trên dòng sẽ không
     // khớp với chính nó ở khoảng ngày khác. Hai câu sau chỉ đếm lượt nên cộng
     // kiểu gì cũng đúng — xem gomChieu().
-    const [theoTrang, theoNguon, theoThietBi] = await Promise.all([
+    //
+    // Ba câu sau cùng là cho biểu đồ "Khách đến từ đâu" (bieu-do-nguon.ts):
+    // lượt theo (mốc thời gian × nguồn), khách riêng theo nguồn cho cả khoảng,
+    // và số cú bấm quảng cáo Google ghi được trong khoảng.
+    const don = donViCot(soNgay);
+    const [
+      theoTrang,
+      theoNguon,
+      theoThietBi,
+      cotTho,
+      nguonCaKhoang,
+      batDauDoRaw,
+      cuBamQc,
+    ] = await Promise.all([
       this.prisma.$queryRaw<
         { path: string; luot: number; khach: number; moiNhat: Date | null }[]
       >`
@@ -791,6 +810,62 @@ export class AnalyticsService {
         WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
           AND "createdAt" <  ${den}::timestamptz AT TIME ZONE 'UTC'
         GROUP BY 1, 2
+      `,
+      // Cắt mốc theo giờ Việt Nam NGAY TRONG SQL, cùng cách với summary():
+      // AT TIME ZONE 'UTC' trước (cột là giờ UTC không kèm múi) rồi mới đổi
+      // sang giờ ta. Cắt ở JS bằng giờ máy chủ là lệch 7 tiếng.
+      //
+      // Theo tuần vẫn lấy theo NGÀY rồi gom tuần ở dungCot(): tối đa 365 × số
+      // nguồn dòng, rẻ, và luật "tuần bắt đầu thứ Hai" chỉ viết một chỗ.
+      don === "gio"
+        ? this.prisma.$queryRaw<DongCotTho[]>`
+            SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${MUI_GIO}, 'HH24') AS moc,
+                   "source" AS nguon,
+                   COUNT(*)::int AS luot
+            FROM koi_free_style.koi_page_views
+            WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+              AND "createdAt" <  ${den}::timestamptz AT TIME ZONE 'UTC'
+            GROUP BY 1, 2
+          `
+        : this.prisma.$queryRaw<DongCotTho[]>`
+            SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${MUI_GIO}, 'YYYY-MM-DD') AS moc,
+                   "source" AS nguon,
+                   COUNT(*)::int AS luot
+            FROM koi_free_style.koi_page_views
+            WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+              AND "createdAt" <  ${den}::timestamptz AT TIME ZONE 'UTC'
+            GROUP BY 1, 2
+          `,
+      // Khách riêng theo nguồn phải đếm trên CẢ khoảng trong một câu: cộng khách
+      // của từng cột lại là đếm một người vào sáng và chiều thành hai.
+      this.prisma.$queryRaw<{ nguon: string; luot: number; khach: number }[]>`
+        SELECT "source" AS nguon,
+               COUNT(*)::int AS luot,
+               COUNT(DISTINCT "visitorHash")::int AS khach
+        FROM koi_free_style.koi_page_views
+        WHERE "createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+          AND "createdAt" <  ${den}::timestamptz AT TIME ZONE 'UTC'
+        GROUP BY 1
+        ORDER BY 2 DESC
+      `,
+      // Ngày bắt đầu đo — để biểu đồ "1 năm" không vẽ mười tháng cột 0 trước
+      // khi bảng này ra đời. MIN trên cột có index nên chỉ đọc một dòng.
+      don === "gio"
+        ? Promise.resolve([] as { ngay: string | null }[])
+        : this.prisma.$queryRaw<{ ngay: string | null }[]>`
+            SELECT to_char((MIN("createdAt") AT TIME ZONE 'UTC') AT TIME ZONE ${MUI_GIO}, 'YYYY-MM-DD') AS ngay
+            FROM koi_free_style.koi_page_views
+          `,
+      // Cú bấm quảng cáo đếm ở bảng RIÊNG (koi_ad_clicks, ghi lúc khách vừa
+      // từ quảng cáo đáp xuống) — để A Khoa đối chiếu với dòng "Google Ads"
+      // tính từ lượt xem. Đếm MÃ KHÁC NHAU chứ không đếm dòng: batGclid() ghi
+      // thêm một dòng mỗi lần khách nạp lại trang còn ?gclid= trên URL, đếm
+      // dòng là dư chừng 10% so với số Clicks Google Ads báo.
+      this.prisma.$queryRaw<{ n: number }[]>`
+        SELECT COUNT(DISTINCT COALESCE(gclid, gbraid, wbraid, token))::int AS n
+        FROM koi_free_style.koi_ad_clicks
+        WHERE "clickedAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+          AND "clickedAt" <  ${den}::timestamptz AT TIME ZONE 'UTC'
       `,
     ]);
 
@@ -902,6 +977,22 @@ export class AnalyticsService {
 
     const cong = (ds: { luot: number }[]) => ds.reduce((t, x) => t + x.luot, 0);
 
+    const batDauDo = batDauDoRaw[0]?.ngay ?? null;
+    const cotBieuDo = dungCot({
+      don,
+      dong: cotTho,
+      ngay: chuoiNgayVN(tu, soNgay),
+      // "Hôm nay" mới có giờ chưa tới; khoảng đã khép (hôm qua) thì mọi giờ đều
+      // qua. Tính từ CHÍNH hai mốc của khoảng, không đọc lại đồng hồ: gọi lúc
+      // 23:59:59 mà truy vấn chạy qua nửa đêm thì đồng hồ mới trả 0 giờ, và cả
+      // ngày hôm nay bị vẽ thành "chưa tới".
+      gioHienTai:
+        luiCuoi === 0
+          ? Math.min(23, Math.max(0, Math.floor((+den - +tu) / 3_600_000)))
+          : null,
+      batDauDo,
+    });
+
     return {
       days: soNgay,
       // Trả CẢ hai mốc ra ngoài. Chỉ trả `from` như trước thì màn admin không
@@ -913,7 +1004,11 @@ export class AnalyticsService {
       tong: {
         // Tổng lượt của TOÀN khoảng thời gian, không phải tổng của phần cắt
         // `limit` bên dưới — để A Khoa thấy ngay ba nhóm chiếm bao nhiêu phần.
-        tatCa: cong(theoTrang),
+        //
+        // Cộng từ câu theo-nguồn (không giới hạn dòng) chứ không từ theoTrang:
+        // theoTrang cắt LIMIT 3000 đường dẫn, khoảng nào vượt mức đó thì thẻ
+        // tổng hụt so với biểu đồ ngay bên dưới.
+        tatCa: cong(nguonCaKhoang),
         sanPham: cong(sanPham as { luot: number }[]),
         baiViet: cong(baiViet as { luot: number }[]),
         khac: cong(trangKhac),
@@ -923,6 +1018,17 @@ export class AnalyticsService {
       sanPham: sanPham.slice(0, gioiHan),
       baiViet: baiViet.slice(0, gioiHan),
       trangKhac: trangKhac.slice(0, gioiHan),
+      // Biểu đồ "Khách đến từ đâu". Mã nguồn trả THÔ (google_organic, direct…);
+      // gom nhóm và đặt nhãn là việc của màn admin, như NHAN_NGUON sẵn có.
+      bieuDo: {
+        don,
+        cot: cotBieuDo.cot,
+        // Chỉ trả mốc khi thật sự đã cắt cột — màn admin dựa vào đó để ghi chú
+        // "bắt đầu đo từ…", trả luôn thì chú thích hiện cả ở "7 ngày".
+        batDauDo: cotBieuDo.daCatDau ? batDauDo : null,
+        nguon: nguonCaKhoang,
+        cuBamQuangCao: cuBamQc[0]?.n ?? 0,
+      },
     };
   }
 
