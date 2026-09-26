@@ -4,7 +4,9 @@ import {
   BadRequestException,
   Logger,
 } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { sapAnhChinh, type CachChonAnhChinh } from "./anh-chinh";
 import { generateImageAltText } from "../seo/seo-generator.helper";
 import {
   isSupabaseProductUrl,
@@ -19,6 +21,68 @@ export class MediaService {
   private logger = new Logger(MediaService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Giữ bất biến "ảnh chính = tấm đứng đầu" cho một sản phẩm — xem anh-chinh.ts.
+   * Mọi đường ghi ảnh (đặt bìa, sắp thứ tự, tải lên, xoá) đều gọi hàm này sau
+   * khi ghi, trong CÙNG giao dịch.
+   *
+   * Ghi bằng MỘT câu UPDATE … FROM unnest chứ không mỗi tấm một câu: sản phẩm
+   * 20 ảnh mà gọi 20 câu qua pooler thì dễ vượt 5 giây mặc định của giao dịch
+   * Prisma (đã dính thật 26/09 khi chạy tools/chon-anh-chinh.mjs).
+   */
+  private async chotAnhChinh(
+    db: Prisma.TransactionClient,
+    productId: string,
+    cach: CachChonAnhChinh,
+  ): Promise<void> {
+    const anh = await db.koiProductImage.findMany({
+      where: { productId },
+      select: {
+        id: true,
+        displayOrder: true,
+        isPrimary: true,
+        createdAt: true,
+      },
+    });
+    const doi = sapAnhChinh(anh, cach);
+    if (!doi.length) return;
+    await db.$executeRaw`
+      UPDATE koi_free_style.koi_product_images i
+      SET "displayOrder" = m.thu_tu, "isPrimary" = m.chinh, "updatedAt" = now()
+      FROM unnest(
+        ${doi.map((d) => d.id)}::text[],
+        ${doi.map((d) => d.displayOrder)}::int[],
+        ${doi.map((d) => d.isPrimary)}::boolean[]
+      ) AS m(id, thu_tu, chinh)
+      WHERE i.id = m.id AND i."productId" = ${productId}
+    `;
+  }
+
+  /**
+   * Giao dịch ghi ảnh của MỘT sản phẩm, chạy lần lượt từng cái một.
+   *
+   * Khoá theo sản phẩm (pg_advisory_xact_lock, tự nhả khi giao dịch kết thúc)
+   * trước mọi thứ: chotAnhChinh đọc rồi mới ghi, nên hai thao tác cùng lúc
+   * trên một sản phẩm — bấm sao ở hai tấm liên tiếp trong SPA, hai tab cùng tải
+   * ảnh — mà không khoá thì cả hai đọc cùng trạng thái cũ và có thể để lại HAI
+   * tấm mang cờ cùng đứng vị trí 0. Khoá rồi thì cái sau đọc đúng kết quả cái
+   * trước. Chỉ chặn các thao tác trên CÙNG sản phẩm, sản phẩm khác không chờ.
+   *
+   * Timeout 20 giây: mặc định Prisma 5 giây là hụt khi đi qua pooler.
+   */
+  private giaoDich<T>(
+    productId: string,
+    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  ) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${productId}))`;
+        return fn(tx);
+      },
+      { timeout: 20_000, maxWait: 10_000 },
+    );
+  }
 
   async registerImage(
     productId: string,
@@ -58,41 +122,47 @@ export class MediaService {
       }
     }
 
-    const lastImage = await this.prisma.koiProductImage.findFirst({
-      where: { productId },
-      orderBy: { displayOrder: "desc" },
-    });
-    const displayOrder = lastImage ? lastImage.displayOrder + 1 : 0;
-
-    if (data.isPrimary) {
-      await this.prisma.koiProductImage.updateMany({
-        where: { productId, isPrimary: true },
-        data: { isPrimary: false },
-      });
-    }
-
     const nameObj = product.name as any;
     const productName = nameObj?.vi || nameObj?.en || "Koi Leather product";
     const finalAltText =
       data.altText ||
       generateImageAltText(productName, data.imageType || "STUDIO");
 
-    return this.prisma.koiProductImage.create({
-      data: {
+    // Tạo xong mới chốt ảnh chính, cùng giao dịch. Tick "ảnh chính" thì tấm
+    // mới lên ĐẦU (bản cũ để nó nằm cuối mà mang cờ — thẻ một ảnh, trang chi
+    // tiết một ảnh). Không tick thì giữ bìa cũ; sản phẩm chưa có ảnh nào thì
+    // tấm này tự thành bìa.
+    return this.giaoDich(productId, async (tx) => {
+      // Tính vị trí cuối TRONG giao dịch đã khoá: hai lượt tải cùng lúc mà tính
+      // ngoài khoá thì cùng ra một số, hai tấm trùng vị trí.
+      const lastImage = await tx.koiProductImage.findFirst({
+        where: { productId },
+        orderBy: { displayOrder: "desc" },
+      });
+      const displayOrder = lastImage ? lastImage.displayOrder + 1 : 0;
+      const moi = await tx.koiProductImage.create({
+        data: {
+          productId,
+          variantId: variantId || null,
+          url: data.cloudinaryUrl,
+          thumbnailUrl: data.thumbnailUrl,
+          mediumUrl: data.mediumUrl || data.cloudinaryUrl,
+          altText: finalAltText,
+          imageType: data.imageType || "STUDIO",
+          isPrimary: false,
+          displayOrder,
+          mimeType: data.mimeType || "image/webp",
+          fileSize: data.fileSize || null,
+          width: data.width || null,
+          height: data.height || null,
+        },
+      });
+      await this.chotAnhChinh(
+        tx,
         productId,
-        variantId: variantId || null,
-        url: data.cloudinaryUrl,
-        thumbnailUrl: data.thumbnailUrl,
-        mediumUrl: data.mediumUrl || data.cloudinaryUrl,
-        altText: finalAltText,
-        imageType: data.imageType || "STUDIO",
-        isPrimary: data.isPrimary || false,
-        displayOrder,
-        mimeType: data.mimeType || "image/webp",
-        fileSize: data.fileSize || null,
-        width: data.width || null,
-        height: data.height || null,
-      },
+        data.isPrimary ? { chon: moi.id } : { uuTien: "co-san" },
+      );
+      return tx.koiProductImage.findUniqueOrThrow({ where: { id: moi.id } });
     });
   }
 
@@ -183,10 +253,22 @@ export class MediaService {
     });
     if (!image) throw new NotFoundException("Image not found");
 
+    // Ghi DB TRƯỚC, xoá file SAU. Xoá file là bước không lùi được: làm trước
+    // mà giao dịch hỏng thì dòng ảnh còn nguyên nhưng file đã mất — mặt tiền
+    // hiện ảnh vỡ, có khi đúng ảnh bìa. Làm sau thì cùng lắm sót một file mồ
+    // côi trong kho, không ai thấy.
+    //
+    // Xoá xong chốt lại ảnh chính: xoá đúng tấm bìa thì tấm kế tiếp thành bìa,
+    // thứ tự liền lại từ 0 — không để sản phẩm rơi vào cảnh không có ảnh chính.
+    await this.giaoDich(image.productId, async (tx) => {
+      await tx.koiProductImage.delete({ where: { id: imageId } });
+      await this.chotAnhChinh(tx, image.productId, { uuTien: "co-san" });
+    });
+
     // Kiểm tra xem URL ảnh có đang được tham chiếu bởi sản phẩm khác không
+    // (dòng vừa xoá đã không còn, nên không cần loại trừ nó nữa).
     const otherRefs = await this.prisma.koiProductImage.count({
       where: {
-        id: { not: imageId },
         OR: [
           { url: image.url },
           { thumbnailUrl: image.thumbnailUrl },
@@ -204,7 +286,6 @@ export class MediaService {
       );
     }
 
-    await this.prisma.koiProductImage.delete({ where: { id: imageId } });
     return {
       deleted: true,
       cloudinaryPublicId: image.url.split("/").pop()?.split(".")[0],
@@ -256,13 +337,11 @@ export class MediaService {
       throw new NotFoundException("Image not found for this product");
     }
 
-    await this.prisma.koiProductImage.updateMany({
-      where: { productId, isPrimary: true },
-      data: { isPrimary: false },
-    });
-    return this.prisma.koiProductImage.update({
-      where: { id: imageId },
-      data: { isPrimary: true },
+    // "Đặt bìa" = tấm này lên ĐẦU và mang cờ. Bản cũ chỉ đổi cờ: thẻ sản phẩm
+    // đổi ảnh nhưng trang chi tiết (xếp theo displayOrder) vẫn mở bằng tấm cũ.
+    return this.giaoDich(productId, async (tx) => {
+      await this.chotAnhChinh(tx, productId, { chon: imageId });
+      return tx.koiProductImage.findUniqueOrThrow({ where: { id: imageId } });
     });
   }
 
@@ -270,13 +349,26 @@ export class MediaService {
     productId: string,
     items: { id: string; displayOrder: number }[],
   ) {
-    const updates = items.map((item) =>
-      this.prisma.koiProductImage.updateMany({
-        where: { id: item.id, productId },
-        data: { displayOrder: item.displayOrder },
-      }),
+    // Sắp xong thì tấm đứng đầu thành bìa — đúng thứ người sắp nhìn thấy: tấm
+    // đầu là tấm mở trang chi tiết, nên thẻ sản phẩm cũng phải là tấm đó.
+    const hopLe = items.filter(
+      (it) =>
+        it && typeof it.id === "string" && Number.isInteger(it.displayOrder),
     );
-    await Promise.all(updates);
+    await this.giaoDich(productId, async (tx) => {
+      if (hopLe.length) {
+        await tx.$executeRaw`
+          UPDATE koi_free_style.koi_product_images i
+          SET "displayOrder" = m.thu_tu, "updatedAt" = now()
+          FROM unnest(
+            ${hopLe.map((it) => it.id)}::text[],
+            ${hopLe.map((it) => it.displayOrder)}::int[]
+          ) AS m(id, thu_tu)
+          WHERE i.id = m.id AND i."productId" = ${productId}
+        `;
+      }
+      await this.chotAnhChinh(tx, productId, { uuTien: "dau" });
+    });
     return this.getProductImages(productId);
   }
 

@@ -25,6 +25,7 @@ import {
   ApiConsumes,
 } from "@nestjs/swagger";
 import { MediaService } from "./media.service";
+import { RevalidateStorefrontInterceptor } from "../common/revalidate-storefront.interceptor";
 import {
   isSupabaseStorageConfigured,
   uploadImageWithVariants,
@@ -81,6 +82,12 @@ class ReorderDto {
 
 @ApiTags("Media")
 @Controller("products/:productId/images")
+// Ghi ảnh xong thì báo storefront dọn cache sản phẩm (cùng cơ chế với
+// ProductController). Thiếu dòng này thì đặt bìa / sắp thứ tự / tải / xoá ảnh
+// trong admin phải chờ hết cacheLife ('hours') mới hiện ra ngoài web. Có nó thì
+// storefront đánh dấu cũ ngay; revalidateTag(…, 'max') vẫn trả bản cũ cho LƯỢT
+// XEM ĐẦU rồi dựng lại nền — lượt tải thứ hai mới thấy ảnh mới.
+@UseInterceptors(RevalidateStorefrontInterceptor)
 export class MediaController {
   private readonly logger = new Logger(MediaController.name);
 
