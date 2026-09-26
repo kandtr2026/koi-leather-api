@@ -68,6 +68,10 @@ const daTheoCode = new Map(DA.map((c) => [c.code, c]));
 
 // ---------- ứng viên ----------
 const kiemKe = Object.values(docJson(path.join(RA, 'kiem-ke.json')));
+// Thư mục Gemini đã soi lại và xác nhận KHÔNG trùng (tools/anh-moi-soi-trung.mjs):
+// vân tay khớp nhầm đúng 1 tấm → bỏ dấu trùng, đưa lại hàng đăng.
+const khongTrung = new Set(docJson(path.join(RA, 'khong-trung.json'), []));
+for (const x of kiemKe) if (khongTrung.has(x.duong)) x.trung = {};
 const maDaCoTrenWeb = new Set(kiemKe.filter((x) => x.ma && Object.keys(x.trung).length).map((x) => x.ma));
 const nhom = new Map(); // gộp các thư mục ngày cùng mã đơn thành MỘT sản phẩm
 for (const x of kiemKe) {
