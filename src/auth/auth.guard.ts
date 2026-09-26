@@ -341,6 +341,14 @@ export class AuthGuard implements CanActivate {
     // chủ đích. Token chỉ chạy server-side sau khi storefront đã gác mật khẩu.
     if (token && this.laAdminWriteToken(token)) {
       const d = chuanHoaDuong(path);
+      // Ngoại lệ DUY NHẤT ngoài nhóm catalog: storefront báo IP người nhà (vừa
+      // xác nhận đăng nhập quản trị) — src/analytics/nguoi-nha.ts. Khớp ĐÚNG
+      // method + đường, không theo tiền tố: đường ghi nào thêm sau này dưới
+      // /analytics/nguoi-nha/* không được tự động mở cho token catalog.
+      if (method === "POST" && d === "/analytics/nguoi-nha") {
+        request.user = { service: "koi-admin-write", chiGhi: true };
+        return true;
+      }
       const duocPhep =
         !["GET", "HEAD", "OPTIONS"].includes(method) &&
         ADMIN_GHI_TIEN_TO.some((p) => d === p || d.startsWith(p + "/"));

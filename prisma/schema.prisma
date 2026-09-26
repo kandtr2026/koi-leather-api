@@ -641,6 +641,35 @@ model KoiMaterialCategory {
   @@schema("koi_free_style")
 }
 
+/// IP "người nhà" (đã đăng nhập quản trị) theo NGÀY lịch Việt Nam — lượt xem
+/// của IP đó trong ngày đó không tính vào thống kê. Xem src/analytics/nguoi-nha.ts.
+model KoiIpNguoiNha {
+  ip      String
+  ngay    String
+  nguon   String
+  lanDau  DateTime @default(now()) @map("lan_dau") @db.Timestamptz(6)
+  lanCuoi DateTime @default(now()) @map("lan_cuoi") @db.Timestamptz(6)
+  soLan   Int      @default(1) @map("so_lan")
+
+  @@id([ip, ngay])
+  @@map("koi_ip_nguoi_nha")
+  @@schema("koi_free_style")
+}
+
+/// Lượt xem / cú bấm liên hệ của người nhà đã DỜI khỏi bảng chính (nguyên dòng
+/// dạng JSON) — trả lại được bằng tools/loai-nguoi-nha.mjs --hoan.
+model KoiLuotNguoiNha {
+  bang      String
+  id        String
+  duLieu    Json     @map("du_lieu")
+  lyDo      String?  @map("ly_do")
+  chuyenLuc DateTime @default(now()) @map("chuyen_luc") @db.Timestamptz(6)
+
+  @@id([bang, id])
+  @@map("koi_luot_nguoi_nha")
+  @@schema("koi_free_style")
+}
+
 /// Một lượt xem trang trên storefront koileather.com.
 ///
 /// Từ 2026-08 có thêm `ip` và `khuVuc` (xem cột). Trước đó thiết kế cố ý không

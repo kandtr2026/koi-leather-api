@@ -435,3 +435,75 @@ describe("AuthGuard — token ghi cho Heoiu", () => {
     });
   });
 });
+
+/**
+ * POST /analytics/nguoi-nha — storefront báo IP người nhà (26/09/2026).
+ *
+ * Đường này DỜI lượt xem của cả một IP trong ngày sang bảng lưu riêng, nên ai
+ * gọi được là xoá được số liệu của người khác khỏi thống kê. Chỉ admin (JWT)
+ * và token GHI admin của storefront được gọi, và token đó chỉ được ĐÚNG đường
+ * này — không phải cả nhóm /analytics.
+ */
+describe("AuthGuard — POST /analytics/nguoi-nha", () => {
+  const TOKEN_ADMIN_GHI = "a".repeat(48);
+  const TOKEN_ADMIN_DOC = "r".repeat(48);
+  const envCu = {
+    HEOIU_SERVICE_TOKEN: process.env.HEOIU_SERVICE_TOKEN,
+    HEOIU_WRITE_TOKEN: process.env.HEOIU_WRITE_TOKEN,
+    KOI_ADMIN_WRITE_TOKEN: process.env.KOI_ADMIN_WRITE_TOKEN,
+    KOI_ADMIN_READ_TOKEN: process.env.KOI_ADMIN_READ_TOKEN,
+  };
+
+  beforeEach(() => {
+    process.env.HEOIU_SERVICE_TOKEN = TOKEN;
+    process.env.HEOIU_WRITE_TOKEN = TOKEN_GHI;
+    process.env.KOI_ADMIN_WRITE_TOKEN = TOKEN_ADMIN_GHI;
+    process.env.KOI_ADMIN_READ_TOKEN = TOKEN_ADMIN_DOC;
+  });
+
+  afterAll(() => {
+    for (const [k, v] of Object.entries(envCu)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  it("token ghi admin của storefront gọi được", () => {
+    const { guard } = guardMoi();
+    const { ctx: c, request } = ctx(
+      "POST",
+      "/analytics/nguoi-nha",
+      TOKEN_ADMIN_GHI,
+    );
+    expect(guard.canActivate(c)).toBe(true);
+    expect(request.user).toEqual({ service: "koi-admin-write", chiGhi: true });
+  });
+
+  it("chữ hoa / dấu / cuối vẫn là cùng đường — không lách được mà cũng không chặn oan", () => {
+    const { guard } = guardMoi();
+    const { ctx: c } = ctx("POST", "/Analytics/Nguoi-Nha/", TOKEN_ADMIN_GHI);
+    expect(guard.canActivate(c)).toBe(true);
+  });
+
+  it.each([
+    ["/analytics/nguoi-nha/x", "POST"], // đường con thêm sau này không tự mở
+    ["/analytics/nguoi-nha", "DELETE"],
+    ["/analytics/nguoi-nha", "GET"],
+    ["/analytics/summary", "POST"],
+  ])("token ghi admin KHÔNG được %s (%s)", (path, method) => {
+    const { guard } = guardMoi();
+    const { ctx: c } = ctx(method, path, TOKEN_ADMIN_GHI);
+    expect(() => guard.canActivate(c)).toThrow(UnauthorizedException);
+  });
+
+  it.each([
+    ["token đọc Heoiu", TOKEN],
+    ["token ghi Heoiu", TOKEN_GHI],
+    ["token đọc admin", TOKEN_ADMIN_DOC],
+    ["không có token", undefined],
+  ])("%s bị chặn", (_ten, token) => {
+    const { guard } = guardMoi();
+    const { ctx: c } = ctx("POST", "/analytics/nguoi-nha", token);
+    expect(() => guard.canActivate(c)).toThrow(UnauthorizedException);
+  });
+});

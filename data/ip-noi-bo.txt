@@ -13,3 +13,6 @@
 113.161.0.0/16   # may test nha (VNPT, IP dong)
 115.78.0.0/16    # may test nha (Viettel, IP dong)
 118.70.0.0/24    # van phong
+
+# Agent tự động — A Khoa đặt hàng 26/09/2026 loại khỏi thống kê.
+103.142.26.210/32  # Mon Brain (Hermes agent) — VPS kitleather

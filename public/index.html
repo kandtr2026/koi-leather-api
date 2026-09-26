@@ -6280,7 +6280,14 @@ init();
   function hoiRoiVe() {
     fetch('/api/gop-y/phien', { cache: 'no-store', headers: dauHeader() })
       .then(function (r) { return r.ok ? r.json() : { admin: false }; })
-      .then(function (j) { if (j && j.admin && !nut) ve(); })
+      .then(function (j) {
+        if (!j || !j.admin) return;
+        // Máy người nhà: storefront đọc cùng khoá này (koi-storefront/src/lib/
+        // may-nguoi-nha.ts) để thôi đếm lượt xem của máy này vào thống kê.
+        // Cùng tên miền koileather.com nên chung localStorage.
+        try { localStorage.setItem('koi_nguoi_nha', String(Date.now())); } catch (e) {}
+        if (!nut) ve();
+      })
       .catch(function () { /* không có thì thôi, im lặng */ });
   }
   hoiRoiVe();

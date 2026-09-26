@@ -122,6 +122,24 @@ export class AnalyticsController {
     return this.analytics.summary(Number(days) || 30);
   }
 
+  /**
+   * Ghi nhận IP "người nhà" (vừa được xác nhận đăng nhập quản trị) cho hôm nay
+   * — A Khoa đặt hàng 26/09/2026, xem src/analytics/nguoi-nha.ts.
+   *
+   * Storefront gọi từ /api/gop-y/phien bằng KOI_ADMIN_WRITE_TOKEN (guard mở
+   * riêng đường này cho token đó), hoặc SPA gọi thẳng bằng JWT admin. Nằm dưới
+   * /analytics chứ không phải /shop: đường /shop mở cho mọi người, để đó là ai
+   * cũng tự khai được IP bất kỳ là "người nhà" và xoá lượt xem của người khác.
+   */
+  @Post("nguoi-nha")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Đánh dấu IP người nhà (đã đăng nhập quản trị) hôm nay",
+  })
+  nguoiNha(@Body() body: { ip?: string; nguon?: string }) {
+    return this.analytics.ghiNguoiNha({ ip: body?.ip, nguon: body?.nguon });
+  }
+
   @Get("realtime")
   @ApiOperation({ summary: "Khách đang ở trên web ngay lúc này" })
   realtime() {

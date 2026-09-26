@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
@@ -21,6 +21,13 @@ import {
   dungCot,
   type DongCotTho,
 } from "./bieu-do-nguon";
+import {
+  DemNguoiNha,
+  chuanHoaIp,
+  khoaNguoiNha,
+  mocNgayVN,
+  ngayVNCua,
+} from "./nguoi-nha";
 import {
   docChu,
   gomChieu,
@@ -146,6 +153,135 @@ const TRAN_LUOT_HANH_VI = 200_000;
 @Injectable()
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
+
+  /** Đệm "IP này hôm nay là người nhà" cho đường ghi — xem nguoi-nha.ts. */
+  private readonly demNguoiNha = new DemNguoiNha();
+
+  /**
+   * IP này HÔM NAY đã đăng nhập quản trị chưa (người nhà) — A Khoa đặt hàng
+   * 26/09/2026. Xem đầu nguoi-nha.ts.
+   *
+   * Hỏng thì coi là KHÁCH (trả false): bảng chưa tạo, cơ sở dữ liệu chập, hay
+   * test dựng Prisma giả không có $queryRaw. Đếm dư một người nhà còn hơn âm
+   * thầm nuốt một khách thật.
+   */
+  private async laIpNguoiNha(ipTho: string): Promise<boolean> {
+    const ip = chuanHoaIp(ipTho);
+    if (!ip) return false;
+    const bayGio = Date.now();
+    const ngay = ngayVNCua(new Date(bayGio));
+    const khoa = khoaNguoiNha(ip, ngay);
+    const nho = this.demNguoiNha.doc(khoa, bayGio);
+    if (nho !== undefined) return nho;
+    let la: boolean;
+    try {
+      const r = await this.prisma.$queryRaw<{ co: number }[]>`
+        SELECT 1 AS co FROM koi_free_style.koi_ip_nguoi_nha
+        WHERE ip = ${ip} AND ngay = ${ngay}
+        LIMIT 1
+      `;
+      la = r.length > 0;
+    } catch {
+      return false;
+    }
+    this.demNguoiNha.ghi(khoa, la, bayGio, +mocNgayVN(ngay).den);
+    return la;
+  }
+
+  /**
+   * Ghi nhận một IP vừa được xác nhận là quản trị (người nhà) trong hôm nay,
+   * rồi dời những lượt xem / cú bấm liên hệ nó đã lỡ ghi từ đầu ngày sang
+   * bảng lưu riêng koi_luot_nguoi_nha.
+   *
+   * Gọi từ storefront /api/gop-y/phien — chỗ duy nhất nhận ra cả hai kiểu đăng
+   * nhập quản trị. Dời lại MỖI lần gọi chứ không riêng lần đầu: máy chủ khác
+   * đang đệm "không phải người nhà" (tối đa 15 giây) có thể lọt thêm vài lượt
+   * sau lần đầu; quét lại rẻ vì chỉ đụng một IP trong một ngày.
+   */
+  async ghiNguoiNha(input: { ip: unknown; nguon?: unknown }) {
+    const ip = chuanHoaIp(input.ip);
+    if (!ip) throw new BadRequestException("IP không hợp lệ");
+    const nguon =
+      typeof input.nguon === "string" && input.nguon.trim()
+        ? input.nguon.trim().slice(0, 40)
+        : "quan-tri";
+    const bayGio = new Date();
+    const ngay = ngayVNCua(bayGio);
+    const { tu, den } = mocNgayVN(ngay);
+
+    const dong = await this.prisma.$queryRaw<{ moi: boolean }[]>`
+      INSERT INTO koi_free_style.koi_ip_nguoi_nha (ip, ngay, nguon)
+      VALUES (${ip}, ${ngay}, ${nguon})
+      ON CONFLICT (ip, ngay) DO UPDATE
+        SET lan_cuoi = now(), so_lan = koi_free_style.koi_ip_nguoi_nha.so_lan + 1
+      RETURNING (xmax = 0) AS moi
+    `;
+    this.demNguoiNha.ghi(khoaNguoiNha(ip, ngay), true, +bayGio, +den);
+
+    const lyDo = `nguoi-nha:${nguon}:${ngay}`;
+    // Lượt xem và cú bấm liên hệ dời trong MỘT giao dịch: hỏng giữa chừng thì
+    // cả hai cùng lùi, không có chuyện lượt xem đã dời mà cú bấm ở lại mãi.
+    const daDoi = await this.prisma.$transaction(async (tx) => {
+      // DELETE … RETURNING rồi INSERT trong một câu: dời nguyên tử. Lưu cả dòng
+      // dạng JSON để bảng chính có thêm cột sau này vẫn trả lại được.
+      const [xem] = await tx.$queryRaw<{ n: number }[]>`
+        WITH doi AS (
+          DELETE FROM koi_free_style.koi_page_views v
+          WHERE v.ip = ${ip}
+            AND v."createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+            AND v."createdAt" <  ${den}::timestamptz AT TIME ZONE 'UTC'
+          RETURNING v.*
+        ), luu AS (
+          INSERT INTO koi_free_style.koi_luot_nguoi_nha (bang, id, du_lieu, ly_do)
+          SELECT 'koi_page_views', doi.id, to_jsonb(doi), ${lyDo} FROM doi
+          ON CONFLICT (bang, id) DO NOTHING
+          RETURNING 1
+        )
+        SELECT count(*)::int AS n FROM luu
+      `;
+
+      // Bảng cú bấm liên hệ KHÔNG lưu IP, chỉ lưu visitorHash (IP + trình
+      // duyệt + muối theo ngày). Dò theo visitorHash của MỌI lượt xem đã dời
+      // của IP này trong ngày — cả lần này lẫn các lần trước — để cú bấm lọt
+      // qua giữa hai lần quét vẫn bị vớt. Cú bấm sau lúc này thì đã bị chặn
+      // ngay lúc ghi theo IP.
+      const [lh] = await tx.$queryRaw<{ n: number }[]>`
+        WITH khach AS (
+          SELECT DISTINCT a.du_lieu->>'visitorHash' AS h
+          FROM koi_free_style.koi_luot_nguoi_nha a
+          WHERE a.bang = 'koi_page_views'
+            AND a.du_lieu->>'ip' = ${ip}
+            AND (a.du_lieu->>'createdAt')::timestamp >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+            AND (a.du_lieu->>'createdAt')::timestamp <  ${den}::timestamptz AT TIME ZONE 'UTC'
+        ), doi AS (
+          DELETE FROM koi_free_style.koi_contact_clicks c
+          WHERE c."visitorHash" IN (SELECT h FROM khach)
+            AND c."createdAt" >= ${tu}::timestamptz AT TIME ZONE 'UTC'
+            AND c."createdAt" <  ${den}::timestamptz AT TIME ZONE 'UTC'
+          RETURNING c.*
+        ), luu AS (
+          INSERT INTO koi_free_style.koi_luot_nguoi_nha (bang, id, du_lieu, ly_do)
+          SELECT 'koi_contact_clicks', doi.id, to_jsonb(doi), ${lyDo} FROM doi
+          ON CONFLICT (bang, id) DO NOTHING
+          RETURNING 1
+        )
+        SELECT count(*)::int AS n FROM luu
+      `;
+      return { luotXem: xem?.n ?? 0, lienHe: lh?.n ?? 0 };
+    });
+
+    // Bảng "đang online" là số tạm, xoá thẳng — không cần lưu.
+    await this.prisma.$executeRaw`
+      DELETE FROM koi_free_style.koi_presence WHERE ip = ${ip}
+    `;
+
+    return {
+      ok: true,
+      ngay,
+      moi: dong[0]?.moi === true,
+      daDoi,
+    };
+  }
 
   /**
    * Băm ẩn danh một lượt truy cập.
@@ -284,6 +420,10 @@ export class AnalyticsService {
     if (laIpNoiBo(input.ip, IP_NOI_BO)) {
       return { tracked: false, reason: "noi-bo" };
     }
+    // Người nhà: IP hôm nay đã đăng nhập quản trị — xem laIpNguoiNha().
+    if (await this.laIpNguoiNha(input.ip)) {
+      return { tracked: false, reason: "nguoi-nha" };
+    }
 
     const path = this.chuanHoa(input.path);
     // Truyền path GỐC (còn query) cho nguon() để nhận ra lượt Google Ads qua
@@ -357,6 +497,9 @@ export class AnalyticsService {
     // được tính vào "khách liên hệ" — xem ghi chú IP_NOI_BO.
     if (laIpNoiBo(input.ip, IP_NOI_BO)) {
       return { tracked: false, reason: "noi-bo" };
+    }
+    if (await this.laIpNguoiNha(input.ip)) {
+      return { tracked: false, reason: "nguoi-nha" };
     }
 
     await this.prisma.koiContactClick.create({
