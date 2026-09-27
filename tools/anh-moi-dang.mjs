@@ -50,10 +50,12 @@ const argv = process.argv.slice(2);
 const co = (c) => argv.includes(c);
 const giaTri = (c, d) => { const i = argv.indexOf(c); return i !== -1 && argv[i + 1] ? argv[i + 1] : d; };
 
-const RA = path.join(goc, 'tools', '_tmp', 'anh-moi');
+// Lô: mặc định 7.2026 (tools/_tmp/anh-moi); lô khác --ra sp-koi (kiểm kê bằng anh-moi-kiem-ke.mjs --ra cùng tên).
+const RA = path.join(goc, 'tools', '_tmp', giaTri('--ra', 'anh-moi'));
 const TEP_PT = path.join(RA, 'phan-tich.json');
 const SO_DANG = path.join(RA, 'da-dang.jsonl');
 const TEP_DV = path.join(RA, 'dich-vu.json');
+const TEP_GIU = path.join(RA, 'giu-lai-logo.json');
 const docJson = (f, d = {}) => (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : d);
 const ghiJson = (f, o) => fs.writeFileSync(f, JSON.stringify(o, null, 1));
 
@@ -153,6 +155,7 @@ Decide:
  - "metaTitle" (≤ 60 chars, NO brand suffix — no "| KOI", the site appends it) and "metaDescription" (≤ 155 chars), Vietnamese, same rules.
  - WORDING RULES for ten/moTa/metaTitle/metaDescription (KOI house style, strictly enforced): never use these words: ${CHU_CAM.join(', ')}. Never claim origin/import ("nhập khẩu", "da Ý", "da Pháp") or performance ("bền bỉ", "chống nước", "lực hút mạnh") unless it is written on the bill. Only add the facet "ca-nhan-hoa" when a name/initial/logo stamp is visible on the product.
  - "anh": ordered list of photo labels to publish (best 4–10): FIRST = best main photo (whole product clearly visible, product dominant, not a macro/detail/packaging shot); then a varied set (angles, inside, details, on-body). Exclude near-duplicates, blurry, dark, bill/reference/making-of shots.
+ - "logoHangKhac": list every OTHER fashion brand's mark visible ON THE PRODUCT ITSELF in any photo: printed/stamped/embossed brand names (vd "Hermès Paris Made in France"), logos, monogram canvas (LV, GG, Goyard), signature hardware that is the brand's trademark (H clasp/H buckle of Hermès, CC turn-lock of Chanel, YSL logo, Dior CD, Bottega intrecciato label…). Short Vietnamese items, vd ["chữ dập Hermès Paris", "khoá chữ H"]. [] if none. Do NOT count: a branded WATCH HEAD shown with a strap, a branded device (iPhone, iPad) inside its case, a customer's own buckle when the listing is just the strap.
  - "loaiAnh": for each label in "anh", one of STUDIO (product shot) | LIFESTYLE (in use / on body / styled scene) | CRAFTING (workshop, making-of) | STAMPING (close-up of a stamped name/logo).
 3. For "dich-vu-sua-chua": "moTaDichVu" (1–2 Vietnamese sentences: what service was done, on what kind of item — brand names allowed here, it is internal) and "anh" (best 2–6 labels, before/after if present).
 4. "canhBao": short Vietnamese notes of anything uncertain.
@@ -161,7 +164,7 @@ Product-type categories (danhMucChinh): ${DM.filter((c) => !['ca-nhan-hoa','cham
 Facet categories (danhMucPhu only): ca-nhan-hoa (khắc/dập tên), cham-khac-tren-da, an-lat-woven (đan), may-tram-chan (chần trám), qua-tang-su-kien (quà tặng doanh nghiệp/sự kiện, logo công ty), phu-kien-rieng-customize-hardware.
 Leather codes: ${DA.map((c) => `${c.code} (${c.ten})`).join('; ')}.
 
-Reply with ONE JSON object only: {"loai":…, "ten":…, "tenEn":…, "loaiSP":…, "danhMucChinh":…, "danhMucPhu":[…], "loaiDa":[…], "mau":[…], "soMon":…, "moTa":…, "metaTitle":…, "metaDescription":…, "anh":[…], "loaiAnh":[…], "moTaDichVu":…, "canhBao":[…]}`;
+Reply with ONE JSON object only: {"loai":…, "logoHangKhac":[…], "ten":…, "tenEn":…, "loaiSP":…, "danhMucChinh":…, "danhMucPhu":[…], "loaiDa":[…], "mau":[…], "soMon":…, "moTa":…, "metaTitle":…, "metaDescription":…, "anh":[…], "loaiAnh":[…], "moTaDichVu":…, "canhBao":[…]}`;
 
 async function phanTich(u) {
   const anhTat = u.thuMuc.flatMap((t) => tepAnh(t.duong));
@@ -176,7 +179,8 @@ async function phanTich(u) {
     type: 'text',
     text: `${HUONG_DAN}
 
-Folder: "${u.thuMuc.map((t) => (t.danhMuc ? t.danhMuc + ' / ' : '') + t.ten).join(' + ')}" (date ${t0.ngay || '?'}).
+Folder: "${u.thuMuc.map((t) => (t.danhMuc ? t.danhMuc + ' / ' : '') + t.ten).join(' + ').replace(/[-]/g, '').trim()}" (date ${t0.ngay || '?'}).
+${u.thuMuc.some((t) => /Koi Collection/.test(t.danhMuc || '')) ? 'This folder is in "Koi Collection" = KOI\'s OWN named product line. The product name in the folder (e.g. "BRISTO Laptop Sleeve", "Dee bag", "MILANO", "OPPA Bag", "Hal Bag") is a KOI name, NOT another brand: KEEP it at the start of "ten" (vd "Túi MILANO da bò …").' : ''}
 ${u.don ? `Order row: "${u.don.ten}"${u.don.stock ? ' [Đơn Stock]' : ''}${u.don.maDa ? `, mã da: ${u.don.maDa}` : ''}.` : 'No order row.'}
 ${bill.length ? `${bill.length} bill/reference photos B1..B${bill.length} come first, then product photos.` : 'No bill photos.'}`,
   }];
@@ -215,10 +219,16 @@ function tinhGia(u, kq) {
 }
 
 async function goiApi(duong, init = {}) {
-  const r = await fetch(API + duong, { ...init, headers: { Authorization: `Bearer ${TOKEN_GHI}`, ...(init.headers || {}) }, signal: AbortSignal.timeout(120_000) });
-  const t = await r.text();
-  if (!r.ok) throw new Error(`${init.method || 'GET'} ${duong} → ${r.status} ${t.slice(0, 200)}`);
-  return t ? JSON.parse(t) : null;
+  // 429 = bộ chặn tần suất của API (ThrottlerException). Đợt đăng bù 28/09 dồn
+  // yêu cầu (phân tích đã có sẵn nên không còn nhịp chờ model) và dính 429 hàng
+  // loạt → chờ rồi gửi lại, không coi là lỗi.
+  for (let lan = 1; ; lan++) {
+    const r = await fetch(API + duong, { ...init, headers: { Authorization: `Bearer ${TOKEN_GHI}`, ...(init.headers || {}) }, signal: AbortSignal.timeout(120_000) });
+    const t = await r.text();
+    if (r.status === 429 && lan <= 8) { await new Promise((res) => setTimeout(res, 15_000 * lan)); continue; }
+    if (!r.ok) throw new Error(`${init.method || 'GET'} ${duong} → ${r.status} ${t.slice(0, 200)}`);
+    return t ? JSON.parse(t) : null;
+  }
 }
 
 async function dang(u, pt) {
@@ -339,6 +349,16 @@ if (co('--phan-tich') || co('--chay')) {
       if (kq.loai === 'dich-vu-sua-chua') {
         dv[u.khoa] = { thuMuc: u.thuMuc.map((t) => t.duong), ma: u.ma, moTa: kq.moTaDichVu, anh: (kq.anh || []).map((a) => pt[u.khoa].mau[Number(String(a).replace(/\D/g, '')) - 1]).filter(Boolean) };
         ghiJson(TEP_DV, dv);
+      } else if (kq.loai === 'san-pham' && kq.logoHangKhac?.length && !co('--dang-ca-logo')) {
+        // A Khoa 27/09/2026 chốt "Đăng hết" → chạy lại với --dang-ca-logo để đăng
+        // cả những món này (chữ vẫn không ghi tên hãng, chỉ ảnh có logo).
+        // Món mang dấu hãng khác (chữ dập, logo, khoá đặc trưng) — KHÔNG tự đăng,
+        // gom danh sách chờ A Khoa quyết (27/09/2026, ví "Constance Slim" dập
+        // "Hermès Paris Made in France").
+        const giu = docJson(TEP_GIU);
+        giu[u.khoa] = { thuMuc: u.thuMuc.map((t) => t.duong), ten: kq.ten, logo: kq.logoHangKhac };
+        ghiJson(TEP_GIU, giu);
+        ketQua = `GIỮ LẠI (logo hãng khác: ${kq.logoHangKhac.join(', ')})`;
       } else if (kq.loai === 'san-pham' && co('--chay')) {
         const r = await dang(u, pt[u.khoa]);
         ketQua = `ĐĂNG ${r.slug} · ${r.soAnh} ảnh · ${r.gia ? r.gia.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'}`;

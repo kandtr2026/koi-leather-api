@@ -25,12 +25,17 @@ process.env.DATABASE_URL = dongEnv.slice('DATABASE_URL='.length).replace(/^["']|
 const { PrismaClient } = await import('@prisma/client');
 const prisma = new PrismaClient();
 
-const NGUON = 'D:/7.2026_HEre';
+const argv = process.argv.slice(2);
+const giaTri = (c, d) => { const i = argv.indexOf(c); return i !== -1 && argv[i + 1] ? argv[i + 1] : d; };
+// Lô ảnh: mặc định D:.2026_HEre → tools/_tmp/anh-moi. Lô khác: --nguon "D:/SP KOI" --ra sp-koi
+const NGUON = giaTri('--nguon', 'D:/7.2026_HEre');
 const BILL = 'G:/My Drive/Appsheet/data/TheodõiKoi-917306375-26-01-07/OrderMedia';
 const SHEET = 'https://docs.google.com/spreadsheets/d/1dZ-Y_VRHmPpJU0ng8nMZy5sgR362h6OUxrWWzB-t_3w/gviz/tq?tqx=out:csv&sheet=Ori';
-const RA = path.join(goc, 'tools', '_tmp', 'anh-moi');
+const RA = path.join(goc, 'tools', '_tmp', giaTri('--ra', 'anh-moi'));
 fs.mkdirSync(RA, { recursive: true });
-const MAU_MOI_THU_MUC = 5;
+// Vân tay ảnh web dùng CHUNG mọi lô (khoá theo id ảnh, chỉ băm thêm ảnh mới).
+const TEP_VT_WEB = path.join(goc, 'tools', '_tmp', 'anh-moi', 'van-tay-web.json');
+const MAU_MOI_THU_MUC = 6;
 const NGUONG_TRUNG = 10; // khoảng Hamming tối đa coi là cùng một ảnh
 
 /** CSV có ngoặc kép, xuống dòng trong ô. */
@@ -60,7 +65,9 @@ async function dHash(buf) {
   }
   return h;
 }
-const hamming = (a, b) => { let x = a ^ b, n = 0; while (x) { n += Number(x & 1n); x >>= 1n; } return n; };
+const pop32 = (x) => { x -= (x >>> 1) & 0x55555555; x = (x & 0x33333333) + ((x >>> 2) & 0x33333333); return (((x + (x >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24; };
+const tach = (h) => [Number(h >> 32n) >>> 0, Number(h & 0xffffffffn) >>> 0];
+const hamming = (a, b) => pop32((a[0] ^ b[0]) >>> 0) + pop32((a[1] ^ b[1]) >>> 0);
 
 // ---- 1. AppSheet ----
 const csv = docCsv(await (await fetch(SHEET)).text());
@@ -84,7 +91,6 @@ for (const r of csv.slice(1)) {
 console.log(`AppSheet: ${donTheoMa.size} đơn`);
 
 // ---- 2. Vân tay ảnh đang có trên web ----
-const TEP_VT_WEB = path.join(RA, 'van-tay-web.json');
 const vtWeb = fs.existsSync(TEP_VT_WEB) ? JSON.parse(fs.readFileSync(TEP_VT_WEB, 'utf8')) : {};
 const anhWeb = await prisma.$queryRawUnsafe(`
   SELECT i.id, i.url, s.slug, s.status, s."isDeleted" AS xoa
@@ -103,7 +109,7 @@ for (let i = 0; i < can.length; i += 16) {
   if (i % 400 === 0) { fs.writeFileSync(TEP_VT_WEB, JSON.stringify(vtWeb)); process.stdout.write(`.${i}`); }
 }
 fs.writeFileSync(TEP_VT_WEB, JSON.stringify(vtWeb));
-const webList = anhWeb.filter((a) => vtWeb[a.id]).map((a) => ({ ...a, h: BigInt('0x' + vtWeb[a.id]) }));
+const webList = anhWeb.filter((a) => vtWeb[a.id]).map((a) => ({ ...a, h: tach(BigInt('0x' + vtWeb[a.id])) }));
 console.log(`\nĐã có vân tay ${webList.length} ảnh web`);
 
 // ---- 3. Thư mục ảnh mới ----
@@ -119,13 +125,33 @@ function tepAnh(thuMuc) {
 }
 
 const thuMuc = [];
+const coAnhTrucTiep = (d) => fs.readdirSync(d, { withFileTypes: true }).some((x) => x.isFile() && laAnh(x.name));
+const conCua = (d) => fs.readdirSync(d, { withFileTypes: true }).filter((x) => x.isDirectory());
+const boLe = []; // ảnh rời nằm lẫn cạnh thư mục SP — không gom được thành 1 sản phẩm
 for (const d of fs.readdirSync(NGUON, { withFileTypes: true })) {
   if (!d.isDirectory()) continue;
-  if (/^\d{6}_/.test(d.name)) thuMuc.push({ ten: d.name, duong: path.join(NGUON, d.name), loai: 'ngay' });
-  else for (const s of fs.readdirSync(path.join(NGUON, d.name), { withFileTypes: true })) {
-    if (s.isDirectory()) thuMuc.push({ ten: s.name, duong: path.join(NGUON, d.name, s.name), loai: 'danh-muc', danhMuc: d.name });
+  const p = path.join(NGUON, d.name);
+  if (coAnhTrucTiep(p)) { thuMuc.push({ ten: d.name, duong: p, loai: 'ngay' }); continue; }
+  for (const s of conCua(p)) {
+    const q = path.join(p, s.name);
+    // D:\SP KOI\Handbag Cover xếp THEO HÃNG (3 tầng): hãng → thư mục SP. Thư mục
+    // hãng có thư mục con thì mỗi con là 1 SP, ảnh rời của hãng bỏ qua; hãng
+    // không có con thì chính nó là 1 SP — trừ thư mục "sưu tầm" gom nhiều món.
+    if (d.name === 'Handbag Cover') {
+      const con = conCua(q);
+      if (con.length) {
+        for (const c of con) thuMuc.push({ ten: c.name, duong: path.join(q, c.name), loai: 'danh-muc', danhMuc: `${d.name} / ${s.name}` });
+        const le = fs.readdirSync(q).filter(laAnh).length;
+        if (le) boLe.push(`${d.name}/${s.name}: ${le} ảnh rời`);
+      } else if (/su+u? ?tam/i.test(s.name)) boLe.push(`${d.name}/${s.name}: thư mục sưu tầm nhiều món`);
+      else thuMuc.push({ ten: s.name, duong: q, loai: 'danh-muc', danhMuc: d.name });
+      continue;
+    }
+    thuMuc.push({ ten: s.name, duong: q, loai: 'danh-muc', danhMuc: d.name });
   }
 }
+if (boLe.length) console.log(['Bỏ qua (không thành 1 SP):', ...boLe].join('\n  '));
+console.log(`Thư mục sản phẩm: ${thuMuc.length}`);
 
 const TEP_KQ = path.join(RA, 'kiem-ke.json');
 const kq = fs.existsSync(TEP_KQ) ? JSON.parse(fs.readFileSync(TEP_KQ, 'utf8')) : {};
@@ -143,25 +169,46 @@ for (const t of thuMuc) {
   // Lấy mẫu rải đều trong thư mục.
   const buoc = Math.max(1, Math.floor(anh.length / MAU_MOI_THU_MUC));
   const mau = anh.filter((_, i) => i % buoc === 0).slice(0, MAU_MOI_THU_MUC);
+  const soVoiWeb = async (f) => {
+    const h = tach(await dHash(await sharp(f, { failOn: 'none' }).resize(256, 256, { fit: 'inside' }).toBuffer()));
+    let tot = null;
+    for (const w of webList) {
+      const d = hamming(h, w.h);
+      if (d <= NGUONG_TRUNG && (!tot || d < tot.d)) tot = { d, slug: w.slug, xoa: w.xoa };
+    }
+    return tot;
+  };
   const trung = {};
+  const trungXoa = {};
+  let dMin = 99;
   for (const f of mau) {
     try {
-      const h = await dHash(await sharp(f, { failOn: 'none' }).resize(256, 256, { fit: 'inside' }).toBuffer());
-      let tot = null;
-      for (const w of webList) {
-        const d = hamming(h, w.h);
-        if (d <= NGUONG_TRUNG && (!tot || d < tot.d)) tot = { d, slug: w.slug, status: w.status, xoa: w.xoa };
-      }
-      if (tot) trung[tot.slug] = (trung[tot.slug] || 0) + 1;
+      const tot = await soVoiWeb(f);
+      if (tot) { trung[tot.slug] = (trung[tot.slug] || 0) + 1; if (tot.xoa) trungXoa[tot.slug] = true; dMin = Math.min(dMin, tot.d); }
     } catch { /* ảnh hỏng */ }
+  }
+  // Bài học lô 7.2026: "1 mẫu khớp là trùng" bỏ nhầm nhiều món (khớp sát ngưỡng
+  // với một món khác hẳn). Chỉ đúng 1 mẫu khớp → soát TOÀN BỘ ảnh thư mục; vẫn
+  // chỉ 1 tấm khớp và không gần như y hệt (d>4) → đánh dấu "nghi" để Gemini so
+  // A/B (tools/anh-moi-soi-trung.mjs) thay vì tự bỏ.
+  let nghi = false;
+  const tong = Object.values(trung).reduce((a, b) => a + b, 0);
+  if (tong === 1 && dMin > 4) {
+    const dem = {};
+    for (const f of anh.slice(0, 60)) {
+      try { const tot = await soVoiWeb(f); if (tot) { dem[tot.slug] = (dem[tot.slug] || 0) + 1; dMin = Math.min(dMin, tot.d); } } catch { /* bỏ */ }
+    }
+    const nhieu = Math.max(0, ...Object.values(dem));
+    if (nhieu >= 2 || dMin <= 4) Object.assign(trung, dem);
+    else nghi = true;
   }
   kq[t.duong] = {
     ...t, ngay: m?.[1] || null, moTa: m?.[2] || t.ten, ma, maGoc: m?.[3] || null,
-    soAnh: anh.length, don, bill, mau: mau.length, trung, xong: true,
+    soAnh: anh.length, don, bill, mau: mau.length, trung, trungXoa, dMin: dMin === 99 ? null : dMin, nghi, xong: true,
   };
   if (xong % 10 === 0) fs.writeFileSync(TEP_KQ, JSON.stringify(kq, null, 1));
   const tt = Object.entries(trung).map(([s, n]) => `${s}×${n}`).join(', ');
-  console.log(`[${xong}/${thuMuc.length}] ${t.ten} · ${anh.length} ảnh · ${ma ? `đơn ${ma}${don ? ` ${don.doanhThu ?? '-'}đ` : ' (KHÔNG THẤY)'} · bill ${bill}` : 'không mã'} · ${tt ? 'TRÙNG ' + tt : 'mới'}`);
+  console.log(`[${xong}/${thuMuc.length}] ${t.ten} · ${anh.length} ảnh · ${ma ? `đơn ${ma}${don ? ` ${don.doanhThu ?? '-'}đ` : ' (KHÔNG THẤY)'} · bill ${bill}` : 'không mã'} · ${tt ? (nghi ? 'NGHI ' : 'TRÙNG ') + tt : 'mới'}`);
 }
 fs.writeFileSync(TEP_KQ, JSON.stringify(kq, null, 1));
 await prisma.$disconnect();

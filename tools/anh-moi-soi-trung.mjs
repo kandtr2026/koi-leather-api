@@ -28,7 +28,9 @@ process.env.DATABASE_URL = docEnv(path.join(goc, '.env'), 'DATABASE_URL');
 const KEY_MODEL = fs.readFileSync(path.join(goc, '..', '_secrets', '9router.key'), 'utf8').trim();
 const ROUTER = 'https://khoa.tailc2d856.ts.net/v1/chat/completions';
 const MODEL = 'ag/gemini-3.8-flash-high';
-const RA = path.join(goc, 'tools', '_tmp', 'anh-moi');
+const argv = process.argv.slice(2);
+const giaTri = (c, d) => { const i = argv.indexOf(c); return i !== -1 && argv[i + 1] ? argv[i + 1] : d; };
+const RA = path.join(goc, 'tools', '_tmp', giaTri('--ra', 'anh-moi'));
 const TEP_KQ = path.join(RA, 'soi-trung.json');
 const TEP_KHONG = path.join(RA, 'khong-trung.json');
 
@@ -36,7 +38,13 @@ const { PrismaClient } = await import('@prisma/client');
 const prisma = new PrismaClient();
 
 // Ca "chắc trùng" (≥2 ảnh khớp, hoặc 1 ảnh gần như y hệt d≤4) giữ nguyên là bỏ qua.
-const ngo = JSON.parse(fs.readFileSync(path.join(RA, 'mot-mau.json'), 'utf8')).filter((x) => !(x.khop >= 2 || x.dMin <= 4));
+// Lô 7.2026: danh sách ngờ ở mot-mau.json (soát tay sau kiểm kê). Lô sau: kiểm kê
+// tự đánh dấu "nghi" (chỉ 1 tấm khớp sát ngưỡng) ngay trong kiem-ke.json.
+const ngo = fs.existsSync(path.join(RA, 'mot-mau.json'))
+  ? JSON.parse(fs.readFileSync(path.join(RA, 'mot-mau.json'), 'utf8')).filter((x) => !(x.khop >= 2 || x.dMin <= 4))
+  : Object.values(JSON.parse(fs.readFileSync(path.join(RA, 'kiem-ke.json'), 'utf8')))
+    .filter((x) => x.nghi)
+    .map((x) => ({ ten: x.ten, duong: x.duong, slug: Object.keys(x.trung)[0], khop: 1, dMin: x.dMin }));
 const kq = fs.existsSync(TEP_KQ) ? JSON.parse(fs.readFileSync(TEP_KQ, 'utf8')) : {};
 
 const laAnh = (f) => /\.(jpe?g|png)$/i.test(f) && !f.startsWith('._');

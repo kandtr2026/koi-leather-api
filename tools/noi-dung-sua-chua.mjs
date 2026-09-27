@@ -34,7 +34,11 @@ const RA = path.join(goc, 'tools', '_tmp', 'anh-moi');
 const TEP_KQ = path.join(RA, 'ca-sua-chua.json');
 const TEP_TS = path.join(goc, '..', 'koi-storefront', 'src', 'content', 'ca-sua-chua.ts');
 
-const dv = JSON.parse(fs.readFileSync(path.join(RA, 'dich-vu.json'), 'utf8'));
+// Gom đơn sửa của MỌI lô đã đăng (7.2026 ở anh-moi/, kho SP KOI ở sp-koi/…).
+const dv = Object.assign({}, ...['anh-moi', 'sp-koi']
+  .map((lo) => path.join(goc, 'tools', '_tmp', lo, 'dich-vu.json'))
+  .filter((f) => fs.existsSync(f))
+  .map((f) => JSON.parse(fs.readFileSync(f, 'utf8'))));
 const kq = fs.existsSync(TEP_KQ) ? JSON.parse(fs.readFileSync(TEP_KQ, 'utf8')) : {};
 const ghi = () => fs.writeFileSync(TEP_KQ, JSON.stringify(kq, null, 1));
 
