@@ -349,6 +349,13 @@ export class AuthGuard implements CanActivate {
         request.user = { service: "koi-admin-write", chiGhi: true };
         return true;
       }
+      // Ngoại lệ thứ hai, cùng khuôn khớp-đúng: tải ảnh cho bài blog / trang
+      // dịch vụ (src/media/noi-dung-anh.controller.ts). Chỉ THÊM ảnh vào
+      // noi-dung/<slug>/ — không xoá, không ghi đè ảnh sản phẩm.
+      if (method === "POST" && d === "/media/noi-dung/upload") {
+        request.user = { service: "koi-admin-write", chiGhi: true };
+        return true;
+      }
       const duocPhep =
         !["GET", "HEAD", "OPTIONS"].includes(method) &&
         ADMIN_GHI_TIEN_TO.some((p) => d === p || d.startsWith(p + "/"));

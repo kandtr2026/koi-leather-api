@@ -507,3 +507,64 @@ describe("AuthGuard — POST /analytics/nguoi-nha", () => {
     expect(() => guard.canActivate(c)).toThrow(UnauthorizedException);
   });
 });
+
+/**
+ * POST /media/noi-dung/upload — ảnh cho bài blog / trang dịch vụ (27/09/2026).
+ * Token GHI admin được đúng đường này; cả nhóm /media khác vẫn đóng.
+ */
+describe("AuthGuard — POST /media/noi-dung/upload", () => {
+  const TOKEN_ADMIN_GHI = "a".repeat(48);
+  const TOKEN_ADMIN_DOC = "r".repeat(48);
+  const envCu = {
+    HEOIU_SERVICE_TOKEN: process.env.HEOIU_SERVICE_TOKEN,
+    HEOIU_WRITE_TOKEN: process.env.HEOIU_WRITE_TOKEN,
+    KOI_ADMIN_WRITE_TOKEN: process.env.KOI_ADMIN_WRITE_TOKEN,
+    KOI_ADMIN_READ_TOKEN: process.env.KOI_ADMIN_READ_TOKEN,
+  };
+
+  beforeEach(() => {
+    process.env.HEOIU_SERVICE_TOKEN = TOKEN;
+    process.env.HEOIU_WRITE_TOKEN = TOKEN_GHI;
+    process.env.KOI_ADMIN_WRITE_TOKEN = TOKEN_ADMIN_GHI;
+    process.env.KOI_ADMIN_READ_TOKEN = TOKEN_ADMIN_DOC;
+  });
+
+  afterAll(() => {
+    for (const [k, v] of Object.entries(envCu)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  it("token ghi admin của storefront gọi được", () => {
+    const { guard } = guardMoi();
+    const { ctx: c, request } = ctx(
+      "POST",
+      "/media/noi-dung/upload",
+      TOKEN_ADMIN_GHI,
+    );
+    expect(guard.canActivate(c)).toBe(true);
+    expect(request.user).toEqual({ service: "koi-admin-write", chiGhi: true });
+  });
+
+  it.each([
+    ["/media/noi-dung/upload/x", "POST"],
+    ["/media/noi-dung", "POST"],
+    ["/media/noi-dung/upload", "DELETE"],
+    ["/storage/usage", "POST"],
+  ])("token ghi admin KHÔNG được %s (%s)", (path, method) => {
+    const { guard } = guardMoi();
+    const { ctx: c } = ctx(method, path, TOKEN_ADMIN_GHI);
+    expect(() => guard.canActivate(c)).toThrow(UnauthorizedException);
+  });
+
+  it.each([
+    ["token đọc Heoiu", TOKEN],
+    ["token đọc admin", TOKEN_ADMIN_DOC],
+    ["không có token", undefined],
+  ])("%s bị chặn", (_ten, token) => {
+    const { guard } = guardMoi();
+    const { ctx: c } = ctx("POST", "/media/noi-dung/upload", token);
+    expect(() => guard.canActivate(c)).toThrow(UnauthorizedException);
+  });
+});
