@@ -310,11 +310,26 @@ if (co('--chay')) {
       ? fs.readFileSync(soChot, 'utf8').split(String.fromCharCode(10)).filter((d) => d.trim()).map((d) => JSON.parse(d).id)
       : [],
   );
-  const tatCa = (await laySanPham()).filter((s) => co('--lam-lai') || !daChot.has(s.id));
+  // Sản phẩm ĐÃ CHỐT vẫn phải xử lại nếu TẬP ảnh đổi (A Khoa up thêm/bớt ảnh cho
+  // món cũ, 28/09/2026): so theo tập id — không theo thứ tự, vì chính lần ghi
+  // trước đã đổi thứ tự. Món chốt lúc chỉ có 1 ảnh (không có bản soi) mà nay ≥2
+  // ảnh cũng xử lại.
+  const tapAnh = (ids) => [...ids].sort().join(',');
+  const lyDoXuLy = (s) => {
+    if (co('--lam-lai')) return 'lam-lai';
+    if (!daChot.has(s.id)) return 'moi';
+    const cu = soi[s.id]?.vanTay;
+    if (!cu) return s.anh.length >= 2 ? 'them-anh' : null;
+    return tapAnh(cu.split(',')) !== tapAnh(s.anh.map((a) => a.id)) ? 'doi-tap-anh' : null;
+  };
+  const tatCa = (await laySanPham()).filter((s) => lyDoXuLy(s));
+  const dem = {};
+  for (const s of tatCa) dem[lyDoXuLy(s)] = (dem[lyDoXuLy(s)] || 0) + 1;
   const gioiHan = Number(giaTri('--gioi-han', '0')) || tatCa.length;
   const viec = tatCa.slice(0, gioiHan);
   let xong = 0, doi = 0, dongBo = 0, loi = 0;
-  console.log(`Chạy cuốn chiếu ${viec.length} sản phẩm`);
+  console.log(`Chạy cuốn chiếu ${viec.length} sản phẩm`, dem);
+  if (co('--dem')) process.exit(0);
   await chaySongSong(viec, Number(giaTri('--song-song', '4')), async (sp) => {
     let ketLuan = 'giu';
     let chon = sp.anh[0].id;
@@ -406,6 +421,147 @@ function dsSeDoi() {
   return Object.entries(soi)
     .filter(([id, r]) => deNghiDoi(r) && r.doTinCay >= 0.7 && td[id]?.chon === r.chon && td[id]?.dongY && td[id].doTinCay >= 0.7)
     .map(([id, r]) => ({ id, ...r, thamDinh: td[id] }));
+}
+
+/**
+ * --xem-chot --tu <ISO>: tờ so sánh cho các món ĐÃ ĐỔI (ketLuan 'doi') trong sổ
+ * da-chot.jsonl từ mốc <ISO> — để hậu kiểm một lượt chạy --chay bằng mắt. Trái:
+ * ảnh chính cũ (cu), phải: ảnh chính mới (chon). Ra thư mục chot-<ngày>/.
+ */
+if (co('--xem-chot')) {
+  const tu = giaTri('--tu', '1970-01-01');
+  const soChot = path.join(THU_MUC, 'da-chot.jsonl');
+  const doi = fs
+    .readFileSync(soChot, 'utf8')
+    .split(String.fromCharCode(10))
+    .filter((d) => d.trim())
+    .map((d) => JSON.parse(d))
+    .filter((d) => d.ketLuan === 'doi' && d.luc >= tu);
+  const ids = [...new Set(doi.flatMap((d) => [d.cu, d.chon]))];
+  const dong = ids.length
+    ? await prisma.$queryRawUnsafe(`SELECT id, url FROM koi_free_style.koi_product_images WHERE id = ANY($1::text[])`, ids)
+    : [];
+  const urlCua = new Map(dong.map((d) => [d.id, d.url]));
+  const ra = path.join(THU_MUC, `chot-${tu.slice(0, 10)}`);
+  fs.mkdirSync(ra, { recursive: true });
+  const o = (u, w, h) => sharp(Buffer.from(u.split(',')[1], 'base64')).resize(w, h, { fit: 'contain', background: '#fff' }).png().toBuffer();
+  const W = 260, H = 190, MOI_TO = 10;
+  const muc = [];
+  for (let t = 0; t * MOI_TO < doi.length; t += 1) {
+    const lo = doi.slice(t * MOI_TO, (t + 1) * MOI_TO);
+    const tiles = [];
+    for (const [k, r] of lo.entries()) {
+      const so = k + 1 + t * MOI_TO;
+      const [a, b] = await Promise.all([taiAnh(urlCua.get(r.cu)), taiAnh(urlCua.get(r.chon))]);
+      const y = k * (H + 34);
+      const nhan = `<svg width="${2 * W + 20}" height="30"><text x="4" y="20" font-size="15" font-family="Arial" fill="#111">${so + '. ' + r.slug.slice(0, 60).replace(/&/g, '&amp;')}</text></svg>`;
+      tiles.push({ input: Buffer.from(nhan), left: 0, top: y });
+      if (a) tiles.push({ input: await o(a, W, H), left: 0, top: y + 30 });
+      if (b) tiles.push({ input: await o(b, W, H), left: W + 20, top: y + 30 });
+      muc.push({ so, to: t + 1, id: r.id, slug: r.slug, cu: r.cu, chon: r.chon, ghiChu: r.ghiChu });
+    }
+    const f = path.join(ra, `to-${String(t + 1).padStart(2, '0')}.png`);
+    await sharp({ create: { width: 2 * W + 20, height: lo.length * (H + 34), channels: 3, background: '#eee' } }).composite(tiles).png().toFile(f);
+  }
+  ghiJson(path.join(ra, 'muc.json'), muc);
+  console.log(`${doi.length} món đã đổi từ ${tu} → ${ra} (${Math.ceil(doi.length / MOI_TO)} tờ, trái: cũ, phải: mới)`);
+}
+
+/**
+ * --luoi-chinh --tu <ISO>: lưới ẢNH CHÍNH HIỆN TẠI của mọi món đã chốt từ mốc
+ * <ISO> (30 món/tờ, đánh số) — để rà bằng mắt những món model GIỮ nguyên mà ảnh
+ * chính vẫn không ổn. Ra thư mục luoi-<ngày>/ kèm muc.json (số → slug).
+ */
+if (co('--luoi-chinh')) {
+  const tu = giaTri('--tu', '1970-01-01');
+  const soChot = path.join(THU_MUC, 'da-chot.jsonl');
+  const idCuaLo = new Set(
+    fs
+      .readFileSync(soChot, 'utf8')
+      .split(String.fromCharCode(10))
+      .filter((d) => d.trim())
+      .map((d) => JSON.parse(d))
+      .filter((d) => d.luc >= tu)
+      .map((d) => d.id),
+  );
+  const ds = (await laySanPham()).filter((sp) => idCuaLo.has(sp.id));
+  const ra = path.join(THU_MUC, `luoi-${tu.slice(0, 10)}`);
+  fs.mkdirSync(ra, { recursive: true });
+  const o = (u, w, h) => sharp(Buffer.from(u.split(',')[1], 'base64')).resize(w, h, { fit: 'contain', background: '#fff' }).png().toBuffer();
+  const W = 200, H = 170, COT = 6, MOI_TO = 30;
+  const muc = [];
+  for (let t = 0; t * MOI_TO < ds.length; t += 1) {
+    const lo = ds.slice(t * MOI_TO, (t + 1) * MOI_TO);
+    const tiles = [];
+    await chaySongSong(lo.map((sp, k) => ({ sp, k })), 6, async ({ sp, k }) => {
+      const so = k + 1 + t * MOI_TO;
+      const x = (k % COT) * (W + 8);
+      const y = Math.floor(k / COT) * (H + 26);
+      const a = await taiAnh(sp.anh[0].url);
+      tiles.push({ input: Buffer.from(`<svg width="${W}" height="24"><text x="3" y="18" font-size="16" font-weight="bold" font-family="Arial" fill="#c00">${so}</text></svg>`), left: x, top: y });
+      if (a) tiles.push({ input: await o(a, W, H), left: x, top: y + 24 });
+      muc.push({ so, to: t + 1, id: sp.id, slug: sp.slug, ten: sp.ten, soAnh: sp.anh.length, anhChinh: sp.anh[0].id });
+    });
+    const f = path.join(ra, `luoi-${String(t + 1).padStart(2, '0')}.png`);
+    const hang = Math.ceil(lo.length / COT);
+    await sharp({ create: { width: COT * (W + 8), height: hang * (H + 26), channels: 3, background: '#ddd' } }).composite(tiles).png().toFile(f);
+  }
+  muc.sort((a, b) => a.so - b.so);
+  ghiJson(path.join(ra, 'muc.json'), muc);
+  console.log(`${ds.length} món → ${ra} (${Math.ceil(ds.length / MOI_TO)} tờ lưới)`);
+}
+
+/**
+ * --to-sp --slug a,b[,…] [--ra <thư mục>]: MỖI sản phẩm một tờ, mọi ảnh (tối đa
+ * 20) đánh số #1..#n theo thứ tự đang hiện (#1 = ảnh chính hiện tại) — để người
+ * hoặc agent chọn tay. Kèm sp.json: slug → [id ảnh theo số].
+ */
+if (co('--to-sp')) {
+  const ra = path.join(THU_MUC, giaTri('--ra', 'to-sp'));
+  fs.mkdirSync(ra, { recursive: true });
+  const o = (u, w, h) => sharp(Buffer.from(u.split(',')[1], 'base64')).resize(w, h, { fit: 'contain', background: '#fff' }).png().toBuffer();
+  const W = 240, H = 200, COT = 5;
+  const bang = {};
+  for (const sp of await laySanPham()) {
+    const anh = sp.anh.slice(0, TRAN_ANH);
+    const tiles = [];
+    await chaySongSong(anh.map((a, k) => ({ a, k })), 6, async ({ a, k }) => {
+      const x = (k % COT) * (W + 8);
+      const y = Math.floor(k / COT) * (H + 26);
+      const du = await taiAnh(a.url);
+      tiles.push({ input: Buffer.from(`<svg width="${W}" height="24"><text x="3" y="19" font-size="18" font-weight="bold" font-family="Arial" fill="#c00">#${k + 1}${k === 0 ? ' (hiện tại)' : ''}</text></svg>`), left: x, top: y });
+      if (du) tiles.push({ input: await o(du, W, H), left: x, top: y + 24 });
+    });
+    const hang = Math.ceil(anh.length / COT);
+    await sharp({ create: { width: COT * (W + 8), height: hang * (H + 26), channels: 3, background: '#ddd' } })
+      .composite(tiles)
+      .png()
+      .toFile(path.join(ra, `${sp.slug}.png`));
+    bang[sp.slug] = { ten: sp.ten, danhMuc: sp.danhMuc, anh: anh.map((a) => a.id) };
+  }
+  ghiJson(path.join(ra, 'sp.json'), bang);
+  console.log(`${Object.keys(bang).length} tờ → ${ra}`);
+}
+
+/**
+ * --dat slug:idAnh[,slug:idAnh…]: đặt TAY ảnh chính (sau hậu kiểm bằng mắt) — đi
+ * qua đúng ghiMot (sao lưu + giữ bất biến ảnh chính = tấm đầu) và ghi sổ
+ * da-chot.jsonl với ketLuan 'doi-tay'.
+ */
+if (co('--dat')) {
+  const cap = giaTri('--dat', '').split(',').filter(Boolean).map((c) => c.split(':'));
+  const theoSlug = new Map((await laySanPham()).map((sp) => [sp.slug, sp]));
+  const soChot = path.join(THU_MUC, 'da-chot.jsonl');
+  for (const [slug, idAnh] of cap) {
+    const sp = theoSlug.get(slug);
+    if (!sp || !sp.anh.some((a) => a.id === idAnh)) {
+      console.log(`BỎ QUA ${slug}: không thấy sản phẩm hoặc ảnh ${idAnh}`);
+      continue;
+    }
+    const coGhi = await ghiMot(sp, idAnh);
+    fs.appendFileSync(soChot, JSON.stringify({ id: sp.id, slug, ketLuan: 'doi-tay', coGhi, chon: idAnh, cu: sp.anh[0].id, ghiChu: 'hậu kiểm bằng mắt', luc: new Date().toISOString() }) + String.fromCharCode(10));
+    console.log(`${slug} → ${coGhi ? 'đã đặt' : 'đã đúng sẵn'}`);
+  }
 }
 
 if (co('--xem')) {
