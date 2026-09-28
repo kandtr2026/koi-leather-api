@@ -249,7 +249,11 @@ export class ProductService {
       const existing = await client.koiProduct.findUnique({
         where: { slug: s },
       });
-      return !!existing && existing.id !== excludeId;
+      if (existing && existing.id !== excludeId) return true;
+      // Slug CŨ của một sản phẩm KHÁC cũng coi như đã có chủ: lấy nó là link cũ của
+      // món kia (blog, Google) sẽ trỏ nhầm sang món này.
+      const cu = await client.koiSlugCu.findUnique({ where: { slug: s } });
+      return !!cu && cu.productId !== excludeId;
     });
   }
 
@@ -1031,15 +1035,14 @@ export class ProductService {
     if (technicalSpecs)
       data.technicalSpecs = this.safeParseSpecs(technicalSpecs);
 
+    let slugMoi: string | undefined;
     if (dto.name?.vi && !dto.seo?.canonicalUrl) {
-      data.slug = await this.ensureUniqueSlug(
-        this.generateSlug(dto.name.vi),
-        id,
-      );
+      slugMoi = await this.ensureUniqueSlug(this.generateSlug(dto.name.vi), id);
     } else if (dto.seo?.canonicalUrl) {
-      data.slug = await this.ensureUniqueSlug(dto.seo.canonicalUrl, id);
+      slugMoi = await this.ensureUniqueSlug(dto.seo.canonicalUrl, id);
       data.canonicalUrl = dto.seo.canonicalUrl;
     }
+    if (slugMoi) data.slug = slugMoi;
 
     const nameVi =
       extractNameForGeneration(dto.name) ||
@@ -1142,6 +1145,18 @@ export class ProductService {
             })),
           });
         }
+      }
+
+      // Slug đổi theo tên → GHI SLUG CŨ để mặt tiền 301 về slug mới (xem model
+      // KoiSlugCu). Slug mới mà từng là slug cũ của chính món này thì gỡ dòng đó
+      // (đổi tên qua lại không tạo vòng chuyển hướng).
+      if (slugMoi && slugMoi !== existing.slug) {
+        await tx.koiSlugCu.upsert({
+          where: { slug: existing.slug },
+          create: { slug: existing.slug, productId: id },
+          update: { productId: id, createdAt: new Date() },
+        });
+        await tx.koiSlugCu.deleteMany({ where: { slug: slugMoi } });
       }
 
       return tx.koiProduct.update({

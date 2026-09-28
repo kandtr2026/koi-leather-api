@@ -291,44 +291,55 @@ export class ShopContentService {
   // ----- sitemap -----
 
   async sitemapData() {
-    const [products, categories, catCounts, posts, pages, tags, postTerms] =
-      await Promise.all([
-        this.prisma.koiProduct.findMany({
-          where: { isDeleted: false, status: "ACTIVE" },
-          select: { slug: true, updatedAt: true },
-        }),
-        this.prisma.koiCategory.findMany({
-          where: { isActive: true },
-          select: { id: true, slug: true },
-        }),
-        // Số hàng ĐANG BÁN mỗi danh mục — để mặt tiền không khai vào sitemap
-        // những danh mục rỗng. KHÔNG dùng _count.categoryLinks: nó đếm cả hàng
-        // DRAFT và hàng đã xoá mềm, đúng cái bug đã sửa ở shopFilters ("Phụ Kiện
-        // Bằng Da (34)" nhưng bấm vào chỉ có 32).
-        this.prisma.koiProductCategory.groupBy({
-          by: ["categoryId"],
-          where: { product: { isDeleted: false, status: "ACTIVE" } },
-          _count: { _all: true },
-        }),
-        this.prisma.posts.findMany({
-          where: { is_published: true },
-          select: { slug: true, published_at: true },
-        }),
-        this.prisma.pages.findMany({
-          where: { is_published: true },
-          select: { slug: true },
-        }),
-        this.prisma.tags.findMany({
-          select: { slug: true, product_count: true },
-        }),
-        this.prisma.post_terms.findMany({
-          select: { slug: true, taxonomy: true, post_count: true },
-        }),
-      ]);
+    const [
+      products,
+      categories,
+      catCounts,
+      posts,
+      pages,
+      tags,
+      postTerms,
+      slugCu,
+    ] = await Promise.all([
+      this.prisma.koiProduct.findMany({
+        where: { isDeleted: false, status: "ACTIVE" },
+        select: { id: true, slug: true, updatedAt: true },
+      }),
+      this.prisma.koiCategory.findMany({
+        where: { isActive: true },
+        select: { id: true, slug: true },
+      }),
+      // Số hàng ĐANG BÁN mỗi danh mục — để mặt tiền không khai vào sitemap
+      // những danh mục rỗng. KHÔNG dùng _count.categoryLinks: nó đếm cả hàng
+      // DRAFT và hàng đã xoá mềm, đúng cái bug đã sửa ở shopFilters ("Phụ Kiện
+      // Bằng Da (34)" nhưng bấm vào chỉ có 32).
+      this.prisma.koiProductCategory.groupBy({
+        by: ["categoryId"],
+        where: { product: { isDeleted: false, status: "ACTIVE" } },
+        _count: { _all: true },
+      }),
+      this.prisma.posts.findMany({
+        where: { is_published: true },
+        select: { slug: true, published_at: true },
+      }),
+      this.prisma.pages.findMany({
+        where: { is_published: true },
+        select: { slug: true },
+      }),
+      this.prisma.tags.findMany({
+        select: { slug: true, product_count: true },
+      }),
+      this.prisma.post_terms.findMany({
+        select: { slug: true, taxonomy: true, post_count: true },
+      }),
+      this.prisma.koiSlugCu.findMany({
+        select: { slug: true, productId: true },
+      }),
+    ]);
 
-    const soHang = new Map(
-      catCounts.map((g) => [g.categoryId, g._count._all]),
-    );
+    const soHang = new Map(catCounts.map((g) => [g.categoryId, g._count._all]));
+    const slugTheoId = new Map(products.map((p) => [p.id, p.slug]));
+    const slugDangBan = new Set(products.map((p) => p.slug));
 
     return {
       products: products.map((p) => ({
@@ -355,6 +366,15 @@ export class ShopContentService {
         taxonomy: t.taxonomy,
         post_count: t.post_count,
       })),
+      // Slug CŨ → slug HIỆN TẠI của sản phẩm đang bán (xem model KoiSlugCu). Mặt
+      // tiền (proxy.ts) 301 link cũ về đây. Bỏ qua slug cũ trùng slug đang sống
+      // của một món khác, và món đã ẩn/xoá (không có đích để chuyển).
+      slugCu: slugCu
+        .map((r) => ({ from: r.slug, to: slugTheoId.get(r.productId) }))
+        .filter(
+          (r): r is { from: string; to: string } =>
+            !!r.to && r.to !== r.from && !slugDangBan.has(r.from),
+        ),
     };
   }
 }

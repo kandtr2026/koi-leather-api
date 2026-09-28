@@ -239,6 +239,21 @@ model KoiCategory {
   @@schema("koi_free_style")
 }
 
+// Slug CŨ của sản phẩm → sản phẩm (A Khoa 28/09/2026: link sản phẩm trong bài viết
+// bấm vào ra 404). Sửa tên SP là slug tự sinh lại theo tên mới; không ghi slug cũ
+// thì mọi link cũ (blog, Google, Zalo đã gửi khách, quảng cáo) thành 404. Mặt tiền
+// (koi-storefront/src/proxy.ts) đọc bảng này qua /shop/sitemap-data rồi 301 về slug
+// hiện tại. Không khoá ngoại: sản phẩm chỉ xoá mềm; slug của SP đã xoá thì bỏ qua.
+model KoiSlugCu {
+  slug      String   @id
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([productId])
+  @@map("koi_slug_cu")
+  @@schema("koi_free_style")
+}
+
 // Bảng nối nhiều–nhiều: 1 sản phẩm thuộc nhiều danh mục và ngược lại.
 // categoryId cũ trên KoiProduct vẫn giữ làm "danh mục chính" (tương thích ngược).
 model KoiProductCategory {
