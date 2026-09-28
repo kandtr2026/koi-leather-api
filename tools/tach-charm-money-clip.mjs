@@ -8,8 +8,13 @@
  * charm chạm khắc lại nằm ngoài. Mặt tiền đếm theo BẢNG NỐI koi_product_categories
  * (một món nhiều danh mục), danh mục chính (categoryId) là breadcrumb.
  *
- * Danh sách chốt TAY theo slug (không đoán bằng regex): món lưng chừng charm/móc
- * khoá để nguyên chờ A Khoa quyết.
+ * Danh sách chốt TAY theo slug (không đoán bằng regex).
+ *
+ * BƯỚC 2 (A Khoa chốt 28/09: "móc khoá để ở móc khoá, gộp charm son về charm"):
+ *   - món tên "Móc khoá…" rời Charm, chỉ ở Móc khoá (món tên "Charm … móc khoá"
+ *     vẫn là charm, giữ nguyên);
+ *   - danh mục charm-dung-son gộp hẳn vào Charm rồi ẨN (isActive=false); địa chỉ
+ *     cũ 301 ở koi-storefront/next.config.ts.
  *
  *   node tools/tach-charm-money-clip.mjs          xem trước, không ghi
  *   node tools/tach-charm-money-clip.mjs --ghi    sao lưu rồi ghi
@@ -31,7 +36,10 @@ const argv = process.argv.slice(2);
 
 const CHARM = 'charm-deo-tui-bang-da';
 const MONEY_CLIP = 'kep-tien-money-clip';
+const MOC_KHOA = 'keychain-moc-khoa';
+const CHARM_SON = 'charm-dung-son';
 const SAO_LUU = 'koi_free_style.koi_danh_muc_backup_20260928';
+const SAO_LUU_DM = 'koi_free_style.koi_danh_muc_backup_20260928_dm';
 
 /** Không phải charm — gỡ khỏi danh mục Charm (vẫn giữ các danh mục khác). */
 const BO_KHOI_CHARM = [
@@ -64,7 +72,21 @@ const DOI_CHINH = {
   'long-money-clip-da-be-blue': MONEY_CLIP,
 };
 
-const tatCaSlug = [...new Set([...BO_KHOI_CHARM, ...THEM_VAO_CHARM, ...Object.keys(DOI_CHINH)])];
+/** Móc khoá — rời Charm, chỉ ở Móc khoá (danh mục chính cũng về Móc khoá). */
+const VE_MOC_KHOA = [
+  'moc-khoa-da-tao-hinh-chu-cai-gan-xich-kim-loai',
+  'moc-khoa-charm-kim-loai-mau-bac-cat-chu-logo',
+  'moc-khoa-da-epsom-phoi-mau-tao-hinh-chu-so',
+  'moc-khoa-da-epsom-dang-the-dai-mau-xanh-la',
+  'moc-khoa-charm-chu-cai-da-phoi-mau-va-moc-khoa-the-ten',
+  'moc-khoa-da-hinh-ca-heo-mau-xanh-phoi-trang',
+  'moc-khoa-charm-da-epsom-tao-hinh-chim-origami',
+  'bao-da-moc-khoa-bao-da-thuoc-day',
+];
+/** Nằm nhầm trong charm-dung-son nhưng là TÚI: chỉ gỡ khỏi charm-dung-son. */
+const KHONG_GOP_SON = ['tui-xach-mini-da-bo-epsom-nap-gap-quai-xach-tay'];
+
+const tatCaSlug = [...new Set([...BO_KHOI_CHARM, ...THEM_VAO_CHARM, ...Object.keys(DOI_CHINH), ...VE_MOC_KHOA])];
 
 if (argv.includes('--hoan')) {
   const n = await db.$transaction(async (tx) => {
@@ -79,6 +101,13 @@ if (argv.includes('--hoan')) {
         JSON.stringify(b.links),
       );
     }
+    // Bật lại danh mục đã ẩn (bảng có thể chưa tồn tại nếu chưa chạy bước 2).
+    const coBangDm = await tx.$queryRawUnsafe(`SELECT to_regclass('${SAO_LUU_DM}') IS NOT NULL AS co`);
+    if (coBangDm[0]?.co) {
+      await tx.$executeRawUnsafe(
+        `UPDATE koi_free_style.koi_categories c SET "isActive" = b.is_active FROM ${SAO_LUU_DM} b WHERE c.id = b.category_id`,
+      );
+    }
     return bk.length;
   }, { timeout: 60_000 });
   console.log(`Đã trả lại ${n} sản phẩm từ ${SAO_LUU}`);
@@ -87,13 +116,17 @@ if (argv.includes('--hoan')) {
 }
 
 const dm = new Map(
-  (await db.$queryRawUnsafe(`SELECT id, slug FROM koi_free_style.koi_categories WHERE slug = ANY($1::text[])`, [CHARM, MONEY_CLIP])).map((r) => [r.slug, r.id]),
+  (await db.$queryRawUnsafe(`SELECT id, slug FROM koi_free_style.koi_categories WHERE slug = ANY($1::text[])`, [CHARM, MONEY_CLIP, MOC_KHOA, CHARM_SON])).map((r) => [r.slug, r.id]),
 );
+const dmSon = (await db.$queryRawUnsafe(`SELECT id, "isActive" FROM koi_free_style.koi_categories WHERE slug = $1`, CHARM_SON))[0];
 const sp = await db.$queryRawUnsafe(
   `SELECT s.id, s.slug, s."categoryId",
      COALESCE((SELECT array_agg(pc."categoryId") FROM koi_free_style.koi_product_categories pc WHERE pc."productId" = s.id), '{}') noi
-   FROM koi_free_style.koi_products s WHERE s.slug = ANY($1::text[]) AND NOT s."isDeleted"`,
+   FROM koi_free_style.koi_products s
+   WHERE NOT s."isDeleted" AND (s.slug = ANY($1::text[]) OR s."categoryId" = $2
+     OR EXISTS (SELECT 1 FROM koi_free_style.koi_product_categories pc WHERE pc."productId" = s.id AND pc."categoryId" = $2))`,
   tatCaSlug,
+  dm.get(CHARM_SON),
 );
 const theoSlug = new Map(sp.map((r) => [r.slug, r]));
 const thieu = tatCaSlug.filter((s) => !theoSlug.has(s));
@@ -112,7 +145,23 @@ for (const [s, dich] of Object.entries(DOI_CHINH)) {
   const r = theoSlug.get(s);
   if (r && r.categoryId !== dm.get(dich)) viec.push({ loai: 'doi-chinh', r, dich: dm.get(dich), dichSlug: dich });
 }
-for (const v of viec) console.log(v.loai.padEnd(11), v.r.slug, v.dichSlug ? `→ ${v.dichSlug}` : '');
+for (const s of VE_MOC_KHOA) {
+  const r = theoSlug.get(s);
+  if (!r) continue;
+  if (r.noi.includes(dm.get(CHARM))) viec.push({ loai: 'go-charm', r });
+  if (r.categoryId !== dm.get(MOC_KHOA)) viec.push({ loai: 'doi-chinh', r, dich: dm.get(MOC_KHOA), dichSlug: MOC_KHOA });
+  else if (!r.noi.includes(dm.get(MOC_KHOA))) viec.push({ loai: 'them-lien-ket', r, dich: dm.get(MOC_KHOA), dichSlug: MOC_KHOA });
+}
+// Gộp charm-dung-son → Charm: mọi món đang ở charm-dung-son (trừ KHONG_GOP_SON).
+for (const r of sp.filter((r) => r.categoryId === dm.get(CHARM_SON) || r.noi.includes(dm.get(CHARM_SON)))) {
+  if (!KHONG_GOP_SON.includes(r.slug)) {
+    if (r.categoryId === dm.get(CHARM_SON)) viec.push({ loai: 'doi-chinh', r, dich: dm.get(CHARM), dichSlug: CHARM });
+    else if (!r.noi.includes(dm.get(CHARM))) viec.push({ loai: 'them-lien-ket', r, dich: dm.get(CHARM), dichSlug: CHARM });
+  }
+  if (r.noi.includes(dm.get(CHARM_SON))) viec.push({ loai: 'go-lien-ket', r, dich: dm.get(CHARM_SON), dichSlug: CHARM_SON });
+}
+if (dmSon?.isActive) viec.push({ loai: 'an-danh-muc', r: { id: null, slug: CHARM_SON }, dich: dmSon.id });
+for (const v of viec) console.log(v.loai.padEnd(13), v.r.slug, v.dichSlug ? `→ ${v.dichSlug}` : '');
 console.log(`${viec.length} việc`);
 
 if (!argv.includes('--ghi') || !viec.length) {
@@ -120,7 +169,7 @@ if (!argv.includes('--ghi') || !viec.length) {
   process.exit(0);
 }
 
-const ids = [...new Set(viec.map((v) => v.r.id))];
+const ids = [...new Set(viec.map((v) => v.r.id).filter(Boolean))];
 await db.$transaction(async (tx) => {
   await tx.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS ${SAO_LUU} (product_id text PRIMARY KEY, category_id text, links jsonb, luc timestamptz DEFAULT now())`);
   // Chỉ sao lưu lần ĐẦU cho mỗi sản phẩm: chạy --ghi lần hai không đè mất bản gốc.
@@ -133,8 +182,28 @@ await db.$transaction(async (tx) => {
      ON CONFLICT (product_id) DO NOTHING`,
     ids,
   );
+  if (viec.some((v) => v.loai === 'an-danh-muc')) {
+    await tx.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS ${SAO_LUU_DM} (category_id text PRIMARY KEY, is_active boolean, luc timestamptz DEFAULT now())`);
+    await tx.$executeRawUnsafe(
+      `INSERT INTO ${SAO_LUU_DM} (category_id, is_active) SELECT id, "isActive" FROM koi_free_style.koi_categories WHERE id = $1 ON CONFLICT DO NOTHING`,
+      dmSon.id,
+    );
+  }
+  // Thứ tự: thêm/đổi TRƯỚC, gỡ SAU — món charm son luôn có Charm trước khi rời charm-dung-son.
+  const thuTu = { 'doi-chinh': 0, 'them-lien-ket': 1, 'them-charm': 1, 'go-charm': 2, 'go-lien-ket': 3, 'an-danh-muc': 4 };
+  viec.sort((a, b) => thuTu[a.loai] - thuTu[b.loai]);
   for (const v of viec) {
-    if (v.loai === 'go-charm') {
+    if (v.loai === 'an-danh-muc') {
+      await tx.$executeRawUnsafe(`UPDATE koi_free_style.koi_categories SET "isActive" = false WHERE id = $1`, v.dich);
+    } else if (v.loai === 'go-lien-ket') {
+      await tx.$executeRawUnsafe(`DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = $1 AND "categoryId" = $2`, v.r.id, v.dich);
+    } else if (v.loai === 'them-lien-ket') {
+      await tx.$executeRawUnsafe(
+        `INSERT INTO koi_free_style.koi_product_categories ("productId", "categoryId") VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        v.r.id,
+        v.dich,
+      );
+    } else if (v.loai === 'go-charm') {
       await tx.$executeRawUnsafe(`DELETE FROM koi_free_style.koi_product_categories WHERE "productId" = $1 AND "categoryId" = $2`, v.r.id, dm.get(CHARM));
     } else if (v.loai === 'them-charm') {
       await tx.$executeRawUnsafe(
