@@ -29,6 +29,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { vanTayWeb, vanTayNhieu, ketLuanTrung, ghiSoSha, luuVanTayTep } from './lib-trung-anh.mjs';
 
 const goc = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const docEnv = (f, k) => {
@@ -231,6 +232,14 @@ async function goiApi(duong, init = {}) {
   }
 }
 
+/**
+ * Chốt chặn CUỐI trước khi tạo listing (30/09/2026): vân tay ảnh web nạp lúc bắt
+ * đầu lượt + ảnh vừa đăng trong CHÍNH lượt này (luồng song song đăng trước thì vẫn
+ * thấy). Kiểm kê có thể đã cũ vài giờ — đây là lần kiểm cuối, không thay kiểm kê.
+ */
+let webLuot = null;
+const daDangLuot = [];
+
 async function dang(u, pt) {
   const kq = pt.kq;
   if (kq.conPham?.length) throw new Error(`chữ còn phạm sau 3 lượt sửa: ${kq.conPham.join(', ')} — không đăng`);
@@ -258,6 +267,15 @@ async function dang(u, pt) {
     if (trung[0]) ({ id, slug } = trung[0]);
   }
   if (!id) {
+    const vtDang = await vanTayNhieu(anh.map((n) => pt.mau[n - 1]));
+    webLuot ??= await vanTayWeb(prisma);
+    // Kiểm rồi ghi nhận LIỀN MỘT MẠCH (không await xen giữa): hai luồng song song
+    // mang cùng một món thì luồng sau chắc chắn thấy dấu của luồng trước.
+    const kl = ketLuanTrung(vtDang, [...webLuot, ...daDangLuot]);
+    if (Object.keys(kl.trung).length) {
+      throw new Error(`TRÙNG ${kl.theoSha ? '(cùng file đã đăng)' : '(vân tay ảnh)'} với ${Object.keys(kl.trung).join(', ')} — không đăng`);
+    }
+    daDangLuot.push(...vtDang.map((x) => ({ slug: `(đang đăng) ${u.khoa}`, xoa: false, h: x.h })));
     const sp = await goiApi('/products', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -310,6 +328,9 @@ async function dang(u, pt) {
       }
     }
   }
+  // Sổ SHA file gốc đã đăng (tầng 1 chống trùng — lib-trung-anh.mjs).
+  for (const x of await vanTayNhieu(anh.map((n) => pt.mau[n - 1]))) ghiSoSha(x.sha, slug);
+  luuVanTayTep();
   fs.appendFileSync(SO_DANG, JSON.stringify({ khoa: u.khoa, id, slug, soAnh: anh.length, luc: new Date().toISOString(), trangThai: 'xong' }) + '\n');
   return { id, slug, gia, soAnh: anh.length };
 }

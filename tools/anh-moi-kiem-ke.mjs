@@ -13,11 +13,15 @@
  * bền với đổi cỡ, nén lại, đổi định dạng — đúng thứ xảy ra khi ảnh gốc Fuji
  * được đưa lên web thành webp 2048px. Không bền với cắt cúp mạnh, nên lấy vài
  * tấm mỗi thư mục chứ không một tấm.
+ *
+ * Từ 30/09/2026 (A Khoa: "tại sao có listing trùng mà tool không tự loại"):
+ * so TOÀN BỘ ảnh thư mục (không lấy 6 mẫu nữa), thêm tầng SHA-1 file gốc đã
+ * đăng, và so các thư mục TRONG CÙNG LÔ với nhau. Luật chung ở lib-trung-anh.mjs.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import sharp from 'sharp';
+import { vanTayWeb, vanTayNhieu, ketLuanTrung, cungMon, luuVanTayTep } from './lib-trung-anh.mjs';
 
 const goc = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const dongEnv = fs.readFileSync(path.join(goc, '.env'), 'utf8').split(/\r?\n/).find((l) => l.startsWith('DATABASE_URL='));
@@ -34,9 +38,6 @@ const SHEET = 'https://docs.google.com/spreadsheets/d/1dZ-Y_VRHmPpJU0ng8nMZy5sgR
 const RA = path.join(goc, 'tools', '_tmp', giaTri('--ra', 'anh-moi'));
 fs.mkdirSync(RA, { recursive: true });
 // Vân tay ảnh web dùng CHUNG mọi lô (khoá theo id ảnh, chỉ băm thêm ảnh mới).
-const TEP_VT_WEB = path.join(goc, 'tools', '_tmp', 'anh-moi', 'van-tay-web.json');
-const MAU_MOI_THU_MUC = 6;
-const NGUONG_TRUNG = 10; // khoảng Hamming tối đa coi là cùng một ảnh
 
 /** CSV có ngoặc kép, xuống dòng trong ô. */
 function docCsv(t) {
@@ -57,17 +58,7 @@ function docCsv(t) {
   return dong;
 }
 
-async function dHash(buf) {
-  const { data } = await sharp(buf, { failOn: 'none' }).rotate().greyscale().resize(9, 8, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
-  let h = 0n;
-  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
-    h = (h << 1n) | (data[y * 9 + x] > data[y * 9 + x + 1] ? 1n : 0n);
-  }
-  return h;
-}
-const pop32 = (x) => { x -= (x >>> 1) & 0x55555555; x = (x & 0x33333333) + ((x >>> 2) & 0x33333333); return (((x + (x >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24; };
-const tach = (h) => [Number(h >> 32n) >>> 0, Number(h & 0xffffffffn) >>> 0];
-const hamming = (a, b) => pop32((a[0] ^ b[0]) >>> 0) + pop32((a[1] ^ b[1]) >>> 0);
+// dHash / hamming / luật kết luận trùng: dùng chung ở lib-trung-anh.mjs.
 
 // ---- 1. AppSheet ----
 const csv = docCsv(await (await fetch(SHEET)).text());
@@ -91,26 +82,8 @@ for (const r of csv.slice(1)) {
 console.log(`AppSheet: ${donTheoMa.size} đơn`);
 
 // ---- 2. Vân tay ảnh đang có trên web ----
-const vtWeb = fs.existsSync(TEP_VT_WEB) ? JSON.parse(fs.readFileSync(TEP_VT_WEB, 'utf8')) : {};
-const anhWeb = await prisma.$queryRawUnsafe(`
-  SELECT i.id, i.url, s.slug, s.status, s."isDeleted" AS xoa
-  FROM koi_free_style.koi_product_images i JOIN koi_free_style.koi_products s ON s.id = i."productId"`);
-let can = anhWeb.filter((a) => !vtWeb[a.id]);
-console.log(`Ảnh trên web: ${anhWeb.length} (cần băm ${can.length})`);
-for (let i = 0; i < can.length; i += 16) {
-  await Promise.all(can.slice(i, i + 16).map(async (a) => {
-    try {
-      const u = a.url.includes('/public/products/') ? a.url.replace('/public/products/', '/public/products/w400/') : a.url;
-      const r = await fetch(u, { signal: AbortSignal.timeout(20000) });
-      if (!r.ok) return;
-      vtWeb[a.id] = (await dHash(Buffer.from(await r.arrayBuffer()))).toString(16);
-    } catch { /* bỏ */ }
-  }));
-  if (i % 400 === 0) { fs.writeFileSync(TEP_VT_WEB, JSON.stringify(vtWeb)); process.stdout.write(`.${i}`); }
-}
-fs.writeFileSync(TEP_VT_WEB, JSON.stringify(vtWeb));
-const webList = anhWeb.filter((a) => vtWeb[a.id]).map((a) => ({ ...a, h: tach(BigInt('0x' + vtWeb[a.id])) }));
-console.log(`\nĐã có vân tay ${webList.length} ảnh web`);
+const webList = await vanTayWeb(prisma, console.log);
+console.log(`Đã có vân tay ${webList.length} ảnh web`);
 
 // ---- 3. Thư mục ảnh mới ----
 const laAnh = (f) => /\.(jpe?g|png)$/i.test(f) && !f.startsWith('._');
@@ -166,42 +139,18 @@ for (const t of thuMuc) {
   let bill = 0;
   if (ma && fs.existsSync(path.join(BILL, ma))) bill = fs.readdirSync(path.join(BILL, ma)).filter((f) => /\.(jpe?g|png)$/i.test(f)).length;
 
-  // Lấy mẫu rải đều trong thư mục.
-  const buoc = Math.max(1, Math.floor(anh.length / MAU_MOI_THU_MUC));
-  const mau = anh.filter((_, i) => i % buoc === 0).slice(0, MAU_MOI_THU_MUC);
-  const soVoiWeb = async (f) => {
-    const h = tach(await dHash(await sharp(f, { failOn: 'none' }).resize(256, 256, { fit: 'inside' }).toBuffer()));
-    let tot = null;
-    for (const w of webList) {
-      const d = hamming(h, w.h);
-      if (d <= NGUONG_TRUNG && (!tot || d < tot.d)) tot = { d, slug: w.slug, xoa: w.xoa };
-    }
-    return tot;
-  };
-  const trung = {};
-  const trungXoa = {};
-  let dMin = 99;
-  for (const f of mau) {
-    try {
-      const tot = await soVoiWeb(f);
-      if (tot) { trung[tot.slug] = (trung[tot.slug] || 0) + 1; if (tot.xoa) trungXoa[tot.slug] = true; dMin = Math.min(dMin, tot.d); }
-    } catch { /* ảnh hỏng */ }
-  }
-  // Bài học lô 7.2026: "1 mẫu khớp là trùng" bỏ nhầm nhiều món (khớp sát ngưỡng
-  // với một món khác hẳn). Chỉ đúng 1 mẫu khớp → soát TOÀN BỘ ảnh thư mục; vẫn
-  // chỉ 1 tấm khớp và không gần như y hệt (d>4) → đánh dấu "nghi" để Gemini so
-  // A/B (tools/anh-moi-soi-trung.mjs) thay vì tự bỏ.
-  let nghi = false;
-  const tong = Object.values(trung).reduce((a, b) => a + b, 0);
-  if (tong === 1 && dMin > 4) {
-    const dem = {};
-    for (const f of anh.slice(0, 60)) {
-      try { const tot = await soVoiWeb(f); if (tot) { dem[tot.slug] = (dem[tot.slug] || 0) + 1; dMin = Math.min(dMin, tot.d); } } catch { /* bỏ */ }
-    }
-    const nhieu = Math.max(0, ...Object.values(dem));
-    if (nhieu >= 2 || dMin <= 4) Object.assign(trung, dem);
-    else nghi = true;
-  }
+  // TOÀN BỘ ảnh thư mục (trần 120 tấm cho thư mục khổng lồ) — không lấy mẫu nữa:
+  // listing đã đăng thường chỉ mang một phần ảnh, lấy 6 mẫu là trượt (lô SP KOI
+  // lọt 21 món trùng vì vậy). Vân tay file có bộ nhớ đệm, lần sau không băm lại.
+  const vt = await vanTayNhieu(anh.slice(0, 120));
+  const kl = ketLuanTrung(vt, webList);
+  // "nghi" (đúng 1 tấm khớp sát ngưỡng) GIỮ dấu trùng để không tự đăng — chờ
+  // Gemini so A/B (anh-moi-soi-trung.mjs) gỡ ra nếu khác món.
+  const trung = kl.nghi ? kl.goiY : kl.trung;
+  const trungXoa = kl.trungXoa;
+  const dMin = kl.dMin ?? 99;
+  const nghi = kl.nghi;
+  const mau = vt;
   kq[t.duong] = {
     ...t, ngay: m?.[1] || null, moTa: m?.[2] || t.ten, ma, maGoc: m?.[3] || null,
     soAnh: anh.length, don, bill, mau: mau.length, trung, trungXoa, dMin: dMin === 99 ? null : dMin, nghi, xong: true,
@@ -210,5 +159,39 @@ for (const t of thuMuc) {
   const tt = Object.entries(trung).map(([s, n]) => `${s}×${n}`).join(', ');
   console.log(`[${xong}/${thuMuc.length}] ${t.ten} · ${anh.length} ảnh · ${ma ? `đơn ${ma}${don ? ` ${don.doanhThu ?? '-'}đ` : ' (KHÔNG THẤY)'} · bill ${bill}` : 'không mã'} · ${tt ? (nghi ? 'NGHI ' : 'TRÙNG ') + tt : 'mới'}`);
 }
+
+// ---- 4. So các thư mục TRONG CÙNG LÔ với nhau ----
+// Một món có 2 thư mục (2 buổi chụp, 2 nơi xếp) trước đây thành 2 listing. Thư
+// mục cùng mã đơn thì bỏ qua cặp — anh-moi-dang.mjs cố ý gộp chúng làm MỘT sản
+// phẩm. Mỗi cặp trùng: giữ thư mục nhiều ảnh hơn (hoà thì cái đứng trước), thư mục
+// kia mang dấu trùng trỏ về nó; nếu thư mục giữ đã trùng web thì thư mục kia nhận
+// luôn dấu trùng web đó.
+const dsLo = [];
+for (const t of thuMuc) {
+  const x = kq[t.duong];
+  if (!x?.soAnh) continue;
+  dsLo.push({ x, vt: await vanTayNhieu(tepAnh(t.duong).slice(0, 120)) });
+}
+luuVanTayTep();
+let trongLo = 0;
+for (let i = 0; i < dsLo.length; i++) {
+  for (let j = i + 1; j < dsLo.length; j++) {
+    const A = dsLo[i], B = dsLo[j];
+    if (A.x.ma && A.x.ma === B.x.ma) continue;
+    if (A.x.trungTrongLo || B.x.trungTrongLo) continue;
+    const k = cungMon(A.vt, B.vt);
+    if (!k.cung) continue;
+    const [giu, bo] = B.x.soAnh > A.x.soAnh ? [B, A] : [A, B];
+    if (Object.keys(bo.x.trung || {}).length) continue; // đã có dấu trùng web — vốn không đăng
+    const dauWeb = Object.keys(giu.x.trung || {}).length ? giu.x.trung : null;
+    bo.x.trung = dauWeb ? { ...dauWeb } : { [`(cùng lô) ${giu.x.ten}`]: k.soKhop };
+    bo.x.nghi = false;
+    bo.x.trungTrongLo = giu.x.duong;
+    trongLo += 1;
+    console.log(`CÙNG LÔ: ${bo.x.ten} ≈ ${giu.x.ten} (${k.theoSha ? 'cùng file' : `${k.soKhop} ảnh y hệt`}) → bỏ ${bo.x.ten}`);
+  }
+}
+console.log(`So trong lô: ${trongLo} thư mục trùng thư mục khác`);
 fs.writeFileSync(TEP_KQ, JSON.stringify(kq, null, 1));
+luuVanTayTep();
 await prisma.$disconnect();
