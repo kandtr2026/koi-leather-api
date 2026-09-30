@@ -1447,6 +1447,7 @@ async function handleGoogleCredential(response) {
     });
     if (data.accessToken) {
       localStorage.setItem('auth_token', data.accessToken);
+      swrCache.remove('GET /auth/me');
       applyAuth(data.user);
     }
   } catch (e) {
@@ -1483,6 +1484,7 @@ function applyAuth(user) {
 
 function logout() {
   localStorage.removeItem('auth_token');
+  swrCache.remove('GET /auth/me');
   isAuthenticated = false;
   document.body.classList.remove('authenticated');
   document.getElementById('gSignInWrapper').classList.remove('hidden');
@@ -1496,8 +1498,13 @@ async function checkAuth() {
   const token = localStorage.getItem('auth_token');
   if (!token) return;
   try {
-    const data = await api('/auth/me');
+    // noCache: /auth/me nay có thể kèm token mới 30 ngày — KHÔNG được lấy từ bộ
+    // đệm sessionStorage (khoá chung mọi tài khoản), kẻo đổi tài khoản trên cùng
+    // tab là token của người trước ghi đè token người sau.
+    const data = await api('/auth/me', { noCache: true });
     if (data.authenticated && data.user) {
+      // Máy chủ gia hạn phiên (token đã quá 1 ngày tuổi) → lưu token mới 30 ngày.
+      if (data.accessToken) localStorage.setItem('auth_token', data.accessToken);
       applyAuth(data.user);
     } else {
       localStorage.removeItem('auth_token');

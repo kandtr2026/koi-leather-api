@@ -30,7 +30,14 @@ export class AuthController {
   me(@Req() req: any) {
     const user = req.user;
     if (!user) return { authenticated: false };
-    return { authenticated: true, user };
+    // Gia hạn phiên khi dùng: token quá 1 giờ tuổi → kèm token mới 30 ngày, giao
+    // diện admin tự lưu đè (xem THOI_HAN_PHIEN trong auth.service.ts).
+    const accessToken = this.authService.lamMoiNeuCan(user);
+    return {
+      authenticated: true,
+      user,
+      ...(accessToken ? { accessToken } : {}),
+    };
   }
 
   /**

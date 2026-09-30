@@ -2,7 +2,7 @@ import { Module, Global } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { randomBytes } from "crypto";
 import { AuthController } from "./auth.controller";
-import { AuthService } from "./auth.service";
+import { AuthService, THOI_HAN_PHIEN } from "./auth.service";
 import { AuthGuard } from "./auth.guard";
 
 function resolveJwtSecret(): string {
@@ -27,7 +27,7 @@ function resolveJwtSecret(): string {
   imports: [
     JwtModule.register({
       secret: resolveJwtSecret(),
-      signOptions: { expiresIn: "24h" },
+      signOptions: { expiresIn: THOI_HAN_PHIEN },
     }),
   ],
   controllers: [AuthController],
