@@ -4,6 +4,7 @@ import { OpenAiModule } from "../openai/openai.module";
 import { AdsAdminController, AdsTrackController, AdsKeywordPoolController } from "./ads.controller";
 import { AdsService } from "./ads.service";
 import { GoogleAdsClient } from "./google-ads.client";
+import { DataManagerClient } from "./data-manager.client";
 import { KeywordPoolService } from "./keyword-pool.service";
 import { SyncService } from "./sync.service";
 import { AdsSyncService } from "./ads-sync.service";
@@ -17,6 +18,7 @@ import { LandingSeoService } from "./landing-seo.service";
   providers: [
     AdsService,
     GoogleAdsClient,
+    DataManagerClient,
     KeywordPoolService,
     SyncService,
     AdsSyncService,

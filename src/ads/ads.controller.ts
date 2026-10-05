@@ -294,6 +294,15 @@ export class AdsAdminController {
     return this.ads.danhDauDaGuiGoogle();
   }
 
+  @Post("ads/upload-data-manager")
+  @ApiOperation({ summary: "Gửi offline conversions qua Google Data Manager API" })
+  guiDataManager(@Req() req: Request, @Body() body: { validateOnly?: boolean }) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.ads.guiOfflineBangDataManager(Boolean(body?.validateOnly));
+  }
+
   @Post("ads/convert")
   @ApiOperation({ summary: "Đánh dấu một mã đã chốt đơn + giá trị VND" })
   chot(

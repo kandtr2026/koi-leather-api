@@ -41,6 +41,7 @@ const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   // gửi thủ công. KHÔNG gọi ra Google Ads API; chỉ đóng dấu exportedAt để panel
   // đối soát không báo 0 mãi sau khi Google đã kéo CSV.
   ["POST", /^\/analytics\/ads\/mark-exported$/],
+  ["POST", /^\/analytics\/ads\/upload-data-manager$/],
   // ----- Landing-SEO (cụm "Ads ↔ Landing ↔ SEO") -----
   // Ba đường POST gọi GPT (tốn phí OpenAI) phục vụ bước phân tích landing /
   // chấm từ khoá / viết nháp SEO. KHÔNG mutate tài khoản Ads, nhưng là POST

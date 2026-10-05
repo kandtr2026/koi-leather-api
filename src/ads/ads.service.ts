@@ -9,6 +9,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { dauNgayVN, ngayVNCuaDate, ngayVNString } from "../common/ngay-vn";
 import { GoogleAdsClient } from "./google-ads.client";
+import { DataManagerClient } from "./data-manager.client";
 import { OpenAiClient } from "../openai/openai.client";
 
 /**
@@ -192,6 +193,7 @@ export class AdsService {
   constructor(
     private prisma: PrismaService,
     private ads: GoogleAdsClient,
+    private dataManager: DataManagerClient,
     // OpenAiClient lấy từ OpenAiModule (ads.module.ts đã import) — cùng client
     // GPT mà LandingSeoService dùng, cho tính năng "AI mentor chiến dịch".
     private openai: OpenAiClient,
@@ -878,6 +880,103 @@ export class AdsService {
       data: { exportedAt: new Date() },
     });
     return { marked: r.count, eligible };
+  }
+
+  private idConversionOffline(): string {
+    const v = (process.env.GOOGLE_ADS_OFFLINE_CONVERSION_ACTION_ID || "").replace(/\D/g, "");
+    if (v) return v;
+    // Hiện action đang dùng cho offline feed cũ là "Zalo Sale".
+    return "7732404856";
+  }
+
+  private eventSource(channel?: string | null): "WEB" | "PHONE" | "MESSAGE" {
+    const c = String(channel || "").toLowerCase();
+    if (c === "phone" || c === "call") return "PHONE";
+    if (c === "zalo" || c === "messenger" || c === "message") return "MESSAGE";
+    return "WEB";
+  }
+
+  /**
+   * Upload offline click conversions bằng Google Data Manager API.
+   *
+   * Đây là đường API mới thay cho UploadClickConversions (bị Google chặn với
+   * developer token chưa allowlist). Chỉ gửi dòng có mã quảng cáo, đã có
+   * convertedAt/contactedAt, click đã quá 24h và còn trong 90 ngày.
+   */
+  async guiOfflineBangDataManager(validateOnly = false): Promise<{
+    ok: true;
+    sent: number;
+    requestId?: string;
+    warnings?: unknown[];
+  }> {
+    if (!this.dataManager.daCauHinh()) {
+      throw new BadRequestException(
+        "Thiếu cấu hình Google Data Manager: " + this.dataManager.bienConThieu().join(", "),
+      );
+    }
+
+    const den = new Date(Date.now() - CHO_XUAT_GIO * 3_600_000);
+    const tu = new Date(Date.now() - CUA_SO_FEED_NGAY * 86_400_000);
+    const rows = await this.prisma.koiAdClick.findMany({
+      where: {
+        convertedAt: { not: null },
+        exportedAt: null,
+        clickedAt: { gte: tu, lte: den },
+        OR: [
+          { gclid: { not: null } },
+          { gbraid: { not: null } },
+          { wbraid: { not: null } },
+        ],
+      },
+      orderBy: { convertedAt: "asc" },
+      take: 2000,
+    });
+
+    if (!rows.length) return { ok: true, sent: 0 };
+
+    const destination = {
+      operatingAccount: {
+        accountType: "GOOGLE_ADS",
+        accountId: this.dataManager.maTaiKhoan(),
+      },
+      ...(this.dataManager.maDangNhap()
+        ? {
+            loginAccount: {
+              accountType: "GOOGLE_ADS",
+              accountId: this.dataManager.maDangNhap(),
+            },
+          }
+        : {}),
+      productDestinationId: this.idConversionOffline(),
+    };
+
+    const payload = {
+      destinations: [destination],
+      encoding: "HEX",
+      validateOnly,
+      events: rows.map((r) => ({
+        eventTimestamp: (r.convertedAt || r.contactedAt || new Date()).toISOString(),
+        transactionId: `koi-${r.token}`,
+        eventSource: this.eventSource(r.channel),
+        conversionValue: r.value ? Number(r.value) : 1,
+        currency: "VND",
+        destinationReferences: ["0"],
+        adIdentifiers: {
+          ...(r.gclid ? { gclid: r.gclid } : {}),
+          ...(r.gbraid ? { gbraid: r.gbraid } : {}),
+          ...(r.wbraid ? { wbraid: r.wbraid } : {}),
+        },
+      })),
+    };
+
+    const kq = await this.dataManager.ingestEvents(payload);
+    if (!validateOnly) {
+      await this.prisma.koiAdClick.updateMany({
+        where: { token: { in: rows.map((r) => r.token) }, exportedAt: null },
+        data: { exportedAt: new Date() },
+      });
+    }
+    return { ok: true, sent: rows.length, requestId: kq?.requestId, warnings: kq?.fieldWarnings };
   }
 
   async feedCsv(conversionName: string, ghiDau = false): Promise<string> {
