@@ -285,6 +285,15 @@ export class AdsAdminController {
     };
   }
 
+  @Post("ads/mark-exported")
+  @ApiOperation({ summary: "Đánh dấu các conversion đủ điều kiện là đã gửi Google" })
+  danhDauDaGuiGoogle(@Req() req: Request) {
+    if (!(req as Request & { user?: unknown }).user) {
+      throw new UnauthorizedException("Cần đăng nhập admin để thực hiện thao tác này");
+    }
+    return this.ads.danhDauDaGuiGoogle();
+  }
+
   @Post("ads/convert")
   @ApiOperation({ summary: "Đánh dấu một mã đã chốt đơn + giá trị VND" })
   chot(

@@ -863,6 +863,23 @@ export class AdsService {
    * Nên chỉ URL nạp vào lịch Google Ads mang thêm ghi=1, và trang admin dựng
    * sẵn URL đó kèm nút chép để không ai phải gõ tay.
    */
+  async danhDauDaGuiGoogle(): Promise<{ marked: number; eligible: number }> {
+    const where: Prisma.KoiAdClickWhereInput = {
+      convertedAt: { not: null },
+      gclid: { not: null },
+      clickedAt: {
+        gte: new Date(Date.now() - CUA_SO_FEED_NGAY * 86_400_000),
+        lte: new Date(Date.now() - CHO_XUAT_GIO * 3_600_000),
+      },
+    };
+    const eligible = await this.prisma.koiAdClick.count({ where });
+    const r = await this.prisma.koiAdClick.updateMany({
+      where: { ...where, exportedAt: null },
+      data: { exportedAt: new Date() },
+    });
+    return { marked: r.count, eligible };
+  }
+
   async feedCsv(conversionName: string, ghiDau = false): Promise<string> {
     const rows = await this.prisma.koiAdClick.findMany({
       where: {

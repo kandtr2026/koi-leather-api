@@ -37,6 +37,10 @@ const DUONG_TU_CHOI_SERVICE = [
  */
 const GHI_CHO_PHEP: ReadonlyArray<readonly [string, RegExp]> = [
   ["POST", /^\/analytics\/ads\/convert$/],
+  // Đánh dấu các dòng trong feed offline đã được nạp vào lịch Google Ads / đã
+  // gửi thủ công. KHÔNG gọi ra Google Ads API; chỉ đóng dấu exportedAt để panel
+  // đối soát không báo 0 mãi sau khi Google đã kéo CSV.
+  ["POST", /^\/analytics\/ads\/mark-exported$/],
   // ----- Landing-SEO (cụm "Ads ↔ Landing ↔ SEO") -----
   // Ba đường POST gọi GPT (tốn phí OpenAI) phục vụ bước phân tích landing /
   // chấm từ khoá / viết nháp SEO. KHÔNG mutate tài khoản Ads, nhưng là POST
