@@ -14,7 +14,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #f1f5f9; }
-    .tab-btn { cursor: pointer; transition: all 0.2s; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; }
+    .tab-btn { cursor: pointer; transition: all 0.2s; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
     .tab-btn:hover { background: #e2e8f0; }
     .tab-btn.active { background: #1e293b; color: white; }
 
@@ -109,6 +109,9 @@
     html.embed #adminTabs { display: none; }
     .panel { display: none; }
     .panel.active { display: block; }
+    /* Tab nhúng trang Next (CRM Messenger, Agent): cao theo nội dung — trang con
+       báo chiều cao qua postMessage 'koi-nhung-cao' — nên chỉ một thanh cuộn. */
+    iframe.khung-nhung { display: block; width: 100%; height: 640px; border: 0; background: transparent; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
     .toast { position: fixed; bottom: 24px; right: 24px; z-index: 100; background: #1f2937; color: white; padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transform: translateY(80px); opacity: 0; transition: all 0.3s; }
@@ -371,12 +374,14 @@
   </header>
 
   <!-- Tabs -->
-  <div id="adminTabs" class="bg-white border-b px-6 py-3 flex gap-2">
+  <div id="adminTabs" class="bg-white border-b px-6 py-3 flex gap-2 overflow-x-auto">
     <button class="tab-btn active" data-tab="products"><i class="fas fa-box mr-2 text-amber-500"></i>Sản phẩm</button>
     <button class="tab-btn" data-tab="prodcats"><i class="fas fa-layer-group mr-2 text-amber-500"></i>Loại sản phẩm</button>
     <button class="tab-btn" data-tab="imgcats"><i class="fas fa-tags mr-2 text-amber-500"></i>Loại ảnh</button>
     <button class="tab-btn" data-tab="matcats"><i class="fas fa-gem mr-2 text-amber-500"></i>Loại da</button>
     <button class="tab-btn" data-tab="traffic"><i class="fas fa-chart-line mr-2 text-amber-500"></i>Thống kê traffic</button>
+    <button class="tab-btn" data-tab="crm"><i class="fas fa-comments mr-2 text-amber-500"></i>CRM Messenger</button>
+    <button class="tab-btn" data-tab="agents"><i class="fas fa-robot mr-2 text-amber-500"></i>Agent</button>
     <!-- Sáu màn còn lại (nội dung, thư viện ảnh, SEO, từ khoá, việc cần làm) nằm
          ở storefront Next, SPA này không có. Trước đây có một đường sang ngay
          đây cho khỏi phải nhớ địa chỉ. Ranh giới hai bên ghi ở
@@ -403,6 +408,19 @@
 
   <!-- Main -->
   <div class="flex-1 overflow-y-auto p-6">
+
+    <!-- CRM MESSENGER + AGENT (06/10/2026, A Khoa: "chỉ cần login dc vào admin thì
+         cho xem đồng cấp"). Hai màn này là trang Next của storefront
+         (koi-storefront/src/app/(vi)/admin/messenger, /agents) nhúng với ?embed=1;
+         trang con tự mượn phiên Google của admin này (JWT trong localStorage) nên
+         không phải đăng nhập lần nữa. Nạp lười: chỉ gắn src khi mở tab VÀ đã đăng
+         nhập — xem napKhungNhung(). -->
+    <div class="panel" id="panel-crm">
+      <iframe class="khung-nhung" data-src="/admin/messenger/?embed=1" title="CRM Messenger"></iframe>
+    </div>
+    <div class="panel" id="panel-agents">
+      <iframe class="khung-nhung" data-src="/admin/agents/?embed=1" title="Agent"></iframe>
+    </div>
 
     <!-- PRODUCTS PANEL -->
     <div class="panel active" id="panel-products">
@@ -1194,6 +1212,11 @@ const ROUTE_MAP = {
   // heoiu.vercel.app; bản này liệt kê TỪNG sản phẩm / TỪNG bài viết, đọc
   // /analytics/noi-dung — heoiu không có màn nào trả lời câu đó.
   '/admin/traffic': { panel: 'traffic', label: 'Thống kê traffic' },
+  // Hai tab nhúng trang Next. KHÔNG đặt /admin/messenger, /admin/agents: hai đường
+  // đó là của storefront (luật rewrite trong koi-storefront/next.config.ts chừa ra),
+  // mở thẳng không kèm ?embed thì storefront chuyển về hai đường dưới đây.
+  '/admin/crm': { panel: 'crm', label: 'CRM Messenger' },
+  '/admin/agent-center': { panel: 'agents', label: 'Agent' },
   // /admin/ads và /admin/leads vẫn đã xoá — hai báo cáo đó ở heoiu.vercel.app.
   // Endpoint thì VẪN CÒN nguyên (/analytics/summary, /analytics/realtime,
   // /analytics/ads/*, /analytics/leads): heoiu đọc và ghi qua chính chúng, xoá
@@ -1230,10 +1253,49 @@ function applyRoute(route) {
     trafficNhoLai();
     loadTraffic();
   }
+  napKhungNhung();
 
   // Panel Lưu lượng cũ đã xoá cùng nhịp realtime của nó; tab traffic mới không
   // có nhịp nào chạy nền nên vẫn không có gì cần tắt khi rời tab.
 }
+
+/** Tab nhúng đang mở mà chưa nạp thì nạp — chỉ khi đã đăng nhập, vì trang con
+ *  mượn JWT trong localStorage để mở phiên (nạp sớm hơn là nó báo "chưa đăng nhập"). */
+function napKhungNhung() {
+  // Chính admin này đang nằm trong một khung (embed) thì không nhúng tiếp — tránh
+  // admin lồng admin nếu luật chuyển hướng ?embed có lúc trượt.
+  if (!isAuthenticated || window.self !== window.top) return;
+  const khung = document.querySelector('.panel.active iframe.khung-nhung');
+  if (!khung || khung.getAttribute('src')) return;
+  // Hai trang nhúng là của storefront koileather.com. Mở admin ở tên miền API
+  // (koi-leather-api.vercel.app) thì /admin/messenger lại là chính SPA này → chỉ đường.
+  if (!/(^|\.)koileather\.com$|^localhost$|^127\.0\.0\.1$/.test(location.hostname)) {
+    const duong = khung.dataset.src.indexOf('/agents') !== -1 ? '/admin/agent-center' : '/admin/crm';
+    khung.insertAdjacentHTML('afterend', '<p class="text-sm text-gray-500">Tab này chỉ chạy ở <a class="text-amber-600 underline" href="https://koileather.com' + duong + '">koileather.com' + duong + '</a>.</p>');
+    khung.remove();
+    return;
+  }
+  khung.setAttribute('src', khung.dataset.src);
+}
+
+/** Bỏ cookie phiên của các tab nhúng (trang Next) và tháo nội dung đang hiện.
+ *  Gọi khi đăng xuất và khi vừa đăng nhập — máy dùng chung thì người sau không
+ *  được thấy CRM bằng phiên người trước. */
+async function datLaiKhungNhung() {
+  document.querySelectorAll('iframe.khung-nhung').forEach(function (f) { f.removeAttribute('src'); });
+  try { await fetch('/api/admin/phien-spa', { method: 'DELETE', credentials: 'same-origin' }); } catch (e) {}
+}
+
+window.addEventListener('message', function (e) {
+  if (e.origin !== location.origin || !e.data || e.data.type !== 'koi-nhung-cao') return;
+  // Tab bị ẩn (display:none) thì trang con đo ra 0 — bỏ qua, giữ chiều cao cũ để
+  // quay lại tab không bị giật; hiện lại là trang con tự báo số mới.
+  const cao = Number(e.data.cao) || 0;
+  if (cao <= 0) return;
+  document.querySelectorAll('iframe.khung-nhung').forEach(function (f) {
+    if (f.contentWindow === e.source) f.style.height = Math.max(240, cao) + 'px';
+  });
+});
 
 function navigateTo(route) {
   applyRoute(route);
@@ -1448,6 +1510,8 @@ async function handleGoogleCredential(response) {
     if (data.accessToken) {
       localStorage.setItem('auth_token', data.accessToken);
       swrCache.remove('GET /auth/me');
+      // Chờ xoá xong cookie cũ rồi mới nạp tab nhúng, kẻo lời xoá về SAU lời mở phiên mới.
+      await datLaiKhungNhung();
       applyAuth(data.user);
     }
   } catch (e) {
@@ -1480,6 +1544,7 @@ function applyAuth(user) {
     trafficNhoLai();
     loadTraffic(true);
   }
+  napKhungNhung();
 }
 
 function logout() {
@@ -1490,6 +1555,7 @@ function logout() {
   document.getElementById('gSignInWrapper').classList.remove('hidden');
   document.getElementById('authUser').classList.add('hidden');
   if (window.google) google.accounts.id.disableAutoSelect();
+  datLaiKhungNhung();
 
   toast('Đã đăng xuất');
 }
