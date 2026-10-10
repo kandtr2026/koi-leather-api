@@ -9,14 +9,15 @@
  * Phan cat ky (dauNgayVN) da lam o tang service. O day chi nhan dong da loc san.
  */
 
-/** Ba kenh lien he, dung thu tu hien ra o panel. */
-export const KENH = ["zalo", "messenger", "phone"] as const;
+/** Kenh lien he, dung thu tu hien ra o panel. */
+export const KENH = ["zalo", "whatsapp", "messenger", "phone"] as const;
 
 export type Kenh = (typeof KENH)[number];
 
 /** Nhan tieng Viet cho tung kenh. Backend tra kem de panel khong tu doan. */
 export const NHAN_KENH: Record<Kenh, string> = {
   zalo: "Zalo",
+  whatsapp: "WhatsApp",
   messenger: "Messenger",
   phone: "Gọi điện",
 };

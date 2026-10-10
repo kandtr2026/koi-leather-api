@@ -65,7 +65,7 @@ describe("gomKenhLienHe — bang rong", () => {
   it("VAN du ba dong kenh, moi dong bang 0", () => {
     // Chot hop dong: panel ve the tu danh sach nay. Bang rong ma tra [] la
     // panel mat sach ba the, trong y nhu tinh nang chua chay.
-    expect(ra.theoKenh.map((d) => d.khoa)).toEqual(["zalo", "messenger", "phone"]);
+    expect(ra.theoKenh.map((d) => d.khoa)).toEqual(["zalo", "whatsapp", "messenger", "phone"]);
     expect(ra.theoKenh.every((d) => d.soLan === 0 && d.soNguoi === 0)).toBe(true);
   });
 
@@ -193,6 +193,7 @@ describe("gomKenhLienHe — nhan va thu tu", () => {
     const ra = gomKenhLienHe([bam({ channel: "phone" })]);
     expect(ra.theoKenh.map((d) => d.nhan)).toEqual([
       NHAN_KENH.zalo,
+      NHAN_KENH.whatsapp,
       NHAN_KENH.messenger,
       NHAN_KENH.phone,
     ]);
