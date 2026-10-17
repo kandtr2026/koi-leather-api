@@ -2,8 +2,8 @@
 //  - posts: content (sua/<id>.html) + title/meta_title/meta_description/excerpt (sua/<id>.fields.json)
 //  - public.page_faqs: question/answer (sua/page-faqs.<ban>.json → rows)
 // Mỗi trường đổi → 1 dòng koi_content_revisions (hoàn tác được ở admin) + sao lưu JSON.
-//   node tools/_tmp/ghi-noi-dung-dot2.mjs -          # chạy thử, in tóm tắt
-//   node tools/_tmp/ghi-noi-dung-dot2.mjs - --ghi    # ghi thật (CHỈ khi A Khoa đã gật)
+//   node tools/_tmp/ghi-noi-dung-dot2.mjs v1          # chạy thử, in tóm tắt
+//   node tools/_tmp/ghi-noi-dung-dot2.mjs v1 --ghi    # ghi thật (CHỈ khi A Khoa đã gật)
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -15,7 +15,7 @@ process.env.DATABASE_URL = dong.slice('DATABASE_URL='.length).replace(/^["']|["'
 const { PrismaClient } = await import('@prisma/client');
 const prisma = new PrismaClient();
 const SUA = 'E:/Claude A Khoa Processing/koi-storefront/.codex-temp/content-refactor/dot2/sua';
-const banFaq = process.argv[2] || 'v3';
+const banFaq = process.argv[2] || 'v1';
 const GHI = process.argv.includes('--ghi');
 const IDS = [11780, 12581, 12649, 12741, 10699, 10576, 10698, 10564, 10789, 10537, 10787, 2527];
 const TRUONG = ['title', 'meta_title', 'meta_description', 'excerpt'];
