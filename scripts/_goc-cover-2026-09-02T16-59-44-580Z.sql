@@ -1,0 +1,2 @@
+UPDATE koi_free_style.koi_categories SET "coverImage"='https://stdkeltylgakfvqejugz.supabase.co/storage/v1/object/public/products/1787908384380.webp' WHERE id='387c4986-3aa9-4980-b293-06e168cc8f3c'; -- tui-da-cho-nu
+UPDATE koi_free_style.koi_categories SET "coverImage"='https://stdkeltylgakfvqejugz.supabase.co/storage/v1/object/public/products/1786441990579.webp' WHERE id='2913903f-8692-43d9-a153-b7215fe0c6a7'; -- vi-da-cho-nam

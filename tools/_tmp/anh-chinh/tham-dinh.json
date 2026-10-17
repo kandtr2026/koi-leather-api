@@ -1,0 +1,1073 @@
+{
+ "82f6cd61-6e57-45a2-aff9-848b74e1b550": {
+  "chon": "73c0f64d-4c13-4363-940a-d636486d8cd5",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A là ảnh cận cảnh logo bên trong, không thấy hình dáng. Ảnh B hiển thị toàn bộ balo rất rõ ràng và đẹp mắt.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "f1f8f55e-8cf4-4417-b5b4-c4ff20b5d748": {
+  "chon": "cf1681c5-3731-4601-93a8-c5768beef4af",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chụp cận góc nên bị mất hình dáng. Ảnh B hiển thị trọn vẹn tấm lót bàn, rõ ràng và rất phù hợp.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9a3d1d42-cfef-4e33-8342-12f1c4bcffe8": {
+  "chon": "bf5228bc-cc83-46b8-aeb8-4e1d002b3149",
+  "dongY": false,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chụp studio mặt trước rõ nét, chuyên nghiệp. Ảnh B chụp mặt sau ngoài trời với phông nền rối, không phù hợp làm ảnh chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "aa75b4ac-20ef-48a9-8fb1-4c1ab01354ce": {
+  "chon": "3659c773-f6e5-4a45-bcef-75106ae5c232",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B tốt hơn hẳn vì thể hiện rõ công năng kẹp tiền và hiển thị tên khắc đúng chiều, giúp khách hàng dễ hình dung sản phẩm ngay lập tức.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "3f38cabe-14d4-4df2-aba5-66848b8ae57f": {
+  "chon": "cd098f78-1551-47c5-8bb3-6a88f5750ce7",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt xén, không hiển thị toàn bộ balo. Ảnh B chụp trọn vẹn sản phẩm, rõ ràng hình dáng và màu sắc.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "89ff2fad-1094-48ed-84d4-74f53acd13b9": {
+  "chon": "03e11553-d147-4b0f-91d7-4b8700bc791f",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B tốt hơn rõ rệt vì hiển thị được cả mặt trước và mặt sau (có logo Ford) của sản phẩm, giúp khách hàng nhìn toàn diện.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "506fb0d2-5e50-40d7-9e55-d86a631f834f": {
+  "chon": "9165d8c0-bc62-4d73-9c83-a6f515e2055c",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B thể hiện toàn bộ hình dáng bên ngoài của bao da khi đóng, giúp khách hàng dễ dàng nhận diện sản phẩm hơn ảnh mở.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "2165532f-14d6-4062-935e-62f29cfbcf1f": {
+  "chon": "40f5db36-448a-4362-8d98-0dffe9523c8e",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A có hai thắt lưng gây rối mắt. Ảnh B tập trung vào một sản phẩm, sắc nét, góc chụp đẹp và chuyên nghiệp hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "97ecc7ea-695e-448a-9d26-db1ccfc652ed": {
+  "chon": "ab3317ce-5571-4303-b24c-f0cfde176e5d",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B hiển thị rõ ràng toàn bộ mặt ngoài sản phẩm, trong khi ảnh A bị tay và giấy tờ che khuất nhiều.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "61eddfa6-36ee-4825-921e-b2304540df2f": {
+  "chon": "8498d3ed-81c3-42a8-89ed-11b04bc28421",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B hiển thị cả mặt ngoài và trong, giúp khách hàng hình dung toàn diện sản phẩm, tốt hơn ảnh A chỉ chụp bên trong.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "2e4a1b25-f2e2-4fec-922b-d7b231dd3974": {
+  "chon": "6eb54c06-9846-45c0-82a9-18c343b6e598",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt xén và chụp cận một phần. Ảnh B hiển thị rõ toàn bộ hình dáng và đúng số lượng 4 cái như tiêu đề.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "e9abc3eb-e5a5-4ad1-851e-b8395563a77a": {
+  "chon": "4fed858e-452a-4539-9110-41899639873f",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B thể hiện rõ ràng cả hai màu Nâu và Olive của sản phẩm, góc chụp đứng giúp dễ hình dung tổng thể hơn ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "a15daade-a37c-43ae-9d38-0cf0a84ea26d": {
+  "chon": "2168db7e-0b2a-46b0-9e35-50ed88dfcb71",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị rõ mặt ngoài sản phẩm, tốt hơn đáng kể so với ảnh A hiển thị mặt trong và có bàn tay gây phân tâm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "f895c76b-e6c3-4f6b-b8ee-af65ae42baec": {
+  "chon": "d03a8f7c-8352-4dd2-a2bd-d067846f72a3",
+  "dongY": false,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A hiển thị rõ ràng, trọn vẹn sản phẩm và không mắc lỗi nào. Ảnh B tương tự và không thực sự vượt trội hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "f22b7496-255e-4992-afe7-8dcda360090d": {
+  "chon": "208828a1-3c69-4b88-b036-dde45f45056d",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chỉ chụp mặt sau, không thấy hình chạm khắc chó con như tiêu đề. Ảnh B thể hiện rõ thiết kế chính của sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9f9d98db-794b-4250-bb45-f610ceec3c2e": {
+  "chon": "87723f06-8c4a-4ba1-b43a-7b8ff3909e4a",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị lấn át bởi bối cảnh và người, sản phẩm quá nhỏ. Ảnh B thể hiện rõ ràng, nổi bật sản phẩm chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5184fead-6667-4f9a-ae9b-bbd8750c52ac": {
+  "chon": "7b72ae03-40e2-4c7c-8fee-b7df737bff9e",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A hiển thị chữ R bị ngược. Ảnh B cho thấy cả hai chữ đúng chiều, rõ nét, phù hợp làm ảnh chính hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "8f1e5b76-5c21-4ddc-bd01-7bc2df02fe1c": {
+  "chon": "7141f69d-ff31-4a7f-bcd0-247e68cd2fef",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B tốt hơn nhiều vì tập trung vào một sản phẩm duy nhất, góc chụp và ánh sáng làm nổi bật kiểu dáng, chất liệu.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "d8072bca-677b-4491-9944-42be6e289a80": {
+  "chon": "f555be57-2c44-4012-b541-51e6b8e13250",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A bị cắt góc quai xách và có nền dính hình người gây rối. Ảnh B hiển thị trọn vẹn kiểu dáng clutch chuyên nghiệp hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "61b5ff9c-67f8-48f2-a010-d5ed8e56edf9": {
+  "chon": "f93b2ec6-31a3-4c40-8668-2a8b9677f4f5",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A có người làm nền và hiển thị nhiều túi gây rối. Ảnh B tập trung vào sản phẩm, rõ hình dáng và màu sắc hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "be7cca8b-81c0-4bdf-89c8-4701be72f0d2": {
+  "chon": "2f05bcd6-8032-4c9b-bb25-1cd3cbdb58ef",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp hai đầu dây. Ảnh B hiển thị trọn vẹn toàn bộ sản phẩm, phù hợp làm ảnh chính hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "ad00d555-be3a-47ea-a181-878098222ff3": {
+  "chon": "5f6df17e-359c-4842-a16c-0c26deedc93b",
+  "dongY": false,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A hiển thị rõ toàn bộ sản phẩm trên nền trắng tinh tế. Ảnh B có nền tranh ảnh quá rườm rà, gây mất tập trung.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "015818b2-6348-450b-bf56-8c32b2db9fec": {
+  "chon": "f0b43ef6-add1-44aa-b556-0cd07cb91cb4",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B chụp rõ nét toàn bộ sản phẩm trên nền phẳng, chuyên nghiệp hơn ảnh A bị bàn tay che khuất một phần.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "4f0ef494-2b53-4355-845c-6bc09957268b": {
+  "chon": "35357f8c-e5ff-4a16-a1a0-37fcf33ef53f",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh A bị cắt cúp làm mất hình dáng. Ảnh B cuộn gọn gàng, thể hiện trọn vẹn thiết kế của dây đeo camera.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "8dd4d7b4-64ed-4c35-ba19-99a4eebf0730": {
+  "chon": "bc60375e-79dc-4480-ab09-f3d0055dfce2",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị đầy đủ cả dây màu trắng và đen đúng như tên sản phẩm, góc chụp bao quát toàn bộ dây hơn ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "3b1a693d-ba82-4213-b4cb-f56442c7a198": {
+  "chon": "df5fa4d5-4d15-4974-9cf2-46bcd6830cc6",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp hai đầu dây và có tay cầm che khuất. Ảnh B hiển thị toàn bộ sản phẩm rõ ràng trên nền sạch.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "a985ea8d-81d4-4a28-8280-14b6b28545e9": {
+  "chon": "a5903458-68c5-41df-a94e-c3e5750f7aaf",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị toàn bộ sản phẩm rõ ràng, không bị tay người che khuất hay làm phân tâm như ảnh A, chuyên nghiệp hơn làm ảnh đại diện.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "c2cf8874-a0f0-43f1-b50a-d47fe466cc27": {
+  "chon": "ff408f25-f45e-43b4-968e-d50449c4d656",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chụp mặt sau hiển thị lót da màu nâu, không đúng màu đen ở tiêu đề. Ảnh B thể hiện rõ đúng màu và chất liệu.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "539d8e56-181d-4167-a2e9-82238ac1b702": {
+  "chon": "4f928c05-7446-4475-82b5-b3a7c1cb63a1",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp và chỉ chụp cận cảnh phần khóa. Ảnh B hiển thị tổng thể dây đeo gắn trên đồng hồ rất rõ ràng.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "a04f6ed1-adf4-4e96-90e1-a09d6f400d6d": {
+  "chon": "56439bc8-fbbd-4f6a-84e5-6a87e0837326",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A có tay người cầm làm phân tâm và che khuất sản phẩm. Ảnh B chụp flatlay rõ ràng, nổi bật toàn bộ dây đồng hồ hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "108eedee-3f07-4ca6-a6a0-cbcbd71913ab": {
+  "chon": "f1a8c170-e931-4d59-9de9-4e6e85cb43d8",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chụp mặt sau (lót), không thấy rõ màu navy và da Togo. Ảnh B chụp mặt trước, thể hiện đúng sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "401f4549-ee03-4642-86b0-2f3d9ab54359": {
+  "chon": "71fa9e03-67b7-476e-9112-645453e0040e",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chụp quá cận và bị cắt cúp. Ảnh B hiển thị trọn vẹn toàn bộ chiếc thắt lưng, phù hợp làm ảnh đại diện.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "4db98665-875b-4926-9631-7d4ec423d79e": {
+  "chon": "394b4ab7-24aa-4104-8539-f55d373ebee2",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh A hiển thị mặt sau nên không thấy vân da. Ảnh B chụp mặt trước, thể hiện rõ chất da Epsom theo đúng tên sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "f1aa0b28-36c6-437a-a026-234fb41094ba": {
+  "chon": "c904b7e3-9591-4814-be65-e64966ed288f",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chụp mặt sau (lớp lót), không thấy rõ vân da Epsom. Ảnh B chụp mặt chính, thể hiện đúng chất liệu theo tên sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "609ad3c1-d129-4bb0-9cb3-763caf471d5f": {
+  "chon": "b710933f-39a7-423e-867d-9e4917b97b97",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chứa dây cũ bị rách gây mất thẩm mỹ. Ảnh B hiển thị sản phẩm cuộn gọn gàng, tập trung và chuyên nghiệp hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "e1871e41-fcc9-4fd3-b55f-7b4875bab8dd": {
+  "chon": "8113dd08-85cf-4238-ad63-79538d047fc6",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt mất phần lớn tấm lót. Ảnh B hiển thị đầy đủ trọn bộ sản phẩm hộp bút và tấm lót.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "abf719f9-cc7f-4982-b371-eb90f59463d7": {
+  "chon": "a91cc233-7490-4124-8888-38b92a967821",
+  "dongY": false,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh A nền gỗ sạch sẽ giúp tập trung hoàn toàn vào sản phẩm. Ảnh B có nhiều dụng cụ xung quanh làm rối mắt.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9be3ad0f-e910-4e63-a23b-66d849ee5fe4": {
+  "chon": "703db356-9c9c-402a-a29c-a862cfa284d0",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A lỗi ghép hình và chèn logo. Ảnh B hiển thị túi rất rõ nét, nền sạch, hoàn hảo để làm ảnh chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "a92379d9-19a7-4e47-8611-2bc9ee650787": {
+  "chon": "60837885-88f2-47c8-b343-f5f79f135c35",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B thể hiện mặt trước với nắp đậy, giúp khách hàng dễ dàng nhận diện kiểu dáng sản phẩm hơn ảnh A (chụp mặt sau).",
+  "model": "ag/gemini-pro-agent"
+ },
+ "50f460eb-c035-4f1e-9c6d-69988d1a9b7c": {
+  "chon": "cca0adc9-e0bc-452f-bfa2-3becbe2d109d",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị trọn vẹn hình dáng túi và kèm theo dây đeo, trong khi ảnh A bị cắt xén góc.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "c9d5bf87-a1b8-4f90-8510-e4a76b5f278b": {
+  "chon": "904dd1d8-517e-4566-8ffa-2687056bcd9f",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B chỉ tập trung vào kẹp tiền đúng như tiêu đề, trong khi ảnh A hiển thị nhiều sản phẩm khác nhau dễ gây nhầm lẫn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9762ea30-d0d5-4875-9923-35c0976888e2": {
+  "chon": "a37a7f67-ddac-49fd-90e5-c2af9723dd6c",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị người và túi xách lấn át, sản phẩm quá nhỏ. Ảnh B tập trung rõ nét vào kẹp tiền, thể hiện chi tiết tốt hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "f2f077ed-62e5-48af-98b1-3f606ce36f90": {
+  "chon": "dfccdfbd-21b6-40ed-9b09-741524b6925e",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B chụp từ phía trước (góc 3/4) thể hiện rõ chức năng của kệ, trong khi ảnh A chụp từ phía sau gây khó hiểu.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "26581a06-8a46-4be9-98a7-871f65817d7a": {
+  "chon": "42ed4ed4-638d-4870-89a3-4cdef2d67556",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A bị lẹm sản phẩm và ám vàng. Ảnh B sáng, rõ nét, bố cục trọn vẹn và thể hiện được đa dạng màu sắc.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "e2af89a5-f35f-45d9-b4b0-a809f2bb085b": {
+  "chon": "3dd130a4-f2e8-4669-a6b9-56c88ffabee5",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B lấy nét sản phẩm tốt hơn, màu xanh nổi bật và chân thực hơn, bố cục chặt chẽ giúp tôn dáng túi hơn ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "c7c70bfa-e7b8-48fd-a00f-a36ba73dc20f": {
+  "chon": "8383f569-f859-466f-8643-7565a4563201",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A là ảnh ghép chứa nhiều văn bản và người mẫu chiếm ưu thế. Ảnh B tập trung vào hình dáng sản phẩm rõ ràng hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "b28400dd-8f28-4da4-bba6-0d0dc0e81ab9": {
+  "chon": "a40a86fc-cf4e-4e52-94a5-293bfa8fc571",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh A có quá nhiều sản phẩm giống nhau. Ảnh B hiển thị bộ sản phẩm rõ ràng, bố cục đẹp và thu hút hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "45fe4e5c-da53-48e8-8b32-4f490faedf76": {
+  "chon": "3f5836a6-baba-45f4-83fd-b746d705b6d9",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chụp cận chi tiết và sai màu (đen). Ảnh B hiển thị toàn bộ túi đúng màu hồng theo tiêu đề sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "ca0a4731-c37f-4f18-bc03-e0b476b058bf": {
+  "chon": "06972fc9-e27a-4a62-bfd7-40f22a9b6893",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B góc 3/4 thể hiện phom dáng và chiều sâu của túi tốt hơn hẳn góc chụp chính diện của ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "b1cd54a0-f7d4-4660-85b9-2968a44378e1": {
+  "chon": "7dae7a66-493d-4f26-a01a-ce9346327ca7",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B hiển thị toàn bộ túi rõ ràng, sắc nét trên phông nền tĩnh, không bị che khuất bởi người mẫu như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "28ed9fb5-f892-458b-8527-4fb30c3a81f3": {
+  "chon": "a5216aa0-dc8c-48d4-a267-4b22bb2f29c0",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A có tay người che khuất và túi bị mờ ở nền. Ảnh B hiển thị rõ ràng và đầy đủ cả túi lẫn dây đeo.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "7a7c20b5-0a1d-486e-9e6b-ee33ced15c43": {
+  "chon": "e189b532-7001-4a93-903e-38389c7cbca2",
+  "dongY": true,
+  "doTinCay": 0.8,
+  "lyDo": "Sản phẩm ở ảnh A quá nhỏ so với bao bì. Ảnh B chụp gần hơn, giúp money clip nổi bật và dễ nhận diện.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "0f80a41d-6003-4f82-90db-70e071b924d2": {
+  "chon": "ffc8218e-b31f-4118-ab2f-4859cbb83a85",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B chụp gần hơn, giúp sản phẩm to rõ và lấp đầy khung hình tốt hơn, rất lý tưởng làm ảnh đại diện.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "041c17e4-e004-451e-811c-39493b02e166": {
+  "chon": "26c10b77-f119-4a95-b850-e66d70184a55",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B thể hiện rõ chức năng của kẹp tiền. Ảnh A gây nhầm lẫn vì có thêm chiếc ví lớn không liên quan.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "cd0afaf0-eccf-4b7f-904e-244cc18eedba": {
+  "chon": "921db63d-ae5a-41f7-a1c5-d8c5604ae393",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B thể hiện rõ hình dáng mặt trước sản phẩm. Ảnh A chụp góc nghiêng từ cạnh bên làm sản phẩm khó nhận diện hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "0a25979a-41bf-46b2-9c51-07868260ad14": {
+  "chon": "577c9636-02a0-4b45-8d54-d4dedf4ac9fb",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B hiển thị đúng sản phẩm theo tên gọi (có tag vàng Xusi) và minh họa rõ công năng, tốt hơn ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "40f72c21-9d7a-42bb-b162-3555c382bcf1": {
+  "chon": "0415c897-73ce-48ba-b0d9-1910e3d490d0",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A có người và túi xách phụ chiếm quá nhiều diện tích. Ảnh B tập trung vào sản phẩm, thể hiện rõ chi tiết và kiểu dáng.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "0715aa8f-40ba-47ee-ba6f-3b311089fa31": {
+  "chon": "20b9053f-31cd-4c72-a637-d0e240aa7429",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B thể hiện rõ cấu trúc gập và chức năng của money clip, đồng thời thấy được chữ 'Nini' như tên sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "626a5606-6a96-41b0-86ed-983151f548c2": {
+  "chon": "10d4d8a7-6f51-49ae-9e1b-cf84c145e493",
+  "dongY": false,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh hiện tại đã thể hiện rõ ràng, đầy đủ thiết kế và chất liệu của sản phẩm, không có lỗi. Không cần thiết phải thay thế.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "56b33e5c-2829-4358-8958-61e1ac0134a9": {
+  "chon": "05bb48e6-8456-40cb-8e5c-55077a294cd9",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B tốt hơn đáng kể vì sản phẩm lớn hơn, lấp đầy khung hình, giúp nhìn rõ chi tiết bề mặt da và logo.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5d1a5cfe-7494-40c0-b863-2b758bc0e61d": {
+  "chon": "ba45703f-4a58-4abf-a562-0b32ea7bcf80",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B hiển thị rõ ràng toàn bộ mặt trước, chất liệu da và tag bạc, góc chụp trực quan và đẹp hơn góc dựng đứng của ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "1b2420ed-ea5e-47af-ad2f-30b3361f3e43": {
+  "chon": "094d1b38-314a-4021-9495-575dca8052c7",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B tập trung vào sản phẩm, nền sạch sẽ và chuyên nghiệp hơn, không bị tay che khuất hay rối mắt như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9360a3b9-45cd-41cc-ae1b-98277410e3f5": {
+  "chon": "0d0a4996-24ae-400b-91ce-19b06e03d967",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A hơi tối và nhiều phụ kiện gây nhiễu. Ảnh B sáng sủa, rõ nét và tập trung hoàn toàn vào sản phẩm chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "4488f8e8-853c-4d41-ab40-11f1d648f542": {
+  "chon": "876fa8ad-e238-406b-bac9-6363d7ff3300",
+  "dongY": true,
+  "doTinCay": 0.99,
+  "lyDo": "Ảnh B hiển thị đầy đủ cả Money Clip và Tag Vali như trong tiêu đề, trong khi ảnh A bị thiếu Tag Vali.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5c213db8-0765-49bb-af98-72705a2ca468": {
+  "chon": "02e7ade7-b6e0-4e05-bcb3-f6b0d6b4aba0",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chỉ chụp góc ngang túi. Ảnh B chụp trực diện, thấy rõ toàn bộ kiểu dáng và thiết kế, phù hợp làm ảnh chính hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "d28d8d79-f829-43ac-80c2-421ad06f9341": {
+  "chon": "0918fcbc-0190-4083-bbbb-9ce5dfbe6678",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A có thêm túi nhỏ màu xanh gây nhầm lẫn. Ảnh B chỉ tập trung vào túi màu nâu, đúng với tên sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "60657bd4-33cb-4d25-a794-889f1b8d25de": {
+  "chon": "1640dc9a-3278-472b-ad96-d048773bb0c1",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A lấy túi xách làm chủ thể. Ảnh B tập trung rõ ràng vào thẻ tên, đúng sản phẩm, rất phù hợp làm ảnh chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "875c4807-09ab-4a21-ab90-0a017348be8f": {
+  "chon": "d7079e4c-851c-49dc-8467-fbbe7786cc9c",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B hiển thị trọn vẹn sản phẩm trên nền sạch, ánh sáng tốt. Ảnh A đổ bóng gắt, nền rối và cắt mất dây đeo.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "44eca2ed-09b7-43cd-b494-6d5ea5fdf248": {
+  "chon": "92f43fb1-9677-4ee1-b087-8627eadbcfc8",
+  "dongY": true,
+  "doTinCay": 0.8,
+  "lyDo": "Ảnh B chụp trực diện, rõ ràng, làm nổi bật sản phẩm hơn ảnh A có góc chụp chéo và nền quá lấn át.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5b395b30-3310-4025-8b09-e05b0b808768": {
+  "chon": "1de6b30d-ba60-434d-8ff5-991fa797d2ba",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt xén không thấy toàn bộ sản phẩm. Ảnh B hiển thị đầy đủ hình dáng và công năng, phù hợp làm ảnh chính hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "b0dd8ea2-3457-497b-9607-41893442b2f2": {
+  "chon": "52473a34-f9da-48d4-987c-3b2dc3d66c9d",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp. Ảnh B hiển thị toàn bộ hình dáng sản phẩm và thể hiện rõ cả hai màu hồng, nâu.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "ebf274bf-cd42-467c-881c-72644d9d2c4c": {
+  "chon": "335e34e9-db9e-4a6d-8fe5-8ccc03142f1d",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp, không thấy được toàn bộ sản phẩm. Ảnh B hiển thị trọn vẹn hình dáng và thiết kế tổng thể.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "340af1c7-0899-45cf-8e6b-5a7fa1237881": {
+  "chon": "34a1396a-68b1-42b2-98ad-e1a6065f635f",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt xén, không hiển thị toàn bộ sổ. Ảnh B cho thấy trọn vẹn sản phẩm, bố cục tốt, xứng đáng thay thế.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "3e2fe3b4-b700-49e3-8c85-20e755895ade": {
+  "chon": "879645a7-92f2-4799-8432-90c979e4b09a",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B thể hiện rõ kiểu dáng bên ngoài và nút bấm đặc trưng của ví, phù hợp làm ảnh đại diện hơn ảnh A (mở ra).",
+  "model": "ag/gemini-pro-agent"
+ },
+ "837e2045-6e3e-4eba-998b-8a2cabee656f": {
+  "chon": "aea46998-1835-427f-a024-5c5216987471",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp quá nhiều, không thấy toàn bộ sản phẩm. Ảnh B chụp trọn vẹn, rõ ràng kiểu dáng và màu sắc.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "47128daa-b5d6-43fd-af0e-afdc20df58c5": {
+  "chon": "3997d6c4-6d9d-4424-aa58-326c9cf6739b",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A bị cắt quá sát, trong khi ảnh B hiển thị rõ hình dáng tổng thể, độ dài và mặt trong của thắt lưng.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "0a790c49-05df-4a60-bd9d-7f37791a176f": {
+  "chon": "6fedd748-97ca-45de-ba87-f7bdfad0faba",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B thể hiện đúng màu nâu (brown) theo tên sản phẩm, trong khi ảnh A có màu xám/taupe không khớp với mô tả.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "b6b5d4b0-0141-4e8b-8371-52ad0d7bf7ec": {
+  "chon": "93af6ff8-c1ad-48f3-9345-ae10be0121ae",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp. Ảnh B tốt hơn vì hiển thị toàn bộ hình dáng thắt lưng, mặt trong và ngoài đúng như tên sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "bc8ea303-8889-494c-9e55-9a07ec8d0d50": {
+  "chon": "6eeefb5c-2d2f-485d-bb98-31a7abdd4c69",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B sáng, rõ nét và hiển thị phần dây da tốt hơn hẳn ảnh A, vốn bị mờ và che khuất bởi hộp đựng.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "3646d32e-366a-470d-a76f-4cd0c20d7866": {
+  "chon": "4faa1e3f-6afb-49c3-8c3d-ca86ffb66fd2",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp. Ảnh B hiển thị toàn bộ thắt lưng cuộn tròn rõ nét, hoàn hảo làm ảnh đại diện.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "d5a36133-779d-4d7b-8d1a-88aeca58d088": {
+  "chon": "1f910622-33f8-4b84-8635-bd3811efa92f",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh A bị cắt cúp, không hiển thị toàn bộ hình dáng thắt lưng. Ảnh B cuộn tròn gọn gàng, thể hiện rõ và đẹp tổng thể sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5bddbaa2-f5ea-4505-a992-430c8c8433f4": {
+  "chon": "43146ef0-612a-4920-850b-96e686d72834",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp, không hiển thị toàn bộ hình dáng sản phẩm. Ảnh B cho thấy trọn vẹn thắt lưng với bố cục đẹp.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "7377bbbe-9504-4772-a040-3ca5c680df7b": {
+  "chon": "5753b577-783f-4003-8b2b-1dd261dbff8b",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A có bình hoa đỏ khá lớn làm phân tán sự chú ý. Ảnh B trên nền gỗ tập trung hoàn toàn vào sản phẩm, rõ ràng và tinh tế hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "f340473c-3535-42c1-a9f1-97d3196beb99": {
+  "chon": "54bcb16d-8fb5-4a67-be88-ceff386c2893",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B thể hiện rõ hình dáng tổng thể và chất liệu da mặt ngoài của hộp đồng hồ khi đóng, giúp khách dễ nhận diện sản phẩm hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "50872454-f27a-4287-9608-650f924010e2": {
+  "chon": "29b83641-dbf1-4696-ae87-a88da8b0abe6",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A nền lộn xộn, tay người chiếm diện tích lớn. Ảnh B chuyên nghiệp, thể hiện rõ chi tiết dập logo trên các loại da.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "7771833e-f927-48ef-b5d6-e27d3b975c09": {
+  "chon": "13538749-8853-4737-8730-baccb9a044d5",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị rõ hình dáng và thiết kế túi hơn, không bị hoa và phụ kiện che khuất quá nhiều như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "953a22cd-ab2a-4338-a656-7ef21e587eff": {
+  "chon": "09da65b3-ad01-4a84-9b4b-66b4a3458ad0",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B tập trung hoàn toàn vào túi. Ở ảnh A, trang phục mẫu trùng màu làm giảm độ nổi bật của sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "19276bf7-2ee1-49ff-bbb6-b52a673432b9": {
+  "chon": "04358982-2c54-49e4-b18a-696ed630410a",
+  "dongY": false,
+  "doTinCay": 1,
+  "lyDo": "Cả hai ảnh đều bị cắt cúp và chụp cận cảnh chi tiết, không hiển thị rõ toàn bộ hình dáng tổng thể của sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5c584a4b-60f5-4bf6-9160-d491143b6d38": {
+  "chon": "6556d6e6-0b90-4b67-9b6b-6f7926861410",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B tốt hơn hẳn vì hiển thị rõ bàn cờ mở ra bên trong, giúp khách hàng nhận diện ngay trò chơi thay vì chỉ thấy cuộn da.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "38285197-6281-4d3f-bc64-a078193f25cd": {
+  "chon": "ff0fc61e-1bbc-469e-aed6-6b8e298ebaf8",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chụp cận chi tiết và bị cắt cúp phom dáng. Ảnh B hiển thị trọn vẹn toàn bộ túi, rõ ràng, rất hợp làm ảnh chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "b4cdc070-8cb3-4b94-83e4-be0713654f72": {
+  "chon": "801a7467-c446-432c-9f0e-a67d7a218ade",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị toàn bộ túi và dây đeo rõ ràng, tư thế tự nhiên và bố cục đẹp hơn ảnh A (dây đeo bị cắt gọt).",
+  "model": "ag/gemini-pro-agent"
+ },
+ "17197bde-b3d7-45e6-b9ad-7dca63c63ae8": {
+  "chon": "28df094d-c066-405d-98fb-ff31724e6eaa",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B hiển thị trọn vẹn sản phẩm, là chủ thể rõ ràng, không bị phân tán bởi người mẫu như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5b8a44b9-e847-4822-9b1b-6fc5f21abccd": {
+  "chon": "56581b69-217d-4f23-8a58-93038a031a7d",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B thể hiện rõ phom dáng túi và dây đeo với góc chụp sản phẩm chuẩn, chuyên nghiệp hơn ảnh A có tay cầm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "d2103410-76a6-4dea-88de-2e9af22e60fe": {
+  "chon": "8ba8fb70-c093-42fb-816b-32ea4cbc539e",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chỉ chụp bên trong túi. Ảnh B hiển thị rõ toàn bộ kiểu dáng, kết cấu đan và thiết kế tổng thể.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "a0f21740-6833-4319-bc04-329db3114941": {
+  "chon": "2ebcb04b-51c3-4e95-91bd-f39330ba39dc",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp, chỉ chụp cận nút cài. Ảnh B hiển thị toàn bộ túi, rõ hình dáng và hai màu Hồng - Xanh.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "cbf7ba89-ba7f-4ab5-abb5-19382ec9712b": {
+  "chon": "dc1e64c2-0995-4241-98f4-4f122d98143f",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A là ảnh chụp cận, bị cắt cúp. Ảnh B hiển thị trọn vẹn hình dáng và chi tiết túi, thích hợp làm ảnh chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "4e492963-03e8-43a1-a583-4e706d16062c": {
+  "chon": "e141de48-e70d-4531-800a-9123962a02bc",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A chụp cận cảnh bị cắt cúp, không thấy được hình dáng tổng thể. Ảnh B hiển thị rõ toàn bộ sản phẩm rất phù hợp làm ảnh chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "7d789504-544f-494b-8371-fd62f20b25eb": {
+  "chon": "44c6e9fc-de70-4a2d-b5a6-d37f803c9785",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị chèn chữ, logo và hiệu ứng đồ họa làm sản phẩm bị thu nhỏ. Ảnh B hiển thị túi rõ nét, trọn vẹn và chuyên nghiệp.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5cba4be7-22d1-45f8-908e-6b44f720293f": {
+  "chon": "c12dc975-34e4-4f61-ba2a-a60420b297ac",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A là góc chụp cận cảnh, bị cắt cúp. Ảnh B hiển thị toàn bộ hình dáng túi rõ ràng, đẹp mắt, rất hợp làm ảnh chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "f6156214-22bd-4a50-b982-bed7201eaa59": {
+  "chon": "25ffac52-1366-452c-8519-d7ad8235c8fc",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A không hiện quai xách. Ảnh B hiển thị trọn vẹn phom dáng và quai xách của túi tote, phù hợp làm ảnh chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9bde49d3-7581-4020-b2ec-21d38f1ea46d": {
+  "chon": "57751825-32bb-4570-8efe-f268b96b843c",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B tập trung hoàn toàn vào ví, hiển thị rõ ràng và chuyên nghiệp hơn, không bị rối mắt bởi các phụ kiện như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5f8cecd3-d9a2-48cf-9d26-b488b6f1379b": {
+  "chon": "dfbf3e36-3e84-40fa-9ef3-6b6b243ba36c",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B thể hiện rõ mặt ngoài và hình dáng tổng thể của ví trên nền sạch sẽ, phù hợp làm ảnh đại diện hơn ảnh chụp có tay cầm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "7b98d970-bec8-4de5-91a2-e853c4c54850": {
+  "chon": "a80c0a72-5830-4dee-9d22-5ee821e3ad96",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B là ảnh chụp sản phẩm độc lập, thể hiện rõ hình dáng tổng thể, tốt hơn ảnh A có tay người làm phân tâm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "eca134b6-daf4-4dd3-8f3e-d11f3b1eca48": {
+  "chon": "5308c920-8317-4936-82c1-f60106f2a4c4",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B hiển thị rõ cả mặt ngoài màu đen và mặt trong màu đỏ đúng với tên sản phẩm, mang lại cái nhìn toàn diện hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "b99f5043-23a1-4440-8d12-c00f6bc69f24": {
+  "chon": "4a36dbe6-5ccf-471a-a091-e01e246c941f",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp. Ảnh B hiển thị trọn vẹn hình dáng ví, góc chụp rõ ràng, phù hợp làm ảnh chính hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "12131c41-9079-4a98-96ae-cd550e828763": {
+  "chon": "a9006fdb-c2ae-4ffc-b04d-570b3417326d",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A quá tối khiến sản phẩm trông như màu đen. Ảnh B đủ sáng, thể hiện rõ màu đỏ tối và vân da Epsom đặc trưng.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "634e19b0-b30a-4897-9b10-6688a83a6e76": {
+  "chon": "2d15fa9e-adf7-40cc-90cb-37b84213abb6",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A có nhiều đạo cụ gây phân tâm. Ảnh B gọn gàng, tập trung hoàn toàn vào sản phẩm chính là chiếc ví.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "392916cd-4118-4852-b9e9-ce24bae90907": {
+  "chon": "30c31d9b-c119-46c5-96ba-a4274806b5e6",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A bị mờ ở mặt trước, không thấy rõ vân da. Ảnh B sắc nét hơn nhiều, thể hiện rõ chất liệu da Epsom cao cấp.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "89138a4f-6cd7-4ea7-96ce-a5703b7ae505": {
+  "chon": "31e3c5e1-663e-49de-9ecb-43d996e3cb07",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B hiển thị rõ ràng một sản phẩm tĩnh trên nền sạch, chuyên nghiệp và nổi bật hơn ảnh A có tay người và nhiều chi tiết.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "e31e3f2c-bf8d-4667-9380-216c923d5d03": {
+  "chon": "a4671987-b16b-44c2-937c-9cbb625ea745",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B chụp góc 3/4 thể hiện rõ hình dáng, độ dày và kết cấu gập 3 của ví tốt hơn so với ảnh phẳng A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5b32da08-9fd0-4618-b1fe-9d229d7d53f5": {
+  "chon": "c82bba13-310a-4107-8bdd-fe95678aac72",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A vi phạm quy tắc vì chứa quá nhiều chữ, logo và là ảnh ghép. Ảnh B sạch sẽ và thể hiện sản phẩm tốt hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "8c7fb4f3-315c-4d61-a530-f2d825704814": {
+  "chon": "50b68e5d-bcbd-4fd9-a11e-0c29296379aa",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B là ảnh sản phẩm chuẩn, ánh sáng đều, phông nền sạch, thấy rõ chi tiết. Ảnh A bị bóng đổ mạnh và vướng tay cầm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9c587b37-1160-4025-a2d6-669afe96cedd": {
+  "chon": "f79ea1f8-aed4-456b-bbd7-699baffc46b8",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp, không thấy toàn bộ sản phẩm. Ảnh B hiển thị đầy đủ hình dáng ví, lý tưởng làm ảnh đại diện.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "685c2a2b-e4d1-4934-aa9c-d42fcbcdf368": {
+  "chon": "44ec28ed-f02b-4f8d-ba1a-e51712df74c4",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B có ánh sáng tốt và rõ nét hơn, làm nổi bật màu sắc và chất liệu sản phẩm, trong khi ảnh A hơi tối.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5ff65a81-8a76-4c58-9a60-0e6af73f706d": {
+  "chon": "ab2b1e4a-612b-4d8a-9d9f-11efdb1a56f5",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B đẹp và chuyên nghiệp hơn hẳn: sắc nét, ánh sáng tốt làm nổi bật vân da và phông nền sang trọng hơn phông nền lộn xộn của ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "3147f32c-9277-4cc8-b7a1-ffb62f72a04b": {
+  "chon": "1ebd907c-a2fe-4595-b0b1-d449097f15f3",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B rõ nét, nền gỗ đơn giản làm nổi bật sản phẩm. Ảnh A có nền tạp chí nhiều chi tiết gây rối mắt.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "77c072c9-8c5e-439c-91b6-91149349d5de": {
+  "chon": "037f00c3-cc1f-4aff-91c3-2148502314dc",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị rõ hình dáng, màu sắc và chi tiết đan của túi hơn, góc chụp trực diện không bị dây đeo che khuất như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "a404885f-ab47-4707-a8af-65848a5afcc1": {
+  "chon": "e0e3e769-0324-4041-bea5-fa1ea443f4cd",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A hiển thị quá nhiều sản phẩm gây rối mắt. Ảnh B tập trung vào một sản phẩm duy nhất, rõ nét và chuyên nghiệp hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "4baf8310-2622-4a1e-b6e5-f3ad8cab2274": {
+  "chon": "a0de38cd-d78f-4651-ae8b-4266b69ec218",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B thể hiện rõ chi tiết phối vàng bên trong đúng như tên sản phẩm, trong khi ảnh A chỉ thấy mặt ngoài màu xanh.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "4e4435a9-16f1-4ab7-8e25-d6df592268bf": {
+  "chon": "6253e2a6-b6e3-41bd-a1ee-91c6dda24a9a",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B có bố cục gọn gàng và nền gỗ đẹp, trong khi ảnh A lộ viền phông nền chụp ảnh thiếu chuyên nghiệp.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "b4dff6c9-e330-44f7-a48c-08608da7a69d": {
+  "chon": "2913205e-d969-44e2-9a81-c6f3182cc24d",
+  "dongY": false,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A rất tốt vì hiển thị rõ ràng cả mặt trước và mặt trong/sau của sản phẩm, giúp khách hàng dễ hình dung phom dáng.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "500ec099-a2cc-4ff2-8554-45d7cc8d1254": {
+  "chon": "38447885-84f1-4a54-8c0c-03a7d8134c0a",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp. Ảnh B hiển thị trọn vẹn hình dáng sản phẩm, rõ ràng và phù hợp làm ảnh đại diện hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "4e81b586-7785-4175-8ec3-e4c53e6683f6": {
+  "chon": "bad99d74-b2ad-4f01-9ad0-c48d08aa7e83",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B hiển thị rõ ràng và trực quan hơn cả đệm đầu và đệm tai, không có chi tiết thừa (băng keo đỏ) như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "767d618b-135e-445e-b326-52ce3b851072": {
+  "chon": "ced422d3-1dda-4f08-8c2c-8a13d019a511",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B tốt hơn vì tập trung vào duy nhất sản phẩm màu hồng theo đúng tên gọi, không gây nhầm lẫn với màu khác như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "ff1aaa39-2032-40e9-a208-3a5b621e725a": {
+  "chon": "b31bd58a-cb1d-46ec-826c-4271c564e26a",
+  "dongY": false,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A cho thấy nhiều màu sắc hơn. Ảnh B bị cắt mất phần khoen kim loại nên không đủ tốt để thay thế.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "2bcfa161-dfee-4fee-8722-6e73afd2e815": {
+  "chon": "31e7a80b-1a55-48da-914e-4ffd9d2274cd",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B chụp sản phẩm to và lấp đầy khung hình tốt hơn, giúp khách hàng thấy rõ chi tiết bạc và mặt ngọc tinh xảo.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "6e3dde62-0244-4216-8d04-c393b6ea8ffd": {
+  "chon": "4e222a4a-8a14-4e4d-8cd1-a4dd7fc043bc",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A hơi tối và có chi tiết thừa (ống nước) gây mất tập trung. Ảnh B bố cục chặt chẽ, sáng sủa và tôn sản phẩm hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "a87896f3-6481-4591-b050-e52f5176977b": {
+  "chon": "43c3fda4-afc5-4c54-b5e5-0cf06a0ce298",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B sáng hơn và hiển thị rõ quai cổ tay đúng như tên sản phẩm. Ảnh A hơi tối và không thấy rõ quai.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9f240da5-6c48-4c69-aa72-70dc9137d579": {
+  "chon": "525bb711-7d55-4b23-8883-c6da28ec4a3e",
+  "dongY": false,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A cho thấy toàn bộ sản phẩm bao gồm thun và khóa kéo. Ảnh B gập lại nên không hiển thị đủ các chi tiết này.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "cc931f33-00c9-402f-86b1-13005b461875": {
+  "chon": "6bcdeeb3-c379-4f58-92de-54467edc1b8d",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh A bị cắt cúp mất hai đầu dây. Ảnh B hiển thị trọn vẹn hình dáng sản phẩm và phần khoá cài.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "f00aac13-0555-4b93-8b5f-688acbb41cf1": {
+  "chon": "ced4d8fc-4d71-4dc4-90f0-620310e9aa66",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B hiển thị sản phẩm lớn, lấp đầy khung hình, rõ nét hơn ảnh A có bố cục quá nhỏ và nhiều khoảng trống.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "3366e832-46a4-4815-9f80-72e52b519d57": {
+  "chon": "59f69057-9da7-4a0c-b5a5-cd1e16bbcec7",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị rõ trọn vẹn thiết kế, ngàm và vân da của dây, không bị mặt đồng hồ che khuất như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "0b9c1b29-5393-4801-b35d-37b9a2e71172": {
+  "chon": "2e55b2ca-80af-436d-813b-4af5e52508ec",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị rõ toàn bộ dây và màu trắng khói đặc trưng, trong khi ảnh A tập trung quá nhiều vào mặt đồng hồ.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "779a859e-0bd3-461e-9399-3265eecf91fc": {
+  "chon": "a945f2f1-3f88-4947-a58a-841333c24318",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B tốt hơn hẳn vì hiển thị rõ hình dáng 3D, mặt trong và đường may của dây, trong khi ảnh A bị cắt cúp hai đầu.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "93e53d74-5ecc-40fb-ac70-ea4187ba55fe": {
+  "chon": "581f4094-2813-44a6-b1ad-82b9d11a938c",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A bị cắt cúp làm mất hai đầu dây. Ảnh B hiển thị trọn vẹn toàn bộ hình dáng và chiều dài của dây da.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "50eaa547-8a0e-42cc-a367-12ed89b4e6cf": {
+  "chon": "8581ca0c-2158-4b45-b883-3a5345635180",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B sắc nét và sáng hơn, góc chụp flatlay làm nổi bật màu sắc, chất liệu da Epsom và đường chỉ cam của dây.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "79af166a-3484-4847-8554-fb31850b5743": {
+  "chon": "7c5119a8-d40a-4c4a-809a-db7d82fa737b",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A giấu phần lớn dây và khóa. Ảnh B hiển thị trọn vẹn toàn bộ chiều dài dây, mũi khâu và khóa kim.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9fd48ef9-2769-4be3-a8dc-f9501485dfff": {
+  "chon": "036c451a-8214-40e5-815d-0e8f65ef9289",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B có bối cảnh sáng, trung tính và chụp sản phẩm cận hơn ảnh A, giúp làm nổi bật rõ ràng hình dáng và màu sắc của dây da.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "251540d4-2578-4649-86d3-03023358ab36": {
+  "chon": "08c99ef8-f42a-4aa4-ab4a-57878271297d",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B tốt hơn do mở hộp, khoe được nội thất và lớp lót nubuck được đề cập trong tên sản phẩm.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "f63560cc-3618-41e8-af2d-6f3f5d66603a": {
+  "chon": "456da9a2-8f77-4022-b873-af7d1c79c1e8",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B giúp khách hàng dễ hình dung hình dáng sản phẩm và chi tiết chần trám hơn góc chụp dựng đứng của ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "d86b2b5f-d614-445a-9b76-fb709a575802": {
+  "chon": "3874848d-d5af-4e97-916a-8fc043477547",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B tập trung hiển thị rõ ràng miếng dán iPad như tiêu đề, trong khi ảnh A có lẫn MacBook gây nhầm lẫn về sản phẩm chính.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5336ae13-bc38-40b9-a21d-13b5e61ac8ad": {
+  "chon": "8e45e5a1-1483-4a2f-b436-46ae071ae440",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B hiển thị rõ phần ốp da mặt lưng màu nâu bò, đúng với tên sản phẩm, trong khi ảnh A chủ yếu chụp mặt trong.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "6e6c75a1-d1c2-4137-8b43-300c5f2c719e": {
+  "chon": "2ca8fb0c-426e-432d-a50a-48c6bf86b396",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị một sản phẩm rõ ràng, sắc nét và đủ sáng trên nền gỗ, tốt hơn ảnh A có quá nhiều sản phẩm gây rối mắt.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "149cba72-b689-4554-b610-00337de612bf": {
+  "chon": "978b8d19-6345-44fe-80e2-afa04e6ee9ec",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B rõ ràng, thực tế hơn và không có đạo cụ màu cam gây phân tâm như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "98f336a9-bb81-4cd6-a8c7-ea0c2a4d5501": {
+  "chon": "8f2019ea-106a-406f-8e08-7133d92cd04e",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị toàn bộ hình dáng túi rõ ràng, sắc nét và không bị lá cây che khuất một phần như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9b4334a0-371b-4495-9812-4198b4d66a55": {
+  "chon": "cc4ee97c-3e28-43bc-a0a5-8ff05aacfa4c",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A quá tối và thiếu sáng. Ảnh B sáng sủa, rõ nét, làm nổi bật được màu sắc và chi tiết của túi.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "777c4141-2358-4fa6-95bc-3e971ea9bdfb": {
+  "chon": "abc960fd-03ae-4ba7-b16a-7cab3a159762",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B hiển thị rõ ràng kiểu dáng một sản phẩm duy nhất, làm ảnh đại diện tốt và chuyên nghiệp hơn ảnh nhóm A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "09ece110-c25e-4f09-8d48-9093c7b2d1f4": {
+  "chon": "a90cfaa6-4a88-4163-afef-45903c2ef44d",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh A bị bông hoa che khuất một phần túi. Ảnh B chụp góc 3/4 thể hiện rõ hình dáng, độ dày và chi tiết đan mà không bị che khuất.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "27ad7dc6-ce3b-428e-ab5c-bc8ee58ce052": {
+  "chon": "e5f6ed08-81b8-4a61-a775-f5949064f201",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh A có tỷ lệ ví quá nhỏ. Ảnh B hiển thị ví to, rõ nét hơn, lấp đầy khung hình mà vẫn có dây đeo.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "79cd3ce2-3486-4b34-ab54-86cd7432dc4a": {
+  "chon": "8d1d06a7-0c94-4283-ad53-ee2c93ebdc17",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh B thể hiện đúng chi tiết 'phối màu' như tên sản phẩm, trong khi ảnh A chỉ gồm các ví đơn sắc.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "05fcb5b9-2b54-40dc-acad-67fdff4841e3": {
+  "chon": "d8c97669-efba-49c7-bcf1-c54602e561a1",
+  "dongY": true,
+  "doTinCay": 1,
+  "lyDo": "Ảnh A in tên riêng không phù hợp làm ảnh đại diện. Ảnh B hiển thị logo KOI tiêu chuẩn, chuyên nghiệp và chuẩn xác hơn.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "9e77a177-45a2-4f02-81cd-56e2a6308359": {
+  "chon": "c0d27644-f909-4a49-9de2-197087c64bfc",
+  "dongY": true,
+  "doTinCay": 0.9,
+  "lyDo": "Ảnh B hiển thị sản phẩm lớn, chiếm ưu thế trong khung hình và làm rõ vân da hạt hơn ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ },
+ "5b0411a9-fb22-4cdb-9649-cd5d9f09c826": {
+  "chon": "64281b84-e6ed-40d7-bd75-c54832a7ce58",
+  "dongY": true,
+  "doTinCay": 0.95,
+  "lyDo": "Ảnh B tập trung vào vòng tay, không bị chiếc túi da nâu ở tiền cảnh tranh giành sự chú ý như ảnh A.",
+  "model": "ag/gemini-pro-agent"
+ }
+}

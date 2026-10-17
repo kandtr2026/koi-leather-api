@@ -1,0 +1,122 @@
+[
+ {
+  "id": 14084,
+  "slug": "quy-trinh-san-xuat-do-da-so-luong",
+  "title": "Quy trình sản xuất đơn hàng đồ da số lượng theo yêu cầu tại KOI",
+  "pub": true,
+  "tao": "2026-09-27",
+  "dang": "2026-09-27",
+  "kytu": 6620,
+  "lop": ""
+ },
+ {
+  "id": 14085,
+  "slug": "quy-trinh-lam-tui-da-thu-cong-tai-xuong",
+  "title": "Quy trình làm túi da thủ công tại xưởng KOI Leather TP.HCM",
+  "pub": true,
+  "tao": "2026-09-27",
+  "dang": "2026-09-27",
+  "kytu": 6304,
+  "lop": ""
+ },
+ {
+  "id": 14086,
+  "slug": "hoan-thien-do-da-thu-cong-son-canh-dap-nhiet",
+  "title": "Quy trình hoàn thiện đồ da thủ công: Sơn viền chữ cái và dập nhiệt",
+  "pub": true,
+  "tao": "2026-09-27",
+  "dang": "2026-09-27",
+  "kytu": 6743,
+  "lop": ""
+ },
+ {
+  "id": 14087,
+  "slug": "cach-chon-mau-da-bo-khi-dat-may",
+  "title": "Cách chọn màu da bò khi đặt may đồ da thủ công theo yêu cầu",
+  "pub": true,
+  "tao": "2026-09-27",
+  "dang": "2026-09-27",
+  "kytu": 7263,
+  "lop": ""
+ },
+ {
+  "id": 14088,
+  "slug": "khoa-hoc-lam-do-da-thu-cong-bespoke-tai-tphcm",
+  "title": "Khóa Học Làm Đồ Da Thủ Công Bespoke Tại TP.HCM — Đào Tạo Kỹ Thuật Chế Tác Đỉnh Cao Cùng KOI Leather",
+  "pub": true,
+  "tao": "2026-09-27",
+  "dang": "2026-09-27",
+  "kytu": 9163,
+  "lop": "koi-cta-box"
+ },
+ {
+  "id": 14083,
+  "slug": "dich-vu-lang-da-nguyen-tam-tphcm",
+  "title": "Dịch Vụ Lạng Da Nguyên Tấm Lấy Liền Tại TP.HCM – Lạng Mỏng Chuẩn Xác Từng Li",
+  "pub": true,
+  "tao": "2026-09-25",
+  "dang": "2026-09-25",
+  "kytu": 9207,
+  "lop": "koi-cta-box"
+ },
+ {
+  "id": 11709,
+  "slug": "dat-lam-vi-da-ca-sau",
+  "title": "Đặt Làm Ví Da Cá Sấu Theo Yêu Cầu Tại KOI Leather",
+  "pub": true,
+  "tao": "2026-07-29",
+  "dang": "2025-12-22",
+  "kytu": 18576,
+  "lop": "atelier-bento-grid,price-card"
+ },
+ {
+  "id": 11711,
+  "slug": "dat-lam-day-lung-da-ca-sau",
+  "title": "Đặt Làm Dây Lưng Da Cá Sấu Theo Yêu Cầu – Thủ Công Cao Cấp",
+  "pub": true,
+  "tao": "2026-07-29",
+  "dang": "2025-12-23",
+  "kytu": 19489,
+  "lop": "atelier-bento-grid,price-card"
+ },
+ {
+  "id": 9937,
+  "slug": "vi-khac-ten-cao-cap-qua-tang-da-that-thu-cong-tai-tp-hcm",
+  "title": "Ví Khắc Tên Cao Cấp – Quà Tặng Da Thật Thủ Công Tại TP.HCM",
+  "pub": true,
+  "tao": "2026-07-29",
+  "dang": "2025-10-15",
+  "kytu": 28478,
+  "lop": "koi-cta-box"
+ },
+ {
+  "id": 8049,
+  "slug": "dich-vu-khac-ten-len-san-pham-khac-ten-theo-yeu-cau",
+  "title": "Dịch Vụ Khắc Tên Lên Sản Phẩm Và Quà Tặng Theo Yêu Cầu",
+  "pub": true,
+  "tao": "2026-07-29",
+  "dang": "2025-03-20",
+  "kytu": 56191,
+  "lop": "koi-cta-box"
+ },
+ {
+  "id": 7640,
+  "slug": "khac-ten-len-vi-da",
+  "title": "Dịch Vụ Khắc Tên Lên Ví Da Cao Cấp Sang Trọng",
+  "pub": true,
+  "tao": "2026-07-29",
+  "dang": "2024-11-06",
+  "kytu": 19374,
+  "lop": "koi-cta-box"
+ },
+ {
+  "id": 10383,
+  "slug": "san-xuat-charm-da-theo-yeu-cau-phu-kien-tui-xach",
+  "title": "Sản Xuất Charm Da Theo Yêu Cầu – Phụ Kiện Túi Xách Cao Cấp",
+  "pub": true,
+  "tao": "2026-07-29",
+  "dang": "2025-11-21",
+  "kytu": 40036,
+  "lop": "charm-gallery"
+ }
+]

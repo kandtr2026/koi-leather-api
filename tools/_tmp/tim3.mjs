@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+const l = fs.readFileSync('.env','utf8').split(/\r?\n/).find(x=>x.startsWith('DATABASE_URL='));
+process.env.DATABASE_URL = l.slice(13).replace(/^["']|["']$/g,'');
+const { PrismaClient } = await import('@prisma/client');
+const p = new PrismaClient();
+console.table(await p.$queryRawUnsafe(`select id, public from storage.buckets order by 1`));
+console.log('FILE trong code_theo_mon:');
+const r = await p.$queryRawUnsafe(`select name, (metadata->>'size')::bigint b, updated_at from storage.objects where bucket_id='agent-public' order by name`);
+console.table(r.map(x=>({ten:x.name, bytes:Number(x.b), sua:x.updated_at})));
+await p.$disconnect();

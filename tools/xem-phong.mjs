@@ -155,19 +155,26 @@ const dong = TRANG
          from koi_free_style.koi_products where status='ACTIVE' and description is not null order by slug`,
     );
 
-/** Trang WordPress di trú đã bị route Next trùng slug che — dữ liệu chết. */
+/**
+ * Trang WordPress di trú đã bị route Next trùng slug che — dữ liệu chết.
+ *
+ * Danh sách này lấy từ tools/doi-chieu-chet-song.mjs, KHÔNG suy đoán bằng cách
+ * so tiêu đề nữa. Lần đầu em so <title> với tiêu đề DB và xếp nhầm /san-pham/
+ * vào đây: tiêu đề DB là "Sản phẩm", web trả "Sản phẩm | KOI Leather", nhìn
+ * tưởng hai nguồn khác nhau. Thật ra trang đó render thẳng nội dung DB — nên nó
+ * bị bỏ qua suốt đợt sửa văn phong, và suýt bị gỡ xuất bản.
+ */
 const TRANG_CHET = new Set([
+  'blogs',
   'chinh-sach-giao-hang',
   'chinh-sach-hoan-tien-doi-tra',
-  'day-da-dong-ho',
-  'lien-he',
-  'san-pham',
   'cua-hang',
-  'thanh-toan',
-  'tai-khoan',
-  'shop',
+  'day-da-dong-ho',
   'gio-hang',
-  'blogs',
+  'lien-he',
+  'shop',
+  'tai-khoan',
+  'thanh-toan',
   'tin-tuc-su-kien',
 ]);
 

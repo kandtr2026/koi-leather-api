@@ -811,6 +811,14 @@ export class ShopService {
     return {
       ...this.card(p),
       description: this.text(p.description),
+      // Bảng thông số kỹ thuật (kích thước, nhà thuộc da, phần cứng…). Cột này
+      // là TEXT chứa chuỗi JSON, không phải JSONB — trả nguyên văn, để
+      // storefront tự parse. Mặc định "{}" nên bên kia luôn nhận được chuỗi.
+      //
+      // Tên trường snake_case cho khớp card(): mọi trường của API công khai đều
+      // snake_case (color_family, meta_description…), storefront khai type theo
+      // đúng những tên đó.
+      technical_specs: p.technicalSpecs ?? null,
       categories,
       variants,
       related,

@@ -1,0 +1,45 @@
+Sản phẩm này ĐANG KHÔNG CÓ mô tả — hãy viết MỚI HOÀN TOÀN trường description.
+
+Khuôn bài:
+- Trả về HTML. 2-3 thẻ <p>, mỗi thẻ 2-4 câu. Được thêm một <ul> với 3-5 <li>
+  ngắn cho phần điểm đáng chú ý, nếu thấy tự nhiên.
+- ĐÓNG ĐỦ MỌI THẺ. Mỗi <p> có </p>, mỗi <li> có </li>, mỗi <ul> có </ul>.
+  Không để hở thẻ nào ở câu cuối.
+- Câu đầu nói ngay đây là món gì và làm bằng loại da nào (theo khối SỰ THẬT).
+  Không mở bài vòng vo, không câu dẫn kiểu quảng cáo.
+- Phần giữa: tả những gì NHÌN THẤY RÕ trong ảnh — kiểu dáng, bố cục ngăn và
+  quai, đường chỉ, khoá và phụ kiện, vân da, sắc màu. Nếu khối SỰ THẬT có ghi
+  đặc tính của loại da thì dùng đúng phần đó.
+- Câu kết: dịp dùng hoặc kiểu người dùng phù hợp. Viết mộc, không hô hào.
+- Khoảng 120-200 từ. Giọng như người thợ nói về món mình làm.
+
+BA ĐIỀU DƯỚI ĐÂY ĐÃ LÀM LỖI THẬT Ở LẦN CHẠY TRƯỚC — 15 sản phẩm bị chặn không
+ghi được vì đúng ba lỗi này. Đọc kỹ:
+
+1. KHÔNG VIẾT SỐ ĐO, KỂ CẢ KHI KHỐI SỰ THẬT CÓ NÊU.
+   Mô tả loại da trong khối SỰ THẬT có ghi khoảng độ dày (ví dụ "0,4-0,6mm",
+   "1,0-2,2mm", "khoảng 2mm"). Đó là đặc tính CHUNG của loại da, KHÔNG phải
+   thông số của món này. Tuyệt đối không đưa con số nào kèm đơn vị vào bài:
+   không mm, cm, ml, lít, kg, gram, inch, tháng, năm, %, không giá.
+   Muốn nói về độ dày thì viết bằng chữ: "da mỏng và dẻo", "dày dặn, đứng phom".
+   Số đếm được rõ trong ảnh thì được ("ba ngăn thẻ"), nhưng không kèm đơn vị.
+
+2. KHÔNG DÙNG CÁC TỪ: "logo", "thương hiệu", "nhãn hiệu", "dập tên",
+   "khắc tên", và không nhắc bất kỳ tên riêng, tên hãng hay dòng chữ nào nhìn
+   thấy trên sản phẩm — dù thấy rất rõ.
+   Nhiều món trong lô là hàng đặt riêng cho doanh nghiệp nên trên da có dấu
+   hiệu của khách. Muốn nói về chi tiết đó thì viết trung tính: "chi tiết dập
+   nổi", "chi tiết cá nhân hoá theo yêu cầu", "phần chữ được làm nổi trên da".
+   NGOẠI LỆ DUY NHẤT: nếu chính TÊN SẢN PHẨM đã có tên hãng (thường là món
+   phụ kiện làm cho thiết bị của hãng đó, kiểu ốp iPad hay bao chìa khoá ô tô)
+   thì được nhắc lại đúng tên đó, và chỉ để nói món này dùng cho thiết bị nào.
+
+3. KHÔNG ĐOÁN CÁCH GIA CÔNG. Không viết "cắt laser", "dập máy", "khâu máy",
+   "in kỹ thuật số", "ép nhiệt" — trừ khi khối SỰ THẬT nói rõ. Thấy hoa văn
+   đều đặn thì gọi là "hoa văn cắt tỉ mỉ", đừng đoán bằng máy gì.
+
+Ngoài ra KHÔNG viết: dung tích, trọng lượng, thời gian bảo hành, chính sách
+đổi trả, thời gian giao hàng, xuất xứ da nếu khối SỰ THẬT không nêu.
+Không có trong dữ liệu thì không được nghĩ ra.
+Không dùng các cụm "trong ảnh", "như hình", "có thể thấy". Không nhồi từ khoá,
+không lặp tên sản phẩm quá hai lần.

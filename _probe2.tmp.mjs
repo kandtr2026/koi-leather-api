@@ -1,0 +1,15 @@
+import fs from 'fs'; import pg from 'pg';
+const env = fs.readFileSync('.env','utf8').replace(/\r/g,'');
+const url = env.match(/^DATABASE_URL=(.*)$/m)[1].trim().replace(/^["']|["']$/g,'').replace(/[?&]sslmode=[^&]*/,'');
+const c = new pg.Client({ connectionString: url, ssl:{rejectUnauthorized:false} }); await c.connect();
+const q = async (l,s)=>{try{const r=await c.query(s);console.log('##',l);console.log(JSON.stringify(r.rows));}catch(e){console.log('##',l,'ERR',e.message)}};
+await q('schemas', `select nspname from pg_namespace where nspname not like 'pg_%' and nspname not in ('information_schema') order by 1`);
+await q('so SP', `select (select count(*) from public.products)::int public_products, (select count(*) from koi_free_style.koi_products)::int koi_products`);
+await q('koi_product_images', `select count(*)::int n, count(distinct "productId")::int sp, count(width)::int co_wh from koi_free_style.koi_product_images`);
+await q('imageType', `select "imageType", count(*)::int n from koi_free_style.koi_product_images group by 1 order by 2 desc`);
+await q('mau koi img', `select url, "thumbnailUrl", width, height, "altText" from koi_free_style.koi_product_images limit 3`);
+await q('SP khong anh', `select count(*)::int n from public.products p where not exists (select 1 from public.product_images i where i.product_id=p.id)`);
+await q('anh trong posts', `select count(*)::int n_bai, count(*) filter (where content like '%supabase.co/storage%')::int co_anh_supabase from public.posts`);
+await q('kich thuoc', `select width, height, count(*)::int n from public.product_images group by 1,2 order by 3 desc limit 8`);
+await q('bang co san ve vision', `select table_schema||'.'||table_name t from information_schema.tables where table_name ~* 'vision|caption|ai_|analys|lookbook|stamp' order by 1`);
+await c.end();

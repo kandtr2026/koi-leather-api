@@ -1,0 +1,299 @@
+[
+ {
+  "so": 1,
+  "to": 1,
+  "id": "a404885f-ab47-4707-a8af-65848a5afcc1",
+  "slug": "bao-da-dung-laptop-bristo-da-bo-phoi-mau-quai-bam",
+  "cu": "92e9cd10-a2ae-4163-951e-cd8116f37a1f",
+  "chon": "e0e3e769-0324-4041-bea5-fa1ea443f4cd",
+  "ghiChu": "#1→#2 [other] Ảnh #1 bố cục lộn xộn nhiều sản phẩm. Ảnh #2 chụp rõ nét form dáng, chi tiết phối màu và quai bấm."
+ },
+ {
+  "so": 2,
+  "to": 1,
+  "id": "4baf8310-2622-4a1e-b6e5-f3ad8cab2274",
+  "slug": "bao-da-ho-chieu-epsom-xanh-la-phoi-vang",
+  "cu": "5c6f8a4a-2b2b-4514-ae28-b9fec0045cbf",
+  "chon": "a0de38cd-d78f-4651-ae8b-4266b69ec218",
+  "ghiChu": "#1→#7 [none] Ảnh #7 góc 3/4 đứng ấn tượng, thể hiện rõ cả mặt ngoài da xanh lẫn chi tiết phối vàng bên trong."
+ },
+ {
+  "so": 3,
+  "to": 1,
+  "id": "4e4435a9-16f1-4ab7-8e25-d6df592268bf",
+  "slug": "bao-da-laptop-mau-xanh-navy-phoi-quai-vang-bo",
+  "cu": "8f7c77ad-f877-4877-9dbd-0dde9e8f589e",
+  "chon": "6253e2a6-b6e3-41bd-a1ee-91c6dda24a9a",
+  "ghiChu": "#1→#2 [other] Ảnh #2 chụp trên mặt bàn gỗ chỉn chu, đẹp mắt; ảnh #1 bị lộ viền phông nền tạm bợ thiếu chuyên nghiệp."
+ },
+ {
+  "so": 4,
+  "to": 1,
+  "id": "500ec099-a2cc-4ff2-8554-45d7cc8d1254",
+  "slug": "bia-kep-menu-da-bo-kep-kim-loai",
+  "cu": "dec514ba-61c4-4302-ad33-fdcd83e8be04",
+  "chon": "38447885-84f1-4a54-8c0c-03a7d8134c0a",
+  "ghiChu": "#1→#2 [cropped] Ảnh #1 bị cắt cụt nửa dưới. Ảnh #2 chụp trọn vẹn toàn bộ bìa kẹp menu, thể hiện rõ kiểu dáng và kẹp kim loại."
+ },
+ {
+  "so": 5,
+  "to": 1,
+  "id": "4e81b586-7785-4175-8ec3-e4c53e6683f6",
+  "slug": "boc-da-tai-nghe-chup-tai-dem-dau-va-dem-tai-mau-den",
+  "cu": "42b490d3-b8b2-4a92-8f1f-b4db5c10475c",
+  "chon": "bad99d74-b2ad-4f01-9ad0-c48d08aa7e83",
+  "ghiChu": "#1→#2 [other] Ảnh 2 thể hiện rõ bề mặt đệm tai và đệm đầu, góc chụp trực diện đẹp mắt, không dính băng keo đỏ như ảnh 1."
+ },
+ {
+  "so": 6,
+  "to": 1,
+  "id": "767d618b-135e-445e-b326-52ce3b851072",
+  "slug": "charm-dung-son-da-nappa-mau-hong-kem-khoen-tron",
+  "cu": "b8f347d9-4364-4a5f-b338-537a6be9e7bd",
+  "chon": "ced422d3-1dda-4f08-8c2c-8a13d019a511",
+  "ghiChu": "#1→#3 [other] Ảnh 1 lẫn mẫu sọc gây rối mắt và sai màu. Ảnh 3 chụp riêng sản phẩm màu hồng rõ nét, đúng tiêu đề."
+ },
+ {
+  "so": 7,
+  "to": 1,
+  "id": "2bcfa161-dfee-4fee-8722-6e73afd2e815",
+  "slug": "charm-moc-treo-da-nau-phoi-chi-tiet-bac-va-mat-ngoc",
+  "cu": "60fac2f8-5a4f-44cf-b58b-c2b574632d35",
+  "chon": "31e7a80b-1a55-48da-914e-4ffd9d2274cd",
+  "ghiChu": "#1→#2 [other] Ảnh 1 sản phẩm quá nhỏ, lọt thỏm. Ảnh 2 hiển thị trọn vẹn, rõ nét chi tiết bạc và mặt ngọc."
+ },
+ {
+  "so": 8,
+  "to": 1,
+  "id": "6e3dde62-0244-4216-8d04-c393b6ea8ffd",
+  "slug": "clutch-da-epsom-dang-dep-kem-quai-deo-tay",
+  "cu": "334122a2-87a6-4bca-b28e-11f0b6d07bed",
+  "chon": "4e222a4a-8a14-4e4d-8cd1-a4dd7fc043bc",
+  "ghiChu": "#1→#3 [other] Ảnh #1 dính hố cây gây mất thẩm mỹ; ảnh #3 chụp đơn trọn vẹn sản phẩm, tôn rõ phom dáng và vân da Epsom."
+ },
+ {
+  "so": 9,
+  "to": 1,
+  "id": "a87896f3-6481-4591-b050-e52f5176977b",
+  "slug": "clutch-da-epsom-mau-nau-vang-kem-quai-co-tay",
+  "cu": "0b158583-5cf7-4450-8d94-04856c7cefab",
+  "chon": "43c3fda4-afc5-4c54-b5e5-0cf06a0ce298",
+  "ghiChu": "#1→#3 [other] Ảnh 1 tối, hậu cảnh rối mắt và không thấy quai. Ảnh 3 sáng rõ, thể hiện đầy đủ clutch cùng quai cổ tay."
+ },
+ {
+  "so": 10,
+  "to": 1,
+  "id": "cc931f33-00c9-402f-86b1-13005b461875",
+  "slug": "day-dong-ho-da-ca-sau-cho-patek-philippe-mau-den",
+  "cu": "03c4bffd-1635-4a38-892c-139e7471afb7",
+  "chon": "6bcdeeb3-c379-4f58-92de-54467edc1b8d",
+  "ghiChu": "#1→#2 [cropped] Ảnh 1 bị cắt mất hai đầu dây. Ảnh 2 hiển thị trọn vẹn toàn bộ dây từ khóa đến đuôi dây rõ ràng hơn."
+ },
+ {
+  "so": 11,
+  "to": 2,
+  "id": "f00aac13-0555-4b93-8b5f-688acbb41cf1",
+  "slug": "day-dong-ho-da-ca-sau-mau-hong",
+  "cu": "dcd958ba-3748-49e6-a5c8-c94e0e9b6891",
+  "chon": "ced4d8fc-4d71-4dc4-90f0-620310e9aa66",
+  "ghiChu": "#1→#2 [other] Ảnh 1 sản phẩm quá nhỏ lọt thỏm trên nền đen. Ảnh 2 phông nền sáng, rõ nét, bố cục cân đối và đầy đặn hơn."
+ },
+ {
+  "so": 12,
+  "to": 2,
+  "id": "3366e832-46a4-4815-9f80-72e52b519d57",
+  "slug": "day-dong-ho-da-ca-sau-trang-cho-ferragamo",
+  "cu": "b1825e6c-81a8-44b7-b580-3cc2c39a7d5b",
+  "chon": "59f69057-9da7-4a0c-b5a5-cd1e16bbcec7",
+  "ghiChu": "#1→#2 [other] Ảnh 1 mặt đồng hồ che khuất phần lớn dây. Ảnh 2 chụp phẳng thấy trọn vẹn kiểu dáng, vân da và phần ngàm Ferragamo."
+ },
+ {
+  "so": 13,
+  "to": 2,
+  "id": "0b9c1b29-5393-4801-b35d-37b9a2e71172",
+  "slug": "day-dong-ho-da-ca-sau-trang-khoi-cho-breil",
+  "cu": "1289aa12-9b7d-49a6-99da-818af1c63a36",
+  "chon": "2e55b2ca-80af-436d-813b-4af5e52508ec",
+  "ghiChu": "#1→#2 [other] Ảnh #2 thể hiện trọn vẹn phom dáng và hiệu ứng loang màu trắng khói của dây, trong khi ảnh #1 bị mặt đồng hồ lấn át."
+ },
+ {
+  "so": 14,
+  "to": 2,
+  "id": "779a859e-0bd3-461e-9399-3265eecf91fc",
+  "slug": "day-dong-ho-da-ca-sau-may-do-thu-cong",
+  "cu": "9a448ae2-eeae-4aa4-ae98-8df12bbaa1ec",
+  "chon": "a945f2f1-3f88-4947-a58a-841333c24318",
+  "ghiChu": "#1→#2 [cropped] Ảnh #1 bị cắt cúp, mặt đồng hồ lấn át dây. Ảnh #2 sắc nét, thấy rõ form dây, vân da cá sấu và chi tiết may đo."
+ },
+ {
+  "so": 15,
+  "to": 2,
+  "id": "93e53d74-5ecc-40fb-ac70-ea4187ba55fe",
+  "slug": "day-dong-ho-da-da-dieu-xanh-la-cho-tissot-1853",
+  "cu": "0bd1837b-3f4b-42ce-a126-7e6604311075",
+  "chon": "581f4094-2813-44a6-b1ad-82b9d11a938c",
+  "ghiChu": "#1→#2 [cropped] Ảnh 1 bị cắt mất phần lớn dây, tập trung vào mặt đồng hồ; ảnh 2 hiển thị trọn vẹn toàn bộ dây và khóa."
+ },
+ {
+  "so": 16,
+  "to": 2,
+  "id": "50eaa547-8a0e-42cc-a367-12ed89b4e6cf",
+  "slug": "day-dong-ho-da-epsom-mau-kem-chi-cam-cho-omega-moonswatch",
+  "cu": "de218a7f-55d6-4451-a239-ab5381ac1807",
+  "chon": "8581ca0c-2158-4b45-b883-3a5345635180",
+  "ghiChu": "#1→#2 [none] Ảnh #2 sắc nét, ánh sáng chuẩn, thể hiện rõ bề mặt da Epsom và đường chỉ cam chi tiết hơn nhiều so với ảnh #1."
+ },
+ {
+  "so": 17,
+  "to": 2,
+  "id": "79af166a-3484-4847-8554-fb31850b5743",
+  "slug": "day-dong-ho-da-pueblo-mau-vang-bo-khoa-kim",
+  "cu": "8f32caf4-bac8-4c3f-a9df-cdacb39f88dd",
+  "chon": "7c5119a8-d40a-4c4a-809a-db7d82fa737b",
+  "ghiChu": "#1→#3 [cropped] Ảnh #1 giấu phần lớn dây đeo; ảnh #3 chụp phẳng thấy trọn vẹn kiểu dáng, bề mặt da, đường may và khóa kim."
+ },
+ {
+  "so": 18,
+  "to": 2,
+  "id": "9fd48ef9-2769-4be3-a8dc-f9501485dfff",
+  "slug": "day-dong-ho-da-nappa-vang-cho-gucci-ban-mong",
+  "cu": "a41a04b0-7a6a-4714-b649-8303a24be9cb",
+  "chon": "036c451a-8214-40e5-815d-0e8f65ef9289",
+  "ghiChu": "#1→#2 [other] Ảnh #1 sản phẩm quá nhỏ, nền tạp chí sặc sỡ gây phân tâm. Ảnh #2 cận cảnh rõ nét, phông nền sáng tôn sản phẩm."
+ },
+ {
+  "so": 19,
+  "to": 2,
+  "id": "251540d4-2578-4649-86d3-03023358ab36",
+  "slug": "hop-dung-dong-ho-da-togo-mau-gold-lot-da-nubuck",
+  "cu": "626e4b93-eed2-495a-9c6e-b65902745e3b",
+  "chon": "08c99ef8-f42a-4aa4-ab4a-57878271297d",
+  "ghiChu": "#1→#2 [other] Ảnh #2 mở nắp thấy rõ công năng hộp đồng hồ, khoe trọn da Togo và lót nubuck, sản phẩm nổi bật và lấp đầy khung hình."
+ },
+ {
+  "so": 20,
+  "to": 2,
+  "id": "f63560cc-3618-41e8-af2d-6f3f5d66603a",
+  "slug": "kep-tien-nam-cham-da-epsom-may-chan-tram-mau-hong",
+  "cu": "f18f147a-c2f0-4199-b2a8-0b3d3da446d9",
+  "chon": "456da9a2-8f77-4022-b873-af7d1c79c1e8",
+  "ghiChu": "#1→#7 [other] Ảnh #7 chụp góc 3/4 trên mặt gỗ sang trọng, tôn rõ vân da, họa tiết chần trám và phom dáng hơn ảnh #1."
+ },
+ {
+  "so": 21,
+  "to": 3,
+  "id": "d86b2b5f-d614-445a-9b76-fb709a575802",
+  "slug": "mieng-dan-da-lung-ipad-da-da-dieu",
+  "cu": "6afb173c-02bf-4a5b-b7cf-8402adb83833",
+  "chon": "3874848d-d5af-4e97-916a-8fc043477547",
+  "ghiChu": "#1→#2 [other] Ảnh 1 chứa cả MacBook khiến iPad bị nhỏ. Ảnh 2 chụp riêng iPad góc 3/4 sắc nét, đúng sản phẩm và tôn dáng hơn hẳn."
+ },
+ {
+  "so": 22,
+  "to": 3,
+  "id": "5336ae13-bc38-40b9-a21d-13b5e61ac8ad",
+  "slug": "op-da-ban-phim-ipad-mau-nau-bo",
+  "cu": "4f5f1791-868e-48e9-af25-439598d4d52c",
+  "chon": "8e45e5a1-1483-4a2f-b436-46ae071ae440",
+  "ghiChu": "#1→#2 [other] Ảnh #2 thể hiện rõ phần ốp da màu nâu bò ở mặt lưng, thay vì mặt trong màu đen như ảnh #1."
+ },
+ {
+  "so": 23,
+  "to": 3,
+  "id": "6e6c75a1-d1c2-4137-8b43-300c5f2c719e",
+  "slug": "op-lung-boc-da-hoa-tiet-co-viet-nam",
+  "cu": "7e5af444-32da-44f5-b76a-34281a2de166",
+  "chon": "2ca8fb0c-426e-432d-a50a-48c6bf86b396",
+  "ghiChu": "#1→#2 [other] Ảnh 2 chụp rõ một sản phẩm trên nền gỗ tinh tế, thay vì xếp nhiều ốp gây rối mắt như ảnh 1."
+ },
+ {
+  "so": 24,
+  "to": 3,
+  "id": "149cba72-b689-4554-b610-00337de612bf",
+  "slug": "op-lung-dien-thoai-da-togo-mau-tim",
+  "cu": "5eeab38d-2c83-4eaa-9a26-76b8a61cb3a0",
+  "chon": "978b8d19-6345-44fe-80e2-afa04e6ee9ec",
+  "ghiChu": "#1→#2 [other] Ảnh #2 chuyên nghiệp hơn, ốp lưng được lắp vào máy chỉn chu trên nền sạch, không bị khối đỡ màu cam gây phân tâm như #1."
+ },
+ {
+  "so": 25,
+  "to": 3,
+  "id": "98f336a9-bb81-4cd6-a8c7-ea0c2a4d5501",
+  "slug": "tui-chub-da-bo-van-hat-mau-xanh-blue-sky",
+  "cu": "5cb42d54-06bb-4e3e-a42f-6e70bd04bdca",
+  "chon": "8f2019ea-106a-406f-8e08-7133d92cd04e",
+  "ghiChu": "#1→#6 [other] Ảnh 1 bị lá che khuất góc phải; ảnh 6 trọn vẹn, góc chụp chính diện rõ nét và không bị che chắn."
+ },
+ {
+  "so": 26,
+  "to": 3,
+  "id": "9b4334a0-371b-4495-9812-4198b4d66a55",
+  "slug": "tui-deo-cheo-da-bo-dang-satchel-phoi-mau",
+  "cu": "6b4c7ee7-5802-4db7-9a2a-41374a0f552b",
+  "chon": "cc4ee97c-3e28-43bc-a0a5-8ff05aacfa4c",
+  "ghiChu": "#1→#3 [dark] Ảnh hiện tại thiếu sáng và bị bình hoa gây phân tâm; ảnh #3 có ánh sáng tốt, sắc nét và màu sắc rõ ràng."
+ },
+ {
+  "so": 27,
+  "to": 3,
+  "id": "777c4141-2358-4fa6-95bc-3e971ea9bdfb",
+  "slug": "tui-kres-da-bo-dang-hobo-kep-nach",
+  "cu": "0810b46c-ff68-4e81-9320-ae1e8c39f544",
+  "chon": "abc960fd-03ae-4ba7-b16a-7cab3a159762",
+  "ghiChu": "#1→#2 [other] Ảnh 1 chụp nhiều túi bị che khuất và thừa khoảng trống. Ảnh 2 rõ nét, thấy trọn vẹn phom dáng và quai túi."
+ },
+ {
+  "so": 28,
+  "to": 3,
+  "id": "09ece110-c25e-4f09-8d48-9093c7b2d1f4",
+  "slug": "tui-xach-da-bo-tim-quai-dan-thu-cong",
+  "cu": "3887819f-49b1-4d8d-8f86-c744ca82435c",
+  "chon": "a90cfaa6-4a88-4163-afef-45903c2ef44d",
+  "ghiChu": "#1→#2 [other] Ảnh 1 bị hoa che khuất góc túi; ảnh 2 chụp góc 3/4 thể hiện rõ phom dáng, quai đan và chi tiết thủ công hơn hẳn."
+ },
+ {
+  "so": 29,
+  "to": 3,
+  "id": "27ad7dc6-ce3b-428e-ab5c-bc8ee58ce052",
+  "slug": "vi-dai-da-ca-sau-mau-den-kem-day-deo-cheo",
+  "cu": "cd7dd6a5-6efe-4cf0-ab65-9b6f27ef6ae3",
+  "chon": "e5f6ed08-81b8-4a61-a775-f5949064f201",
+  "ghiChu": "#1→#2 [other] Ảnh #1 kéo dài dây khiến ví quá nhỏ ở đáy hình. Ảnh #2 bố cục cân đối, ví rõ nét và lấp đầy khung hình."
+ },
+ {
+  "so": 30,
+  "to": 3,
+  "id": "79cd3ce2-3486-4b34-ab54-86cd7432dc4a",
+  "slug": "vi-dung-the-senot-da-epsom-phoi-mau",
+  "cu": "dcfde779-f946-407b-b5f7-7d8cbfcbcb82",
+  "chon": "8d1d06a7-0c94-4283-ad53-ee2c93ebdc17",
+  "ghiChu": "#1→#3 [other] Ảnh hiện tại là mẫu đơn sắc, không đúng bản phối màu. Ảnh #3 thể hiện rõ nét thiết kế phối màu đặc trưng."
+ },
+ {
+  "so": 31,
+  "to": 4,
+  "id": "05fcb5b9-2b54-40dc-acad-67fdff4841e3",
+  "slug": "vi-dung-the-senot-da-epsom-phoi-mau-xanh-navy",
+  "cu": "f2983599-89e2-4faf-8579-b1c80b50536b",
+  "chon": "d8c97669-efba-49c7-bcf1-c54602e561a1",
+  "ghiChu": "#1→#2 [other] Ảnh 1 dập tên cá nhân (K♥N) dễ gây hiểu lầm, ảnh 2 chuẩn logo KOI Leather, góc chụp studio sắc nét."
+ },
+ {
+  "so": 32,
+  "to": 4,
+  "id": "9e77a177-45a2-4f02-81cd-56e2a6308359",
+  "slug": "vi-zip-mini-da-bo-van-hat-mau-den-kem-khoen-d",
+  "cu": "f03654c1-b21e-4a75-9086-4e65169ada60",
+  "chon": "c0d27644-f909-4a49-9de2-197087c64bfc",
+  "ghiChu": "#1→#2 [other] Ảnh 1 sản phẩm bị lệch góc và nhỏ; ảnh 2 ở trung tâm, rõ nét vân da và chi tiết khóa kéo hơn."
+ },
+ {
+  "so": 33,
+  "to": 4,
+  "id": "5b0411a9-fb22-4cdb-9649-cd5d9f09c826",
+  "slug": "vong-tay-da-bo-ban-rong-khoa-chu-u-mau-vang-bo",
+  "cu": "85808fa0-7c83-45d5-8cf4-d32ea69010d4",
+  "chon": "64281b84-e6ed-40d7-bd75-c54832a7ce58",
+  "ghiChu": "#1→#3 [other] Ảnh hiện tại bị phân tâm bởi túi da ở tiền cảnh; ảnh #3 rõ nét, thể hiện đúng vòng tay là chủ thể chính."
+ }
+]

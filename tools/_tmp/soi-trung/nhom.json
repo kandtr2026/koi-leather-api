@@ -1,0 +1,2979 @@
+[
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "c79bdd56-5900-4f2b-a59e-8c68ed47547a",
+    "slug": "boc-keyboard-da-bo-olive",
+    "ten": "Bọc Keyboard – Da Bò – Olive",
+    "dm": "bao-da-ipad",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 10
+   },
+   {
+    "id": "1dbb607d-21b0-4366-bd3e-868a85fc1fdb",
+    "slug": "bao-da-ipad-pro-da-bo-swift-mau-o-am-handmade",
+    "ten": "Bao Da iPad Pro Da Bò Swift Màu Đỏ Đậm – Handmade",
+    "dm": "bao-da-ipad",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "4a5c3b1f-1f15-4122-9f3e-21eca7ffc881",
+    "slug": "phonecase-p-lung-pueblo-darkgreen-x-navajowhite",
+    "ten": "Phonecase Ốp lưng – Pueblo – DarkGreen x NavajoWhite",
+    "dm": "leather-phonecase",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 2
+   },
+   {
+    "id": "9c587b37-1160-4025-a2d6-669afe96cedd",
+    "slug": "vi-nu-long-wallet-da-alligator-himalaya-whitesmoke",
+    "ten": "Ví Nữ Long Wallet – Da Alligator Himalaya – WhiteSmoke",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "8277201d-3c9c-416d-8e7e-00ada86bd3f7",
+    "slug": "phonecase-p-lung-pueblo-mix-color",
+    "ten": "Phonecase Ốp lưng – Pueblo – Mix Color",
+    "dm": "leather-phonecase",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 3
+   },
+   {
+    "id": "2a096038-88a8-4fbe-8ab9-9911a55a8ea2",
+    "slug": "phonecase-op-lung-da-epsom-black-khong-co-day",
+    "ten": "Phonecase Ốp Lưng – Da Epsom – Black (Không có dây)",
+    "dm": "leather-phonecase",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 2
+   },
+   {
+    "id": "b252afdf-272e-4401-9827-2460855bebf8",
+    "slug": "book-cover-da-buttero-epsom-brown-orange",
+    "ten": "Book Cover – Da Buttero, Epsom – Brown, Orange",
+    "dm": "san-pham-khac",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "a584bde9-62c4-4409-a95c-24b45d23422f",
+    "slug": "phonecase-op-lung-da-epsom-tan",
+    "ten": "Phonecase Ốp lưng – Da Epsom – Tan",
+    "dm": "leather-phonecase",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 3
+   },
+   {
+    "id": "7bd51a4a-ae0a-49f6-9717-d8030c90f5df",
+    "slug": "key-chain-moc-khoa-da-co-the-tuy-chinh-mau",
+    "ten": "Key Chain Móc Khóa Da – Có Thể Tùy Chỉnh Màu",
+    "dm": "keychain-moc-khoa",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "20637541-e499-42c0-be0b-64e9d6af7b27",
+    "slug": "so-tay-da-cao-cap-da-epsom-orange-x-saddlebrown",
+    "ten": "Sổ Tay Da Cao Cấp – Da Epsom – Orange x SaddleBrown",
+    "dm": "san-pham-khac",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "b99f5043-23a1-4440-8d12-c00f6bc69f24",
+    "slug": "vi-da-nam-da-epsom-darkblue-x-maroon",
+    "ten": "Ví Da Nam – Da Epsom – DarkBlue x Maroon",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "5cc8e193-774f-450d-9654-02decb1c357d",
+    "slug": "day-da-ong-ho-canvas-x-swift-calfskin-red-x-black",
+    "ten": "Dây Da Đồng Hồ – Canvas x Swift Calfskin – Red x Black",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 6
+   },
+   {
+    "id": "50872454-f27a-4287-9608-650f924010e2",
+    "slug": "tong-hop-cac-dau-stamp-by-koi-leather-dau-an-ca-nhan-tren-da",
+    "ten": "Tổng hợp các dấu Stamp By KOI Leather – Dấu ấn cá nhân trên da",
+    "dm": "signature-leather-goods",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 103
+   },
+   {
+    "id": "645636a7-2b6a-4c55-8348-4a114940bb94",
+    "slug": "laptop-sleeve-da-epsom-slategray",
+    "ten": "Laptop Sleeve – Da Epsom – SlateGray",
+    "dm": "bao-da-ipad",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   },
+   {
+    "id": "61afc9d2-74dc-47b4-a4ff-a41c781cec2d",
+    "slug": "clutch-an-da-cuu-pink",
+    "ten": "Clutch Đan – Da Nappa – Pink",
+    "dm": "an-lat-woven",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   },
+   {
+    "id": "ff198c2d-3c1a-49cd-b711-6daeb4b46624",
+    "slug": "phonecase-op-lung-da-be-black-onyx",
+    "ten": "Phonecase Ốp lưng – Da Bê – Black Onyx",
+    "dm": "leather-phonecase",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 2
+   },
+   {
+    "id": "7a7a6fea-19cc-4018-9eb7-b0880466b59b",
+    "slug": "op-ipad",
+    "ten": "Ốp Ipad",
+    "dm": "bao-da-ipad",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 19
+   },
+   {
+    "id": "530a8fa7-96af-4123-8e69-1c83371899eb",
+    "slug": "the-kep-sach-bookmark-bang-da-hat-dap-logo-theo-yeu-cau",
+    "ten": "Thẻ kẹp sách bookmark bằng da hạt dập logo theo yêu cầu",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "c1cbb69e-7951-4586-89bf-cae3de07d6eb",
+    "slug": "day-dong-ho-da-ca-sau-mau-nau-chocolate",
+    "ten": "Dây đồng hồ da cá sấu màu nâu chocolate",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "cde4f583-de1c-4fe6-8ae1-549cf4ea278f",
+    "slug": "tui-dopp-kit-da-togo-mau-den-dang-hop-quai-xach",
+    "ten": "Túi dopp kit da Togo màu đen dáng hộp quai xách",
+    "dm": "doppkit",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   },
+   {
+    "id": "a610ae0a-c2fe-4314-a3f3-1bdd9400a22e",
+    "slug": "kep-tien-da-epsom-dap-chan-tram-mau-cam",
+    "ten": "Kẹp tiền da Epsom dập chần trám màu cam",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 5
+   },
+   {
+    "id": "8afe4c71-3f1c-4332-8f8b-af363db4aec0",
+    "slug": "kep-tien-nam-cham-da-bo-epsom-chan-tram-mau-kem",
+    "ten": "Kẹp tiền nam châm da bò Epsom chần trám màu kem",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   },
+   {
+    "id": "94646654-71d0-4f5f-9dc0-c9e169606f1a",
+    "slug": "kep-tien-nam-cham-da-epsom-mau-den-1",
+    "ten": "Kẹp tiền nam châm da Epsom màu đen",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 5
+   },
+   {
+    "id": "da344ff4-2d97-4b8b-8df6-e52d69da28ef",
+    "slug": "kep-tien-nam-cham-boc-da-van-hat-mau-xanh-la",
+    "ten": "Kẹp tiền nam châm bọc da vân hạt màu xanh lá",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   },
+   {
+    "id": "37b9328e-ef94-48b0-9a65-ab034a83df04",
+    "slug": "kep-tien-nam-cham-da-epsom-va-da-caviar",
+    "ten": "Kẹp tiền nam châm da Epsom và da Caviar",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   },
+   {
+    "id": "46f53d72-ff7a-4209-a123-f84aab22eb9a",
+    "slug": "bo-co-tic-tac-toe-boc-da-mau-kem",
+    "ten": "Bộ cờ Tic Tac Toe bọc da màu kem",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   },
+   {
+    "id": "ba4faa58-3d50-4f96-b4f9-27e09cfd0a78",
+    "slug": "vi-mini-da-caviar-den-chan-tram-nap-dinh-hoa",
+    "ten": "Ví mini da Caviar đen chần trám nắp đính hoa",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 9
+   },
+   {
+    "id": "b737d40a-a0bb-4e2f-9f74-d2c3625f36e9",
+    "slug": "op-lung-da-epsom-den-co-nap-gap-va-khoen-deo",
+    "ten": "Ốp lưng da Epsom đen có nắp gập và khoen đeo",
+    "dm": "leather-phonecase",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 4
+   },
+   {
+    "id": "259064a7-0d77-4ac8-b29c-33f858b20cbe",
+    "slug": "vi-da-nam-dang-ngang-da-epsom-phoi-mau-gay",
+    "ten": "Ví da nam dáng ngang da Epsom phối màu gáy",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "78e5791f-57b1-4b5e-9c9d-05181b19db97",
+    "slug": "vi-clutch-da-togo-mau-kem-dang-phang-co-quai-deo",
+    "ten": "Ví clutch da Togo màu kem dáng phẳng có quai đeo",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   },
+   {
+    "id": "bc520fa0-0f1a-49ed-9773-9afa981bba36",
+    "slug": "tui-deo-cheo-da-epsom-dang-nap-gap-khoa-chu-h-c18",
+    "ten": "Túi đeo chéo da Epsom dáng nắp gập khoá chữ H - C18",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 18
+   }
+  ],
+  "anhKhop": 53,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "f6156214-22bd-4a50-b982-bed7201eaa59",
+    "slug": "tui-tote-da-bo",
+    "ten": "Túi tote da bò",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-08-20",
+    "moi": false,
+    "soAnh": 29
+   },
+   {
+    "id": "44ce4565-f1c8-45b4-987c-da7854ab7156",
+    "slug": "vi-bearn-epsom",
+    "ten": "Ví Bearn - epsom",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-08-22",
+    "moi": false,
+    "soAnh": 24
+   },
+   {
+    "id": "ad23519e-4237-4604-8248-7e18df5bc9ef",
+    "slug": "1-tam-lot-ban-1-hop-but-to-1-hop-but-nho-2-khay-nho",
+    "ten": "1 tấm lót bàn + 1 hộp bút TO + 1 HỘP BÚT NHỎ + 2 KHAY NHỎ",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-09-05",
+    "moi": false,
+    "soAnh": 24
+   },
+   {
+    "id": "7b305d40-eaaf-40e3-8728-f372574154fa",
+    "slug": "tui-da-dan-nap-gap-quai-xach-mau-xanh-duong",
+    "ten": "Túi da đan nắp gập quai xách màu xanh dương",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "e19d7ac2-c822-44b1-9ca0-f9510eb91d2f",
+    "slug": "vi-bearn-gap-da-epsom-mau-gold-quai-cai-kim-loai",
+    "ten": "Ví Bearn gập da Epsom màu Gold quai cài kim loại",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "e37a7f16-8219-44f8-94bb-e14164e52e7e",
+    "slug": "vi-bearn-gap-doi-da-epsom-mau-do-quai-cai-chu-h",
+    "ten": "Ví Bearn gập đôi da Epsom màu đỏ quai cài chữ H",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "12ad13f6-7e09-4dd1-a161-b3b4c718f68a",
+    "slug": "vi-bearn-gap-doi-da-epsom-quai-cai-mau-vang-bo",
+    "ten": "Ví Bearn gập đôi da Epsom quai cài màu vàng bò",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 4
+   },
+   {
+    "id": "19015708-c8ff-45c3-aa49-ccd9f02e0cdb",
+    "slug": "vi-bearn-gap-doi-da-epsom-mau-den-quai-cai-kim-loai-h",
+    "ten": "Ví Bearn gập đôi da Epsom màu đen quai cài kim loại H",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 5
+   },
+   {
+    "id": "43e81225-1ad7-4f8c-adfa-bca833fb9386",
+    "slug": "vi-bearn-gap-nho-da-epsom-mau-cam-quai-cai-chu-h",
+    "ten": "Ví Bearn gập nhỏ da Epsom màu cam quai cài chữ H",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   },
+   {
+    "id": "cd46f49f-1fa6-4bfc-85e7-abf14ac12f21",
+    "slug": "vi-bearn-gap-doi-da-epsom-mau-do-dai-cai-kim-loai",
+    "ten": "Ví Bearn gập đôi da Epsom màu đỏ đai cài kim loại",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 21
+   }
+  ],
+  "anhKhop": 12,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "229f8baf-76bb-4170-9776-513717cde480",
+    "slug": "charm-treo-tui-hinh-chu-voi-bang-da-phoi-chu-cai",
+    "ten": "Charm treo túi hình chú voi bằng da phối chữ cái",
+    "dm": "charm-deo-tui-bang-da",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "c1309b53-12f5-48d3-b85f-fbe787a17256",
+    "slug": "tui-mettique-25-vai-tweed-caro-vang-phoi-da-bo-den",
+    "ten": "Túi Mettique 25 vải tweed caro vàng phối da bò đen",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   },
+   {
+    "id": "2567e347-39c4-4ba7-9556-67bc117745bb",
+    "slug": "day-da-dong-ho-ca-sau-mau-xanh-navy-cho-salvatore-ferragamo",
+    "ten": "Dây da đồng hồ cá sấu màu xanh navy cho Salvatore Ferragamo",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   },
+   {
+    "id": "63f42b49-f38a-4641-ae2b-86c686203b02",
+    "slug": "day-dong-ho-da-ca-sau-mau-xanh-navy-cho-favre-leuba",
+    "ten": "Dây đồng hồ da cá sấu màu xanh navy cho Favre-Leuba",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "123435b4-721f-4a56-9fa8-4cfbdea868ef",
+    "slug": "day-dong-ho-cho-versace-da-van-hat-mau-do",
+    "ten": "Dây đồng hồ cho Versace da vân hạt màu đỏ",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   },
+   {
+    "id": "eeac074f-0448-4f85-9378-d159f856937c",
+    "slug": "day-dong-ho-nu-da-epsom-mau-nau-vang-cho-tissot",
+    "ten": "Dây đồng hồ nữ da Epsom màu nâu vàng cho Tissot",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 7,
+  "dMin": 3
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "4a4c3f46-402e-4129-9f57-6cf12b9ab7c9",
+    "slug": "bao-da-bmw",
+    "ten": "Bao Da Chìa Khoá Ô Tô – Da Buttero – Cam x Navy",
+    "dm": "keychain-moc-khoa",
+    "luc": "2026-08-20",
+    "moi": false,
+    "soAnh": 23
+   },
+   {
+    "id": "89ff2fad-1094-48ed-84d4-74f53acd13b9",
+    "slug": "bao-chia-khoa-ford",
+    "ten": "Bao chìa khoá Ford",
+    "dm": "boc-khoa-o-to",
+    "luc": "2026-08-28",
+    "moi": false,
+    "soAnh": 8
+   },
+   {
+    "id": "4995d11b-b237-41b7-856f-46bac265132f",
+    "slug": "boc-chia-khoa-o-to-mazda-da-de-alran-kem-no",
+    "ten": "Bọc chìa khóa ô tô Mazda da dê Alran kèm nơ",
+    "dm": "boc-khoa-o-to",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "93cb25fb-7cd7-4108-be5b-b07bf61953db",
+    "slug": "boc-chia-khoa-o-to-ford-da-togo-xanh-malachite",
+    "ten": "Bọc chìa khóa ô tô Ford da Togo xanh Malachite",
+    "dm": "boc-khoa-o-to",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   },
+   {
+    "id": "fcb26269-94da-4b61-9c87-d1f793655a04",
+    "slug": "boc-chia-khoa-o-to-da-bo-toyota-vios-moc-dong-mau-den-ep-khuon",
+    "ten": "Bọc chìa khoá ô tô da bò Toyota Vios móc đồng màu đen (Ép khuôn)",
+    "dm": "boc-khoa-o-to",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "3b32be5b-178c-4c8b-922d-0f3958a0f5c8",
+    "slug": "tui-xach-da-da-dieu-dang-nap-gap-khoa-xoay-mau-be",
+    "ten": "Túi xách da đà điểu dáng nắp gập khóa xoay màu be",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 2
+   },
+   {
+    "id": "1fa1feb0-becd-4374-a22a-8ba8125cc5c5",
+    "slug": "tui-xach-da-da-dieu-mau-trang-nap-gap-khoa-xoay",
+    "ten": "Túi xách da đà điểu màu trắng nắp gập khóa xoay",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 3
+   },
+   {
+    "id": "2b3a7855-ba0a-4e6d-bb7c-9c29955c6b20",
+    "slug": "tui-clutch-da-da-dieu-mau-kem-nap-gap-quai-xach",
+    "ten": "Túi clutch da đà điểu màu kem nắp gập quai xách",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 3
+   },
+   {
+    "id": "99eeeb9f-fd43-49d6-9c09-7eadacde2ae5",
+    "slug": "tui-pochette-da-da-dieu-quai-xach-nap-gap-khoa-xoay-size-22",
+    "ten": "Túi Pochette da đà điểu quai xách nắp gập khoá xoay - Size 22",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 25
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "015818b2-6348-450b-bf56-8c32b2db9fec",
+    "slug": "day-da-ong-ho-epsom-mau-camel",
+    "ten": "Dây Da Đồng Hồ Epsom Màu Camel",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 3
+   },
+   {
+    "id": "4db98665-875b-4926-9631-7d4ec423d79e",
+    "slug": "day-ong-ho-da-epsom-mau-vang-bo-khau-tay-chi-trang",
+    "ten": "Dây Đồng Hồ Da Epsom Màu Vàng Bơ Khâu Tay Chỉ Trắng",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   },
+   {
+    "id": "f1aa0b28-36c6-437a-a026-234fb41094ba",
+    "slug": "day-ong-ho-da-epsom-vang-bo-khau-tay",
+    "ten": "Dây Đồng Hồ Da Epsom Vàng Bò Khâu Tay",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   }
+  ],
+  "anhKhop": 10,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "163f1a32-79a1-45cf-b493-7e7b14882731",
+    "slug": "bo-lot-ly-da-bo-hinh-tron-kem-bao-giu-khuy-bam",
+    "ten": "Bộ lót ly da bò hình tròn kèm bao giữ khuy bấm",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 1
+   },
+   {
+    "id": "4cbdee6b-a5ba-4102-997f-8ccdcb1e2bc6",
+    "slug": "bo-lot-ly-da-bo-kem-khay-giu-dang-tron-nut-bam",
+    "ten": "Bộ lót ly da bò kèm khay giữ dáng tròn nút bấm",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 4
+   },
+   {
+    "id": "39911dd4-2e63-4a27-bbcd-9228f32ac40a",
+    "slug": "bo-lot-ly-da-nappa-kem-khay-giu-nut-bam",
+    "ten": "Bộ lót ly da Nappa kèm khay giữ nút bấm",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "7d789504-544f-494b-8371-fd62f20b25eb",
+    "slug": "tui-loom-tui-xach-da-bo",
+    "ten": "Túi LOOM – Túi xách Da bò Ý",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 16
+   },
+   {
+    "id": "2c561c64-92a6-430d-95a6-c464fb6d02ba",
+    "slug": "tui-xach-da-dan-mau-vang-anh-kim-kem-quai-deo",
+    "ten": "Túi xách da đan màu vàng ánh kim kèm quai đeo",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "ea099881-ca4a-49a9-a4f0-26ab5d2db941",
+    "slug": "tui-loom-da-bo-dan-tay-mau-nau-va-vang-anh-kim-lot-vai-canvas-size-23",
+    "ten": "Túi LOOM da bò đan tay màu nâu và vàng ánh kim, lót vải canvas - Size 23",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 20
+   }
+  ],
+  "anhKhop": 9,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "b20e9281-ab33-4a47-90d9-2e3882ebabcb",
+    "slug": "charm-deo-tui-dang-balo-mini-da-anh-bac",
+    "ten": "Charm đeo túi dáng balo mini da ánh bạc",
+    "dm": "charm-deo-tui-bang-da",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 1
+   },
+   {
+    "id": "2f32cb28-03b5-4464-a3aa-78ea5b7a52fc",
+    "slug": "charm-tui-dang-balo-mini-da-anh-bac-phoi-xanh",
+    "ten": "Charm túi dáng balo mini da ánh bạc phối xanh",
+    "dm": "charm-deo-tui-bang-da",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 5
+   },
+   {
+    "id": "54b0d8b7-9d55-46b0-9d0a-6e2cb898e5e2",
+    "slug": "charm-balo-mini-da-mau-bac-phoi-xanh-navy",
+    "ten": "Charm balo mini da màu bạc phối xanh navy",
+    "dm": "charm-deo-tui-bang-da",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 3,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "a1e3e5d4-e35a-40e8-aa07-de27042bf36f",
+    "slug": "card-holder-da-be-togo-safiano-hang-san",
+    "ten": "Card holder da bê, Togo, Safiano ... hàng sẵn",
+    "dm": "hang-co-san",
+    "luc": "2026-08-07",
+    "moi": false,
+    "soAnh": 8
+   },
+   {
+    "id": "803711b2-1b9b-425a-8208-667f8e99595c",
+    "slug": "card-holder-da-exotic-ky-da-ca-sau-da-dieu-hang-san",
+    "ten": "Card holder da Exotic - Kỳ đà - Cá sấu - Đà điểu hàng sẵn",
+    "dm": "hang-co-san",
+    "luc": "2026-08-07",
+    "moi": false,
+    "soAnh": 7
+   },
+   {
+    "id": "edced25e-0a71-4730-8180-368de28a471b",
+    "slug": "vi-dai-du-lich-da-da-dieu-mau-xam-taupe-nap-gap",
+    "ten": "Ví dài du lịch da đà điểu màu xám taupe nắp gập",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 4
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "87b119d2-f713-43c5-a72f-23917a583ce1",
+    "slug": "day-da-ong-ho-bonia-da-ca-sau-black",
+    "ten": "Dây Da Đồng Hồ Bonia – Da Cá Sấu – Black",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 6
+   },
+   {
+    "id": "8dd4d7b4-64ed-4c35-ba19-99a4eebf0730",
+    "slug": "day-da-ong-ho-nu-da-epsom-trang-da-ca-sau-en-handmade",
+    "ten": "Dây Da Đồng Hồ Nữ Da Epsom Trắng & Da Cá Sấu Đen Handmade",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "be7cca8b-81c0-4bdf-89c8-4701be72f0d2",
+    "slug": "day-da-dong-ho-da-be-epsom-cream",
+    "ten": "Dây Da Đồng Hồ – Da Bê Epsom – Cream",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "a513fa1b-a53e-49d4-b3c5-f37b35bc8801",
+    "slug": "long-money-clip-da-be-blue",
+    "ten": "Long Money Clip – Da Bê – Blue",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 6
+   },
+   {
+    "id": "cfa564c7-fcf1-40ac-a42f-e1983b1e40f8",
+    "slug": "long-money-clip-da-caviar-white",
+    "ten": "Long Money Clip – Da Caviar – White",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 7
+   },
+   {
+    "id": "f38322f8-9fa1-461c-a0e4-168b1834deb3",
+    "slug": "long-moneyclip-vi-dai-kep-tien",
+    "ten": "Long Moneyclip - Ví dài kẹp tiền",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-08-22",
+    "moi": false,
+    "soAnh": 29
+   }
+  ],
+  "anhKhop": 13,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "03bb4144-f357-4eb2-8690-ec7dbcb8ad76",
+    "slug": "tag-da-bo-swift-mau-etoup-so-01-destination-rally",
+    "ten": "Tag Da Bò Swift Màu Etoup Số 01 – Destination Rally",
+    "dm": "charm-deo-tui-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "897a8460-6ceb-4172-a8ef-7617a107dad3",
+    "slug": "tag-da",
+    "ten": "Tag da",
+    "dm": "keychain-moc-khoa",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 10
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "555f6169-6684-4770-a81c-f6b6808763c5",
+    "slug": "vi-sen-da-epsom-mau-blue-noi-that-gold",
+    "ten": "Ví Sen Da Epsom Màu Blue – Nội Thất Gold",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "03fbb9d9-7bf2-49d4-94fa-97f452b5480d",
+    "slug": "vi-sen",
+    "ten": "Ví Sen",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 15
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "040a9ba6-1185-43d0-b8aa-facf4d3bde96",
+    "slug": "tui-matame-da-bo-togo-nap-gap-kem-vi-tron-treo-day",
+    "ten": "Túi Matame da bò Togo nắp gập kèm ví tròn treo dây",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   },
+   {
+    "id": "4be71794-2c8f-4dc2-ad6e-8239d1bbe9b2",
+    "slug": "tui-multibags-matame-da-bo-togo-mau-den-kem-vi-tron-size-22",
+    "ten": "Túi Multibags Matame da bò Togo màu đen kèm ví tròn - Size 22",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 16
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "4048f9ed-44b2-49d6-94ab-079b614a1e63",
+    "slug": "tui-da-nam-da-alligator-brown",
+    "ten": "Túi Da Nam – Da Alligator – Brown",
+    "dm": "clutch-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 11
+   },
+   {
+    "id": "059090cb-cf7b-4618-8265-ca5427ebe6af",
+    "slug": "clutch-dung-cigar-da-ca-sau-dang-hop-quai-xach",
+    "ten": "Clutch đựng cigar da cá sấu dáng hộp quai xách",
+    "dm": "clutch-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 1
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "34e5c880-e65c-4364-9747-837cd4b74329",
+    "slug": "belt-bag-da-be-epsom-gainsboro",
+    "ten": "Belt Bag – Da Bê Epsom – Gainsboro",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   },
+   {
+    "id": "060fb2ed-abf5-4a3c-b954-398119da4d7e",
+    "slug": "tui-xach-da-be-epsom-mau-xam-quai-xach-kem-day-deo-size-20",
+    "ten": "Túi xách da bê Epsom màu xám quai xách kèm dây đeo - Size 20",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 3
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 1
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "0638122c-1dba-4e3e-b65d-06d69f6645c8",
+    "slug": "vi-nu-long-wallet-da-patent-red",
+    "ten": "Ví Nữ Long Wallet – Da Patent – Red",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 6
+   },
+   {
+    "id": "bafbf499-1799-49a3-9828-8bf5f4547e8f",
+    "slug": "day-lung-nam-da-bo-mau-den-mat-khoa-tu-dong",
+    "ten": "Dây lưng nam da bò màu đen mặt khóa tự động",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 4
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 5
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "0769f080-cbce-46cb-b312-3933bddd1dec",
+    "slug": "sot-an-da-bo-intrecciato-bo-3-mau-olive-camel-xanh-am",
+    "ten": "Sọt Đan Da Bò Intrecciato – Bộ 3 Màu Olive, Camel, Xanh Đậm",
+    "dm": "san-pham-khac",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "1d6b2226-df89-45b3-b2f4-d22938b0ed67",
+    "slug": "sot-dan-da-1-lop",
+    "ten": "Sọt đan da 1 lớp",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 10
+   }
+  ],
+  "anhKhop": 3,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "0bf7f10a-57c8-4c5f-b5be-3711d729e4d5",
+    "slug": "tui-chub-da-bo-yellow",
+    "ten": "Túi Chub – Da Bò – Yellow",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 9
+   },
+   {
+    "id": "0884da58-7580-48b5-86e0-c8c6ed4e1013",
+    "slug": "tui-chub-w-da-bo-pink",
+    "ten": "Túi Chub-W – Da Bò – Pink",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 5
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "08ae2f66-aedf-46a9-a069-978e05c18bbb",
+    "slug": "vi-dai-nu-da-epsom-hong-san-ho",
+    "ten": "Ví Dài Nữ Da Epsom Hồng San Hô",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "b653c96c-4c77-4bda-b0c6-11833bda95ff",
+    "slug": "vi-dai",
+    "ten": "Ví dài",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 10
+   }
+  ],
+  "anhKhop": 3,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "08bd14a8-b84d-4d25-94e5-2a20a0de37d8",
+    "slug": "key-cover-bao-da-boc-chia-khoa-alligator-whitesmoke",
+    "ten": "Key Cover Bao Da Bọc Chìa Khoá – Alligator – WhiteSmoke",
+    "dm": "boc-khoa-o-to",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   },
+   {
+    "id": "47576ec0-b634-4ee1-ad18-84180fcf91b8",
+    "slug": "boc-chia-khoa-o-to-mazda-da-ca-sau-va-da-epsom-xanh-mint",
+    "ten": "Bọc chìa khóa ô tô Mazda da cá sấu và da Epsom xanh mint",
+    "dm": "boc-khoa-o-to",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 3,
+  "dMin": 1
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "efafdf24-0f76-4fe9-85dd-3b0f35a29055",
+    "slug": "day-dong-ho-da-ca-sau",
+    "ten": "Dây đồng hồ Da cá sấu",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 7
+   },
+   {
+    "id": "09f8f6ec-05eb-48f8-96c0-edf0b479c0cb",
+    "slug": "day-dong-ho-da-ca-sau-bong-mau-xanh-la-dam",
+    "ten": "Dây đồng hồ da cá sấu bóng màu xanh lá đậm",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "0a08a4ee-6033-4461-afa3-e1e014ff43c3",
+    "slug": "hop-mat-kinh",
+    "ten": "Hộp mắt kính",
+    "dm": "ca-nhan-hoa",
+    "luc": "2026-08-20",
+    "moi": false,
+    "soAnh": 10
+   },
+   {
+    "id": "20d2a6a1-0552-4077-a310-6f4dd982fa20",
+    "slug": "day-dong-ho-da-ca-sau-xanh-navy-cho-ulysse-nardin-khong-bao-gom-logo",
+    "ten": "Dây đồng hồ da cá sấu xanh navy cho Ulysse Nardin - Không bao gồm logo",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 10
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 5
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "31b82f6f-d198-4518-af48-c418c3474972",
+    "slug": "vi-the-da-epsom-xanh-ngoc-luc-bao-handmade",
+    "ten": "Ví Thẻ Da Epsom Xanh Ngọc Lục Bảo Handmade",
+    "dm": "card-holder",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "0e5c2172-bb4d-421e-a5c7-4385423dd906",
+    "slug": "vi-the-xanh",
+    "ten": "Ví thẻ xanh",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 12
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "c728a859-9430-44ea-a7cc-7b07cd43aa11",
+    "slug": "kep-tien-da-bo-van-caviar-en-money-clip-quilted",
+    "ten": "Kẹp Tiền Da Bò Vân Caviar Đen – Money Clip Quilted",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "0f80a41d-6003-4f82-90db-70e071b924d2",
+    "slug": "money-clip-3",
+    "ten": "Money clip",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 6
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "0fd98945-9491-4764-930d-99d910598f93",
+    "slug": "balo-da-dentro-da-epsom-blue",
+    "ten": "Balo Da DENTRO – Da Epsom – Blue",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "6e27245c-9b89-401a-bef6-9be62702821e",
+    "slug": "balo-da-epsom-mau-xanh-navy-quai-deo-thao-roi",
+    "ten": "Balo da Epsom màu xanh navy quai đeo tháo rời",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "101e6785-3bbf-4317-8c93-b3b4b5614810",
+    "slug": "day-da-ong-ho-da-buttero-red",
+    "ten": "Dây Da Đồng Hồ – Da Buttero – Red",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   },
+   {
+    "id": "5724315d-6f4d-47a2-9184-fbf6601d33a0",
+    "slug": "day-da-ong-ho-da-nubuck-gray",
+    "ten": "Dây Da Đồng Hồ – Da Nubuck – Gray",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 5
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "13374f03-3df9-424d-b1d7-ddb7a50b2b59",
+    "slug": "bao-da-kinh-mat-xanh-mint-khac-ten-theo-yeu-cau",
+    "ten": "Bao Da Kính Mắt Xanh Mint – Khắc Tên Theo Yêu Cầu",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "35f64a41-3b0a-4671-ac1d-63a2bae0018b",
+    "slug": "bao-mat-kinh-basic",
+    "ten": "Bao mắt kính basic",
+    "dm": "bao-da-ipad",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 3,
+  "dMin": 1
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "2836f3aa-0ec3-4cf9-b80d-66b4188916cc",
+    "slug": "day-da-ong-ho-da-bo-swift-trang-handmade",
+    "ten": "Dây Da Đồng Hồ Da Bò Swift Trắng Handmade",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "1408beee-3480-4b7c-8f3b-b135c7bd26aa",
+    "slug": "day-dong-ho-trang-tissot",
+    "ten": "Dây đồng hồ trắng Tissot",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 6
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 2
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "882c8b57-de1c-4ac7-8c12-e288175d837f",
+    "slug": "op-lung-dien-thoai-da-hat-mau-tim",
+    "ten": "Ốp lưng điện thoại da hạt màu tím",
+    "dm": "leather-phonecase",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 1
+   },
+   {
+    "id": "149cba72-b689-4554-b610-00337de612bf",
+    "slug": "op-lung-dien-thoai-da-togo-mau-tim",
+    "ten": "Ốp lưng điện thoại da Togo màu tím",
+    "dm": "leather-phonecase",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "16401851-acde-4147-ad9f-2f6400e73971",
+    "slug": "day-da-ong-ho-da-alligator-black-4",
+    "ten": "Dây Da Đồng Hồ – Da Alligator – Black",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 2
+   },
+   {
+    "id": "779a859e-0bd3-461e-9399-3265eecf91fc",
+    "slug": "day-dong-ho-da-ca-sau-may-do-thu-cong",
+    "ten": "Dây đồng hồ da cá sấu may đo thủ công",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "9f012695-27df-4437-9720-d92723520e16",
+    "slug": "bao-da-dung-kinh-dang-dep-dap-bieu-tuong-phong-thuy",
+    "ten": "Bao da đựng kính dáng dẹp dập biểu tượng phong thuỷ",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 2
+   },
+   {
+    "id": "16e7b9f2-43a3-4941-8fb9-91b0319cee84",
+    "slug": "bao-da-dung-kinh-dang-xo-da-bo-thao-moc",
+    "ten": "Bao da đựng kính dáng xỏ da bò thảo mộc",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 1
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 3
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "17ea75e8-ac58-4b5c-ab7f-0feae1351b86",
+    "slug": "bao-da-macbook-laptop-da-be-epsom-xam",
+    "ten": "Bao da Macbook, Laptop – Da Bê Epsom – Xám",
+    "dm": "bao-da-ipad",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 7
+   },
+   {
+    "id": "d7dd1868-166c-4d17-8f23-dc2b4b3ce335",
+    "slug": "clutch-da-da-dieu-mau-xam-dang-hop-co-quai-deo-tay",
+    "ten": "Clutch da đà điểu màu xám dáng hộp có quai đeo tay",
+    "dm": "clutch-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 5
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "1c4e084d-197e-49a8-bee0-2735a1d710e8",
+    "slug": "bao-da-dien-thoai-nap-gap-da-bo-van-hat-do-man",
+    "ten": "Bao da điện thoại nắp gập da bò vân hạt đỏ mận",
+    "dm": "leather-phonecase",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 4
+   },
+   {
+    "id": "9a93e926-0f25-4380-a30d-179a88079cf3",
+    "slug": "bao-da-dien-thoai-nap-gap-da-bo-van-hat-mau-do",
+    "ten": "Bao da điện thoại nắp gập da bò vân hạt màu đỏ",
+    "dm": "leather-phonecase",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 3,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "8e1c4b03-34b0-450e-9cf3-f66512d87be4",
+    "slug": "tui-deo-cheo-nam-da-epsom-xanh-reu",
+    "ten": "Túi Đeo Chéo Nam – Da Epsom – Xanh Rêu",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-08-13",
+    "moi": false,
+    "soAnh": 8
+   },
+   {
+    "id": "1cbea815-4985-4f35-853a-5efd00d7cb8b",
+    "slug": "tui-deo-cheo-da-epsom-xanh-reu-dang-dung-2-ngan",
+    "ten": "Túi đeo chéo da Epsom xanh rêu dáng đứng 2 ngăn",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 2
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "1d19f889-fcfd-4ae1-bd3c-96d36d2ddeac",
+    "slug": "charm-eo-tui-da-bo-thuoc-thu-cong-chan-dung-cho-en",
+    "ten": "Charm Đeo Túi Da Bò Thuộc Thủ Công – Chân Dung Chó Đen",
+    "dm": "charm-deo-tui-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "4ea66f55-6e43-4d79-a61b-d9fdc42599da",
+    "slug": "charm-cho-cham-khac",
+    "ten": "Charm chó chạm khắc",
+    "dm": "charm-deo-tui-bang-da",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "1e60eb3b-e344-471b-8801-6a784e7bac3f",
+    "slug": "day-lung-da-bo-khong-khoa-en-boxcalf-nau-togo",
+    "ten": "Dây Lưng Da Bò Không Khóa – Đen BoxCalf & Nâu Togo",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "d4b9a113-3b73-4ecd-b07b-43c5bcaed609",
+    "slug": "belt-h-box-togo",
+    "ten": "Belt H - Box + togo",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 10
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "1f08dd81-8315-4bb6-86f3-694a8d9f9ff0",
+    "slug": "tui-xach-da-clemence-dang-xo-mau-den",
+    "ten": "Túi xách da Clemence dáng xô màu đen",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 2
+   },
+   {
+    "id": "9f3ec661-61ed-4dd7-9a45-6cb07c8cefba",
+    "slug": "tui-xach-da-clemence-dang-xo-hai-quai-kem-khoa",
+    "ten": "Túi xách da Clemence dáng xô hai quai kèm khoá",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 5
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "2beca453-7522-4768-8472-061d3f439b61",
+    "slug": "bao-da-kinh-mat-da-epsom-en-1",
+    "ten": "Bao Da Kính Mắt Da Epsom Đen",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "23687b2c-be18-4a4b-85fc-568ce273a527",
+    "slug": "bao-da-mat-kinh-epsom-black",
+    "ten": "Bao Da Mắt Kính epsom black",
+    "dm": "bao-da-ipad",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "9fc4e239-bb5d-4ac5-83fa-7cb768cf8eb9",
+    "slug": "bo-2-vi-da-epsom-xanh-la-khac-logo-buymed",
+    "ten": "Bộ 2 Ví Da Epsom Xanh Lá – Khắc Logo Buymed",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "2709d85a-5999-490b-82ae-1e9121dff326",
+    "slug": "card-holder-xanh-la",
+    "ten": "Card Holder xanh lá",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 13
+   }
+  ],
+  "anhKhop": 3,
+  "dMin": 1
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "3633ffb5-edee-4f79-b746-70b1622f23a5",
+    "slug": "kep-tien-da-epsom-xanh-blue-khac-ten-diem",
+    "ten": "Kẹp Tiền Da Epsom Xanh Blue Khắc Tên Diem",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "27c658ff-0492-4966-80de-a0cd4a1e2d52",
+    "slug": "money-clip-xanh",
+    "ten": "Money clip xanh",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 10
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "f2743b30-debc-4a1a-b9df-f3d293f3d648",
+    "slug": "passport-cover-da-de-alran-blue",
+    "ten": "Passport Cover – Da Dê Alran – Blue",
+    "dm": "leather-passport-cover",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "28e16908-b770-437a-8e5d-6c60657528c0",
+    "slug": "bao-da-ho-chieu-da-de-alran-ghep-da-hello-kitty",
+    "ten": "Bao da hộ chiếu da dê Alran. Ghép da Hello Kitty",
+    "dm": "leather-passport-cover",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 10
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 1
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "29e57367-112b-4d61-8791-c020173652a2",
+    "slug": "day-da-ong-ho-nato-strap-da-swift-nau-vang",
+    "ten": "Dây Da Đồng Hồ NATO Strap – Da Buttero – Nâu Vàng",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "ccb1c454-489e-4942-86bb-c58361df9186",
+    "slug": "day-dong-ho-butero",
+    "ten": "Dây đồng hồ butero",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 5
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "2ab077ac-0bce-4594-853c-be3e7e3027e3",
+    "slug": "day-da-ong-ho-da-ostrich-darkgreen",
+    "ten": "Dây Da Đồng Hồ – Da Ostrich – DarkGreen",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 3
+   },
+   {
+    "id": "b8cb0418-abcd-46fc-9a94-b03461471b69",
+    "slug": "day-dong-ho-da-da-dieu-mau-xanh-la-cho-ebel",
+    "ten": "Dây đồng hồ da đà điểu màu xanh lá cho Ebel",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "2be6a3fa-fa31-4023-ab02-6945d2b083e8",
+    "slug": "may-card-vao-vali",
+    "ten": "May Card vào vali",
+    "dm": "card-holder",
+    "luc": "2026-09-05",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "8fb36684-1aec-4045-aeaf-ef0e482bb46f",
+    "slug": "tui-deo-cheo-mot-quai-da-van-epi-mau-den",
+    "ten": "Túi đeo chéo một quai da vân Epi màu đen",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 4
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "ac3cd01b-3a8f-41b1-997e-ee6805d8e81d",
+    "slug": "combo-vi-card-holder-va-passport",
+    "ten": "Combo ví card holder và passport",
+    "dm": "card-holder",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 11
+   },
+   {
+    "id": "3089d97e-0e56-45f4-a7ef-364bf4cae99b",
+    "slug": "passport-cover",
+    "ten": "Passport cover",
+    "dm": "leather-passport-cover",
+    "luc": "2026-08-13",
+    "moi": false,
+    "soAnh": 14
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "401f4549-ee03-4642-86b0-2f3d9ab54359",
+    "slug": "day-lung-nu-da-epsom-mau-en-khoa-vang",
+    "ten": "Dây Lưng Nữ Da Epsom Màu Đen Khóa Vàng",
+    "dm": "day-lung-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "3646d32e-366a-470d-a76f-4cd0c20d7866",
+    "slug": "that-lung-epsom-ban-2cm",
+    "ten": "thắt lưng epsom - bản 2cm",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "3690e147-d163-4e72-909d-a62332571854",
+    "slug": "dap-chu-len-ly-da-trung-nguyen-legend-da-bo-nau-tan",
+    "ten": "Dập Chữ Lên Ly Da Trung Nguyên Legend – Da Bò Nâu Tan",
+    "dm": "san-pham-khac",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   },
+   {
+    "id": "496b2d86-03e7-4e98-aaa8-821fc1a6f5d5",
+    "slug": "dap-chu-ly",
+    "ten": "Dập chữ ly",
+    "dm": "ca-nhan-hoa",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 4
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "380496cb-8591-4275-a2e0-9f5998d5333b",
+    "slug": "tui-da-phom-luc-giac-den",
+    "ten": "Túi Da Phom Lục Giác – Đen",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 11
+   },
+   {
+    "id": "6353933d-a788-4209-ac86-e345ffa33ace",
+    "slug": "tui-xach-da-bo-dang-da-giac-bien-hinh-da-be-swift-mau-den",
+    "ten": "Túi xách da bò dáng đa giác biến hình - Da bê Swift màu đen",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 15
+   }
+  ],
+  "anhKhop": 6,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "392916cd-4118-4852-b9e9-ce24bae90907",
+    "slug": "vi-da-nam-epsom-o-burgundy-handmade",
+    "ten": "Ví Da Nam Epsom Đỏ Burgundy Handmade",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "f905cd2e-ee0a-4fa0-8b22-76bda9792e79",
+    "slug": "vi-da-dark-red",
+    "ten": "Ví da Dark Red",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 2
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 1
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "3b3f5a28-2cb5-4f8f-a12f-bcee29931cf9",
+    "slug": "day-lung-da-box-calf-den-nau-khoa-bac",
+    "ten": "Dây Lưng Da Box Calf Đen Nâu – Khoá Bạc",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "7377bbbe-9504-4772-a040-3ca5c680df7b",
+    "slug": "that-lung-nam-da-bo-khoa-vuong-bo-goc-den",
+    "ten": "Thắt Lưng Nam Da Bò – Khoá Vuông Bo Góc – Đen",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 14
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "a04d4a57-47c5-4418-abd3-9f9dd1256fa7",
+    "slug": "p-lung-iphone-da-ca-sau-himalaya-trang-kem-co-quai-cam",
+    "ten": "Ốp Lưng iPhone Da Cá Sấu Himalaya Trắng Kem – Có Quai Cầm",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "3b7b11da-1788-4cf7-8d89-d9159bb1124b",
+    "slug": "op-iphone-hima",
+    "ten": "Ốp iphone Hima",
+    "dm": "leather-phonecase",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 12
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "3bc03b63-d35f-4446-bfe9-e811de4bd3e9",
+    "slug": "day-da-ong-ho-da-togo-black",
+    "ten": "Dây Da Đồng Hồ – Da Togo – Black",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   },
+   {
+    "id": "ed3e3277-ae70-411a-8c66-892abd6e96d5",
+    "slug": "day-dong-ho-da-bo-epsom-va-togo-may-thu-cong",
+    "ten": "Dây đồng hồ da bò Epsom và Togo may thủ công",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "3ec75795-b33f-49b1-88b2-ab9b2cc58dba",
+    "slug": "kep-tien-da-epsom-xanh-la-money-clip-green",
+    "ten": "Kẹp Tiền Da Epsom Xanh Lá – Money Clip Green",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "ec5d6e3b-497c-4698-a9e3-46f8a0045c07",
+    "slug": "money-clip-xanh-1",
+    "ten": "Money Clip Xanh",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "e91ae329-889a-4c1c-aa96-ff0ab9568aee",
+    "slug": "woven-bag-da-be-swift-black-yellow-orange-brown",
+    "ten": "Woven Bag – Da Bê Swift – Black, Yellow, Orange, Brown",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 11
+   },
+   {
+    "id": "3ffddce3-0f89-4b0d-b6a1-ceb24e90612c",
+    "slug": "tui-deo-cheo-da-bo-dan-nan-vuong-mini-nap-gap-size-13x9cm",
+    "ten": "Túi đeo chéo da bò đan nan vuông mini nắp gập - Size 13x9cm",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 3
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "40907cc6-0520-43dc-a8c2-875b9a928f29",
+    "slug": "balo-da-bo-togo-mau-xam-etain-quai-xach-da-nang",
+    "ten": "Balo da bò Togo màu xám Etain quai xách đa năng",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 5
+   },
+   {
+    "id": "e7de2164-0496-494d-aa70-7d2567ed080e",
+    "slug": "balo-da-clemence-xanh-navy-lot-da-epsom-cam",
+    "ten": "Balo da Clemence xanh navy lót da Epsom cam",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 4
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "9762ea30-d0d5-4875-9923-35c0976888e2",
+    "slug": "kep-tien-da-bo-van-epsom-mau-bordeaux",
+    "ten": "Kẹp Tiền Da Bò Vân Epsom Màu Bordeaux",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "40f72c21-9d7a-42bb-b162-3555c382bcf1",
+    "slug": "money-clip-epsom",
+    "ten": "Money clip epsom",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 13
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "41ba86f3-fdf7-40e2-aac7-eb51c2d97546",
+    "slug": "moc-khoa-da-dang-the-dai-kem-charm-chu-cai",
+    "ten": "Móc khóa da dáng thẻ dài kèm charm chữ cái",
+    "dm": "keychain-moc-khoa",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 3
+   },
+   {
+    "id": "71a5c02e-9a93-4d3e-8d35-7670a415abc5",
+    "slug": "moc-khoa-charm-chu-cai-da-phoi-mau-va-moc-khoa-the-ten",
+    "ten": "Móc khóa charm chữ cái da phối màu và móc khóa thẻ tên",
+    "dm": "keychain-moc-khoa",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "7df510cf-bb28-4f99-8f3a-06b931452224",
+    "slug": "tui-mois-flower-da-nubuck-xanh-duong-dinh-hoa",
+    "ten": "Túi MOIS Flower da nubuck xanh dương đính hoa",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   },
+   {
+    "id": "43803f1e-ee2e-430c-aba3-640155e70c9d",
+    "slug": "tui-mois-bag-da-bo-mong-taurillon-xanh-dinh-hoa-size-31x17x11cm",
+    "ten": "Túi MOIS Bag da bò mộng Taurillon xanh đính hoa - Size 31x17x11cm",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 11
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 4
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "d60094e5-dea1-41d9-a688-ae1dea047f2b",
+    "slug": "p-lung-iphone-da-ca-sau-himalaya",
+    "ten": "Ốp Lưng iPhone Da Cá Sấu Himalaya",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "44eca2ed-09b7-43cd-b494-6d5ea5fdf248",
+    "slug": "op-lung-iphone-himalaya",
+    "ten": "Ốp lưng iphone - Himalaya",
+    "dm": "bao-da-ipad",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "6489e389-4e6d-4e85-ad3d-97f6382e2173",
+    "slug": "tui-xach-nu-chan-tram-den",
+    "ten": "Túi Xách Nữ Chần Trám – Da Cừu – Đen",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "457b8392-60e9-443a-8ef4-a9e84ab782e6",
+    "slug": "vi-nu-chan-tram-hoa-noi-den",
+    "ten": "Ví Nữ Chần Trám – Hoa Nổi – Đen",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "45fe4e5c-da53-48e8-8b32-4f490faedf76",
+    "slug": "matame-multibag-da-togo-pink",
+    "ten": "Matame Multibag – Da Togo – Pink",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 16
+   },
+   {
+    "id": "8a4f5cee-ca0f-4e44-b1d1-47faef822e5b",
+    "slug": "tui-deo-cheo-matame-01-da-togo-mau-den-kem-vi-tron",
+    "ten": "Túi đeo chéo Matame-01 da Togo màu đen kèm ví tròn",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 2
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 1
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "5f65059c-83bb-427a-9971-7ef43d335f23",
+    "slug": "card-holder-da-epsom-xam-xanh-kem-kep-tien-ong",
+    "ten": "Card Holder Da Epsom Xám Xanh Kèm Kẹp Tiền Đồng",
+    "dm": "card-holder",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "4800f2f3-d06e-4cd2-a752-e483b884060e",
+    "slug": "card-holder-kep-tien-kim-loai",
+    "ten": "Card Holder kẹp tiền kim loại",
+    "dm": "card-holder",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "494d369d-5c3a-433a-a6c2-34a901e0b8ed",
+    "slug": "tui-da-deo-vai-dang-thuyen-quai-that-nut-mau-nau-cam",
+    "ten": "Túi da đeo vai dáng thuyền quai thắt nút màu nâu cam",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "f09c5671-351f-45a4-b937-071811c59074",
+    "slug": "tui-hobo-da-bo-mau-nau-vang-quai-that-nut-da-be-swift-size-28x17x9-5cm",
+    "ten": "Túi hobo da bò màu nâu vàng quai thắt nút - Da bê Swift - Size 28x17x9.5cm",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 14
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "49fe12d8-6d70-443c-b2d0-80dbeab16d3a",
+    "slug": "vi-dung-the-da-da-dieu-ket-hop-ca-sau-sac-cam-va-xanh-la",
+    "ten": "Ví đựng thẻ da đà điểu kết hợp cá sấu sắc cam và xanh lá",
+    "dm": "card-holder",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 1
+   },
+   {
+    "id": "52d901de-6f33-4a97-84b0-76043c4baed3",
+    "slug": "vi-dung-the-gap-doi-da-da-dieu-phoi-ca-sau-xanh-la-va-cam",
+    "ten": "Ví đựng thẻ gập đôi da đà điểu phối cá sấu xanh lá và cam",
+    "dm": "card-holder",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "e8c6caaf-4259-4d1f-87da-bbd496f32305",
+    "slug": "passport-cover-da-epsom-oldlace-x-orange",
+    "ten": "Passport Cover – Da Epsom – Oldlace x Orange",
+    "dm": "leather-passport-cover",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 3
+   },
+   {
+    "id": "4f0a7128-5a29-4d31-966b-b0e3f81c1e58",
+    "slug": "bao-da-ho-chieu-da-epsom-co-ngan-the-va-sim",
+    "ten": "Bao da hộ chiếu da Epsom có ngăn thẻ và SIM",
+    "dm": "leather-passport-cover",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 3
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "50fe7c67-6c68-43bd-b282-eda3e8b82eb2",
+    "slug": "bo-2-day-da-ong-ho-da-bo-van-epsom-da-ky-a-mau-nau-am",
+    "ten": "Bộ 2 Dây Da Đồng Hồ Da Bò Vân Epsom & Da Kỳ Đà Màu Nâu Đậm",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "889aff1a-2f05-431c-9922-6259efb1d0b8",
+    "slug": "day-dong-ho",
+    "ten": "Dây đồng hồ",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "53c99679-b248-4222-bd7b-fe4ee3def884",
+    "slug": "money-clip-late-may-tram-2-tag",
+    "ten": "Money clip LaTe - May trám - 2 tag",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-08-22",
+    "moi": false,
+    "soAnh": 14
+   },
+   {
+    "id": "626a5606-6a96-41b0-86ed-983151f548c2",
+    "slug": "money-clip-penny",
+    "ten": "Money Clip Penny",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-08-22",
+    "moi": false,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 5
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "53d40ddb-4a24-47c6-b13e-85f57fb50d38",
+    "slug": "natawell-bag-da-togo-black",
+    "ten": "Natawell Bag – Da Togo – Black",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 4
+   },
+   {
+    "id": "76c3c6e0-a891-4bcc-b2ae-7f005158eceb",
+    "slug": "tui-deo-cheo-da-bo-van-hat-dang-hop-chu-nhat-mau-den",
+    "ten": "Túi đeo chéo da bò vân hạt dáng hộp chữ nhật màu đen",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "b1869324-93b9-4c87-8bf9-775e3434a261",
+    "slug": "day-eo-tui-da-togo-mau-toupe-khau-tay-thu-cong",
+    "ten": "Dây Đeo Túi Da Togo Màu Étoupe Khâu Tay Thủ Công",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "56d34316-6fc5-4a06-ac60-a116c4a50080",
+    "slug": "leather-strap",
+    "ten": "Leather Strap",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "648fc831-bb8e-46e7-9d9d-c3897726cefd",
+    "slug": "tui-da-taiga-en-eo-cheo-nam-handmade-bespoke",
+    "ten": "Túi Da Taiga Đen Đeo Chéo Nam – Handmade Bespoke",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "63822806-5468-40cf-810b-4324f7ebbb57",
+    "slug": "tui-taiga-den",
+    "ten": "Túi taiga đen",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 10
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "6dd1f4b6-84a6-46c8-ab99-892a0a5e2aeb",
+    "slug": "balo-da-epsom-mau-cam-hai-ngan-quai-xach-ngang",
+    "ten": "Balo da Epsom màu cam hai ngăn quai xách ngang",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   },
+   {
+    "id": "dcb280b7-6a9f-4544-8c1f-c7298c0e03b9",
+    "slug": "balo-da-epsom-mau-cam-hai-ngan-khoa-keo",
+    "ten": "Balo da Epsom màu cam hai ngăn khóa kéo",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 1
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "6f426807-44b9-42d4-b4b8-4fdb29973031",
+    "slug": "tui-deo-cheo-nap-gap-da-epsom",
+    "ten": "Túi Đeo Chéo Nắp Gập – Da Epsom",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-08-13",
+    "moi": false,
+    "soAnh": 34
+   },
+   {
+    "id": "dd985c94-5f7b-4ba1-87a0-d09673aa7ddf",
+    "slug": "vi-constance-mini-da-be-epsom-mau-den-nap-gap-h-size-mini",
+    "ten": "Ví Constance Mini da bê Epsom màu đen nắp gập H - Size Mini",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 16
+   }
+  ],
+  "anhKhop": 6,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "6f49499f-7207-41af-92e2-12070a5f4ada",
+    "slug": "vi-zipper-vi-da-ca-sau-alligator",
+    "ten": "Ví Zipper – Ví da cá sấu Alligator",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 7
+   },
+   {
+    "id": "d7615503-a7d5-4c66-8297-872a1dfb9c6b",
+    "slug": "vi-zip-mini-da-ca-sau-khoa-keo-nhieu-mau",
+    "ten": "Ví zip mini da cá sấu khóa kéo nhiều màu",
+    "dm": "vi-zip-mini",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 1
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "93fe1b50-bc6b-4fc4-b9bd-29f113b36653",
+    "slug": "bao-da-iphone-dang-gap-da-bo-van-chevre-nau",
+    "ten": "Bao Da iPhone Dạng Gập Da Bò Vân Chevre Nâu",
+    "dm": "leather-phonecase",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "75d68e9b-36af-48c2-8c34-bdaab325bcce",
+    "slug": "iphone-case-gap",
+    "ten": "Iphone Case Gập",
+    "dm": "leather-phonecase",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 10
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "75e59602-beff-443b-97f5-c96a1b7c5a49",
+    "slug": "kep-tien-da-epsom-en-money-clip-handmade",
+    "ten": "Kẹp Tiền Da Epsom Đen – Money Clip Handmade",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "ad892f0c-ec4c-4966-bbe8-7ad1d1f2b0fd",
+    "slug": "money-clip-epsom-s",
+    "ten": "Money clip epsom - S",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 13
+   }
+  ],
+  "anhKhop": 3,
+  "dMin": 2
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "dc8fd890-30bd-4406-af13-fb4f0eade50e",
+    "slug": "chu-cai-da-trang-tri-tui-xach-nhieu-mau",
+    "ten": "Chữ Cái Da Trang Trí Túi Xách Nhiều Màu",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 3
+   },
+   {
+    "id": "7772c446-07d9-4b77-a432-565fb16c633a",
+    "slug": "charm-chu-cai-da-bo-ghep-ten-nhieu-mau",
+    "ten": "Charm chữ cái da bò ghép tên nhiều màu",
+    "dm": "charm-deo-tui-bang-da",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "a30825f8-42b8-4b37-a12e-c43205dd717c",
+    "slug": "bao-da-giay-to-oto-de-vua-giay-dang-kiem",
+    "ten": "Bao da giấy tờ oto (để vừa giấy đăng kiểm)",
+    "dm": "san-pham-khac",
+    "luc": "2026-08-07",
+    "moi": false,
+    "soAnh": 8
+   },
+   {
+    "id": "7b98d970-bec8-4de5-91a2-e853c4c54850",
+    "slug": "vi-da-do",
+    "ten": "Ví da đỏ",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-08-13",
+    "moi": false,
+    "soAnh": 15
+   }
+  ],
+  "anhKhop": 8,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "7be062c4-c20a-450e-9ae9-a39e6af0e88a",
+    "slug": "tui-crossbody-da-bo-van-togo-xanh-navy",
+    "ten": "Túi Crossbody Da Bò Vân Togo – Xanh Navy",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "99173fcd-33b8-49cd-8b5e-c81451a6f7d1",
+    "slug": "tui-deo-cheo-da-van-hat-navy",
+    "ten": "Túi Đeo Chéo Da Vân Hạt – Navy",
+    "dm": "tui-da-cho-nam",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "ad07e576-7b7b-401a-a0b4-cf31906f6997",
+    "slug": "day-dong-ho-da-ca-sau-mau-xanh-navy",
+    "ten": "Dây đồng hồ da cá sấu màu xanh navy",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 2
+   },
+   {
+    "id": "7c74234b-3687-4499-88b4-892e862b8944",
+    "slug": "day-dong-ho-da-ca-sau-mau-xanh-peacock",
+    "ten": "Dây đồng hồ da cá sấu màu xanh peacock",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "7db59bc0-4731-4f70-9baa-2e133ce77bbd",
+    "slug": "that-lung-da-nam-da-aligator-x-da-nubuck-black-x-purple",
+    "ten": "Thắt Lưng Da Nam – Da Alligator – Black x Purple",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 1
+   },
+   {
+    "id": "c2e9a519-508a-45a4-8337-62a1c7f42a7f",
+    "slug": "that-lung-da-ca-sau-den-lot-da-nubuck-tim",
+    "ten": "Thắt lưng da cá sấu đen lót da nubuck tím",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 4
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "83931bcd-3872-4810-81c4-da0211ae2c1f",
+    "slug": "bao-da-iphone-da-epsom-phoi-mau-noir-rouge-h-hoa-tiet-ngua",
+    "ten": "Bao Da iPhone Da Epsom Phối Đen – Đỏ Bordeaux, Hoạ Tiết Ngựa",
+    "dm": "leather-phonecase",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "f8295733-5f9c-4c78-a8fc-5f72bb113625",
+    "slug": "op-iphone",
+    "ten": "Ốp iphone",
+    "dm": "bao-da-ipad",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 12
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "9f8d466f-268e-47c5-87cb-4bc50d1fae9b",
+    "slug": "that-lung-da-epsom-hai-mat-den-va-gold-khoa-hinh-ngua",
+    "ten": "Thắt lưng da Epsom hai mặt đen và gold khóa hình ngựa",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   },
+   {
+    "id": "83fd80b0-32a0-4842-bd9e-772dcfd9998f",
+    "slug": "day-lung-da-epsom-phoi-togo-hai-mat-cam-va-xanh-navy",
+    "ten": "Dây lưng da Epsom phối Togo hai mặt cam và xanh navy",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 12
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 4
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "f88ef9f9-017c-4638-87b6-15598475eec0",
+    "slug": "vi-kep-tien",
+    "ten": "Ví kẹp tiền",
+    "dm": "vi-da-cho-nu",
+    "luc": "2026-08-13",
+    "moi": false,
+    "soAnh": 16
+   },
+   {
+    "id": "89138a4f-6cd7-4ea7-96ce-a5703b7ae505",
+    "slug": "vi-dai-ca-sau",
+    "ten": "Ví dài cá sâu",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-08-20",
+    "moi": false,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 5
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "d1f6e1c9-ce7f-4ac8-bc7f-4026d762a00f",
+    "slug": "day-that-lung-nu-da-bo-epsom-den-cho-mat-khoa-chu-h",
+    "ten": "Dây thắt lưng nữ da bò Epsom đen cho mặt khóa chữ H",
+    "dm": "day-lung-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 2
+   },
+   {
+    "id": "8a895ac3-4e96-487a-998c-29f01d36ee3f",
+    "slug": "day-lung-nu-da-be-epsom-ban-18mm-den-phoi-etoupe",
+    "ten": "Dây lưng nữ da bê Epsom bản 18mm đen phối etoupe",
+    "dm": "day-lung-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 8
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "90cb72bc-a4fe-4191-935c-5f1dff5ada56",
+    "slug": "bao-da-laptop-craft-red-da-bo-thuoc-thu-cong-o-tuoi",
+    "ten": "Bao Da Laptop Craft Red – Da Bò Thuộc Thủ Công Đỏ Tươi",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "c3958ca8-bea7-4b8d-9eea-7519c8afc57e",
+    "slug": "bao-da",
+    "ten": "Bao da",
+    "dm": "bao-da-ipad",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 16
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "9360a3b9-45cd-41cc-ae1b-98277410e3f5",
+    "slug": "money-clip-thiet-ke-tag-logo-ten-at-theo-yeu-cau",
+    "ten": "Money Clip Thiết Kế Tag Logo/Tên Đặt Theo Yêu Cầu",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "f1af0101-6909-40b8-925e-3ef3710c5aa1",
+    "slug": "kep-tien-dinh-nametag-logo-theo-yeu-cau",
+    "ten": "Kẹp Tiền Đính Nametag/Logo Theo Yêu Cầu",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 6
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "edbf11a5-c3a9-4523-b7e3-6489380caa14",
+    "slug": "tui-loom-da-bo-an-intrecciato-nau-size-large",
+    "ten": "Túi Loom Da Bò Đan Intrecciato Nâu – Size Large",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "941d73e2-6ccb-4000-9741-8ce9b5d1ea9b",
+    "slug": "tui-loom-nau",
+    "ten": "Túi Loom nâu",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 6
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "9dfd74bc-c25d-4c20-b6ef-8921dac4accb",
+    "slug": "day-dong-ho-da-ca-sau-mau-nau-cho-tag-heuer",
+    "ten": "Dây đồng hồ da cá sấu màu nâu cho Tag Heuer",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   },
+   {
+    "id": "e282440f-9381-4e7f-8180-bdeaf50a9d02",
+    "slug": "day-dong-ho-da-bo-mau-trang-kem-cho-swarovski",
+    "ten": "Dây đồng hồ da bò màu trắng kem cho Swarovski",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 3
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "a7537abe-b34d-42da-af0d-3dcf4efe664c",
+    "slug": "bao-da-dung-son-tich-hop-guong-nap-bam-mau-do",
+    "ten": "Bao da đựng son tích hợp gương nắp bấm màu đỏ",
+    "dm": "charm-deo-tui-bang-da",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 4
+   },
+   {
+    "id": "a0f5a35d-7394-4da5-8d71-62236b5e95c7",
+    "slug": "hop-da-dung-3-thoi-son-kem-guong-mau-do-do",
+    "ten": "Hộp da đựng 3 thỏi son kèm gương màu đỏ đô",
+    "dm": "charm-deo-tui-bang-da",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 2,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "f1d9c47c-d495-4c8f-9302-3fe1d0f3f70f",
+    "slug": "that-lung-da-nam-da-togo-chocolate",
+    "ten": "Thắt Lưng Da Nam – Da Togo – Chocolate",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 1
+   },
+   {
+    "id": "a88fc674-aba4-4d7e-8b68-843bb2664eb6",
+    "slug": "day-lung-da-togo-hai-mat-mau-nau-dam-va-kem",
+    "ten": "Dây lưng da Togo hai mặt màu nâu đậm và kem",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 6
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 5
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "aac4149b-dbab-45df-926f-26c9d5a1eab6",
+    "slug": "kep-tien-da-epsom-xam-ghi-khoa-h-bac",
+    "ten": "Kẹp Tiền Da Epsom Xám Ghi Khóa H Bạc",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "f28bb110-f97a-4f81-b74c-e6a9e199607d",
+    "slug": "money-clip-tag-h",
+    "ten": "Money clip tag H",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "c1d3e406-7d2d-44da-bfc0-969a08be085c",
+    "slug": "vi-nam-da-bo-van-epsom-mau-en",
+    "ten": "Ví Nam Da Bò Vân Epsom Màu Đen",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "af3d779f-29f8-4e8b-81e3-88ab427b41b5",
+    "slug": "vi-nam-epsom-h-of-k",
+    "ten": "Ví nam epsom - H of K",
+    "dm": "vi-da-cho-nam",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 5,
+  "dMin": 0
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "fe42b47b-f388-460b-8103-816aa1139120",
+    "slug": "day-da-ong-ho-da-epsom-vang-jaune-ambre-handmade",
+    "ten": "Dây Da Đồng Hồ Da Epsom Vàng Jaune Ambre Handmade",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "b39f7e74-a452-4e22-9d51-a12708b1b0ec",
+    "slug": "day-dong-ho-3",
+    "ten": "Dây đồng  hồ",
+    "dm": "day-da-dong-ho",
+    "luc": "2026-08-12",
+    "moi": false,
+    "soAnh": 5
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 1
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "e6c64c84-8a37-4473-aac4-effe5aa37a47",
+    "slug": "tui-tote-da-bo-chan-tram-day-xich-mau-trang",
+    "ten": "Túi tote da bò chần trám dây xích màu trắng",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 4
+   },
+   {
+    "id": "bdf36789-3ead-497d-bc8a-927a473ffe93",
+    "slug": "tui-hobo-chan-tram-mau-trang-quai-xich-luon-da-size-35x25x18cm",
+    "ten": "Túi Hobo chần trám màu trắng quai xích luồn da - Size 35x25x18cm",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 0
+ },
+ {
+  "loai": "moi-cu",
+  "mon": [
+   {
+    "id": "c7f5ec2c-a2b8-4b3e-9eec-484e6dbdf634",
+    "slug": "bao-mat-kinh-bang-da-nhieu-mau-sac",
+    "ten": "Bao mắt kính bằng da nhiều màu sắc",
+    "dm": "phu-kien-bang-da",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 23
+   },
+   {
+    "id": "c00496d4-f4a0-48cc-bc78-e79627c46b12",
+    "slug": "tui-bucket-da-togo-mau-vang-bo-kem-charm-kinh",
+    "ten": "Túi bucket da Togo màu vàng bò kèm charm kính",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 1
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 1
+ },
+ {
+  "loai": "moi-moi",
+  "mon": [
+   {
+    "id": "c31986eb-0c1b-4672-965e-bdec2f0fa060",
+    "slug": "tui-xach-da-nu-dang-hop-mau-do-man-phoi-dai-den",
+    "ten": "Túi xách da nữ dáng hộp màu đỏ mận phối đai đen",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-26",
+    "moi": true,
+    "soAnh": 6
+   },
+   {
+    "id": "c524c066-d109-4f98-ac37-f14f085abaf9",
+    "slug": "tui-xach-da-box-calf-mau-do-burgundy-phoi-quai-den",
+    "ten": "Túi xách da Box Calf màu đỏ burgundy phối quai đen",
+    "dm": "tui-da-cho-nu",
+    "luc": "2026-09-27",
+    "moi": true,
+    "soAnh": 7
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 3
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "c3df4fb6-9750-483c-80df-d80a3ee5f31a",
+    "slug": "that-lung-khoa-truot-da-bo-black-brown",
+    "ten": "Thắt Lưng Khóa Trượt – Da Bò – Black, Brown",
+    "dm": "day-lung-cho-nam",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 17
+   },
+   {
+    "id": "c9a66971-47a1-4cfd-bb34-e4ac9dca6e8e",
+    "slug": "magsafe",
+    "ten": "Magsafe",
+    "dm": "keychain-moc-khoa",
+    "luc": "2026-09-05",
+    "moi": false,
+    "soAnh": 21
+   }
+  ],
+  "anhKhop": 1,
+  "dMin": 5
+ },
+ {
+  "loai": "cu-cu",
+  "mon": [
+   {
+    "id": "cdaf9b13-fe67-4abf-b16a-5af96a523e52",
+    "slug": "kep-tien-da-epsom-en-money-clip-s",
+    "ten": "Kẹp Tiền Da Epsom Đen – Money Clip S",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-07-29",
+    "moi": false,
+    "soAnh": 5
+   },
+   {
+    "id": "d701b56b-41d8-4baa-8a96-7faf5691316e",
+    "slug": "money-clip-2",
+    "ten": "money clip",
+    "dm": "kep-tien-money-clip",
+    "luc": "2026-08-11",
+    "moi": false,
+    "soAnh": 9
+   }
+  ],
+  "anhKhop": 4,
+  "dMin": 0
+ }
+]

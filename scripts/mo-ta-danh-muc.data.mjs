@@ -84,6 +84,30 @@ export const MO_TA = {
     metaDescription:
       'Bọc da tai nghe dựng rập theo đúng model máy — chừa cổng sạc, khe mic, ôm khít không xoay. Đã có mẫu cho Marshall trên da bò Ý, Togo, da bò vân Mill.',
   },
+
+  'card-holder': {
+    description:
+      '<p>Card holder là ví đựng thẻ mỏng gọn nhất — vừa thẻ vừa vài tờ tiền gấp, bỏ túi trước được. KOI làm trên da Epsom, da dê Alran, Caviar, Swift, Togo, Safiano, và cả da exotic cá sấu, kỳ đà, đà điểu — từ dòng đơn giản dưới một triệu tới da exotic hàng chục triệu. Mỗi món khâu tay, khắc tên hoặc dập logo được.</p>',
+    metaTitle: 'Card Holder – Ví Đựng Thẻ Da Thật | KOI Leather',
+    metaDescription:
+      'Ví đựng thẻ mỏng gọn từ da Epsom, dê Alran, Caviar, Swift, Togo, cá sấu, kỳ đà, đà điểu. Khâu tay, khắc tên được. 21 mẫu từ 999k.',
+  },
+
+  'kep-tien-money-clip': {
+    description:
+      '<p>Kẹp tiền (money clip) là cách gọn nhất để mang tiền và thẻ — kẹp kim loại giữ tiền, vài ngăn thẻ hai bên, để túi trước thoải mái. KOI làm trên da Epsom, Caviar, Togo, Saffiano, kỳ đà; có bản may trám và khắc tên, tag logo theo yêu cầu. Đây là dòng lớn nhất site với 50 mẫu, giá từ 1,2 triệu.</p>',
+    metaTitle: 'Kẹp Tiền – Money Clip Da Thật | KOI Leather',
+    metaDescription:
+      'Money clip da kẹp kim loại giữ tiền và thẻ, khâu tay trên Epsom, Caviar, Togo, Saffiano. Khắc tên, tag logo theo yêu cầu. 50 mẫu từ 1,2 triệu.',
+  },
+
+  'charm-deo-tui-bang-da': {
+    description:
+      '<p>Charm đeo túi là món nhỏ làm chiếc túi thành của riêng bạn — hoa, cún poodle, cừu, croissant, son môi, máy bay, chữ cái, tag vali. KOI cắt khâu tay trên da bò Swift, da bò Ý và da Epsom; có bản chạm khắc chân dung thú cưng theo ảnh khách gửi. Giá từ vài trăm nghìn.</p>',
+    metaTitle: 'Charm Đeo Túi Da Thật, Chạm Khắc Theo Yêu Cầu | KOI Leather',
+    metaDescription:
+      'Charm đeo túi da thật: hoa, cún, cừu, croissant, son môi, tag vali, chữ cái. Chạm khắc chân dung thú cưng theo ảnh riêng. Khâu tay tại xưởng TP.HCM.',
+  },
 };
 
 /**

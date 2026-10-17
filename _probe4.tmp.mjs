@@ -1,0 +1,12 @@
+import fs from 'fs'; import pg from 'pg';
+const env = fs.readFileSync('.env','utf8').replace(/\r/g,'');
+const url = env.match(/^DATABASE_URL=(.*)$/m)[1].trim().replace(/^["']|["']$/g,'').replace(/[?&]sslmode=[^&]*/,'');
+const c = new pg.Client({ connectionString: url, ssl:{rejectUnauthorized:false} }); await c.connect();
+const q = async (l,s)=>{try{const r=await c.query(s);console.log('##',l);console.log(JSON.stringify(r.rows));}catch(e){console.log('##',l,'ERR',e.message)}};
+await q('SP theo host anh', `select case when bool_or(url like '%cloudinary%') and bool_or(url like '%supabase%') then 'ca-hai' when bool_or(url like '%cloudinary%') then 'chi-cloudinary' else 'chi-supabase' end nhom, count(*)::int n from (select "productId", url from koi_free_style.koi_product_images) x group by "productId" , 1 limit 0`);
+await q('SP theo host anh v2', `with per as (select "productId" pid, bool_or(url like '%cloudinary%') cl, bool_or(url like '%supabase%') sb from koi_free_style.koi_product_images group by 1) select case when cl and sb then 'ca-hai' when cl then 'chi-cloudinary' else 'chi-supabase' end nhom, count(*)::int n from per group by 1`);
+await q('imageType x host', `select "imageType", case when url like '%cloudinary%' then 'cloud' else 'supa' end h, count(*)::int n from koi_free_style.koi_product_images group by 1,2 order by 1,2`);
+await q('anh trong body bai viet', `select count(*)::int so_url_duy_nhat from (select distinct m[1] u from public.posts, regexp_matches(coalesce(content,''),'https://[a-z0-9]+\.supabase\.co/storage/v1/object/public/blog/[^"''  )>]+','g') m) x`);
+await q('cot posts', `select column_name from information_schema.columns where table_schema='public' and table_name='posts' order by ordinal_position`);
+await q('koi_products cot anh', `select column_name from information_schema.columns where table_schema='koi_free_style' and table_name='koi_products' and (column_name ~* 'image|anh|slug|name|categ|material') order by 1`);
+await c.end();

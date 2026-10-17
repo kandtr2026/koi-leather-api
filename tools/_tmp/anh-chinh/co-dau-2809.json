@@ -1,0 +1,211 @@
+[
+ {
+  "so": 922,
+  "problem": "The product is a wide cuff bracelet (vòng tay bản rộng) but this photo shows it worn on a wrist, and a large black leather bag takes up most of the frame. The bracelet is visible, but it is small and the bag is the main subject. A photo of the bracelet on its own would work better as the main photo.",
+  "severity": "borderline",
+  "to": 31,
+  "id": "5b0411a9-fb22-4cdb-9649-cd5d9f09c826",
+  "slug": "vong-tay-da-bo-ban-rong-khoa-chu-u-mau-vang-bo",
+  "ten": "Vòng tay da bò bản rộng khóa chữ U màu vàng bò",
+  "soAnh": 5,
+  "anhChinh": "64281b84-e6ed-40d7-bd75-c54832a7ce58"
+ },
+ {
+  "so": 651,
+  "problem": "Lifestyle shot where the model (full figure, face, black outfit, plant background) dominates the frame; the red Lolita bag is small at her waist. Product has 7 photos, so a product-only shot should be available.",
+  "severity": "clear",
+  "to": 22,
+  "id": "a281f979-ca6d-4ec4-b238-33c7f6b02fc5",
+  "slug": "tui-lolita-bag-da-bo-mau-do-deo-vai",
+  "ten": "Túi Lolita Bag da bò màu đỏ đeo vai",
+  "soAnh": 7,
+  "anhChinh": "0d052267-22bd-4195-b6cc-bcbd5ba6f60a"
+ },
+ {
+  "so": 667,
+  "problem": "Extreme close-up of the flap and the 'Pami's' metal logo hardware. The overall bag shape isn't visible (title: black Epsom flap bag with metal clasp).",
+  "severity": "clear",
+  "to": 23,
+  "id": "096fdbc1-8355-4327-8405-ac999fb232dc",
+  "slug": "tui-nap-gap-da-epsom-mau-den-khoa-kim-loai",
+  "ten": "Túi nắp gập da Epsom màu đen khoá kim loại",
+  "soAnh": 2,
+  "anhChinh": "7e0df95d-3f8e-4425-9785-2a381543c006"
+ },
+ {
+  "so": 726,
+  "problem": "Extreme close-up of one corner of the black Box Calf bag with the padlock. The bag's shape, handle and flap aren't visible as a whole.",
+  "severity": "clear",
+  "to": 25,
+  "id": "c2f073f2-798e-4671-b037-923b987ed69b",
+  "slug": "tui-xach-da-box-calf-mau-den-dang-nap-gap-khoa-o",
+  "ten": "Túi xách da Box Calf màu đen dáng nắp gập khóa ổ",
+  "soAnh": 2,
+  "anhChinh": "c672855f-e4e0-41bd-8483-80c65136938d"
+ },
+ {
+  "so": 619,
+  "problem": "Worn shot: a person's torso in a bright blue shirt takes up most of the frame. The white Alran waist bag is only a small part of the image.",
+  "severity": "borderline",
+  "to": 21,
+  "id": "bfc3b89a-d7dc-4c48-9133-904afac7a445",
+  "slug": "tui-deo-hong-da-de-alran-mau-trang-nap-gap",
+  "ten": "Túi đeo hông da dê Alran màu trắng nắp gập",
+  "soAnh": 3,
+  "anhChinh": "129f3a53-004b-4f07-a03a-68eae52c1e28"
+ },
+ {
+  "so": 699,
+  "problem": "Tight crop of the black tote: the top edge and handles are cut off and the frame is mostly flat black leather with the sunflower charm. The overall tote shape is only partly visible.",
+  "severity": "borderline",
+  "to": 24,
+  "id": "8872cc19-1fad-4488-9e7b-3bd0d600e3d1",
+  "slug": "tui-tote-da-mau-den-kem-charm-hoa-huong-duong",
+  "ten": "Túi tote da màu đen kèm charm hoa hướng dương",
+  "soAnh": 2,
+  "anhChinh": "92200aee-ff69-46fa-9394-6075603ff977"
+ },
+ {
+  "so": 705,
+  "problem": "Dim café scene where dark chairs and the surroundings dominate. The Etoupe drawstring tote is fairly small and poorly lit.",
+  "severity": "borderline",
+  "to": 24,
+  "id": "e99c7eb7-e716-442f-9a49-5bd7581700f1",
+  "slug": "tui-tote-da-togo-mau-etoupe-dang-that-day",
+  "ten": "Túi tote da Togo màu Etoupe dáng thắt dây",
+  "soAnh": 2,
+  "anhChinh": "18a3f3e5-bc1a-42d1-8a8a-715de564eb81"
+ },
+ {
+  "so": 498,
+  "problem": "Khung ghế tựa bọc da nubuck màu kem: the main photo shows the chair from the side with a large white box/pedestal in front of it. The box hides the seat and most of the frame, so the whole product is not visible and the cream nubuck upholstery is hard to see.",
+  "severity": "borderline",
+  "to": 17,
+  "id": "94d4164e-dfcf-4a55-922d-126041f977fa",
+  "slug": "khung-ghe-tua-boc-da-nubuck-mau-kem",
+  "ten": "Khung ghế tựa bọc da nubuck màu kem",
+  "soAnh": 8,
+  "anhChinh": "489d034e-1d36-4d52-9df0-b5a81e65d284"
+ },
+ {
+  "so": 466,
+  "problem": "Kẹp tiền nam châm da Caviar chần trám và da Epsom: the main photo is a busy lifestyle flat lay (open book, coins, orange card, several other clips and props). The target clip is small and competes with the other items, so it is not the clear subject.",
+  "severity": "borderline",
+  "to": 16,
+  "id": "4ce60d0e-b55f-4b5d-9f21-717ce0eb3755",
+  "slug": "kep-tien-nam-cham-da-caviar-chan-tram-va-da-epsom",
+  "ten": "Kẹp tiền nam châm da Caviar chần trám và da Epsom",
+  "soAnh": 4,
+  "anhChinh": "b080aab1-acef-4773-a854-40c98108494f"
+ },
+ {
+  "so": 787,
+  "problem": "Ví da bò dáng dài nắp gập màu xanh navy (2 ảnh): the main photo is a tight close-up of the flap and corner. The left and bottom of the wallet are cut off, so you can't see the whole long-wallet shape.",
+  "severity": "clear",
+  "to": 27,
+  "id": "ab9ede92-cc83-49d7-8c52-36e132f72105",
+  "slug": "vi-da-bo-dang-dai-nap-gap-mau-xanh-navy",
+  "ten": "Ví da bò dáng dài nắp gập màu xanh navy",
+  "soAnh": 2,
+  "anhChinh": "05c2f040-c587-4eac-af9e-b28def1908ea"
+ },
+ {
+  "so": 790,
+  "problem": "Ví da cá sấu màu xanh phối lót đỏ có quai gài (4 ảnh): the wallet is tilted in a hand on a wooden block and cut off at the top and right edges. It is a partial close-up of the croc texture, and the full wallet shape is not visible.",
+  "severity": "borderline",
+  "to": 27,
+  "id": "7bf1a130-218e-4ab9-82aa-638dc8b06f5c",
+  "slug": "vi-da-ca-sau-mau-xanh-phoi-lot-do-co-quai-gai",
+  "ten": "Ví da cá sấu màu xanh phối lót đỏ có quai gài",
+  "soAnh": 4,
+  "anhChinh": "44094d59-6238-464d-abf3-c67010c29222"
+ },
+ {
+  "so": 869,
+  "problem": "Ví gập đôi da bò đan nan màu cam (2 ảnh): the main photo is an editorial page with large text (\"HÔTEL MARTEL\" and \"89\") that takes up much of the frame. It reads as a text or graphic layout, not a clean product shot. The wallet itself is shown in full.",
+  "severity": "borderline",
+  "to": 29,
+  "id": "56f7b931-ad24-4bc4-8ec9-d996af0fa00c",
+  "slug": "vi-gap-doi-da-bo-dan-nan-mau-cam",
+  "ten": "Ví gập đôi da bò đan nan màu cam",
+  "soAnh": 2,
+  "anhChinh": "7a53539d-a1b1-4cd7-a3a6-a6dff52cba90"
+ },
+ {
+  "so": 9,
+  "problem": "Main photo is the BACK of the navy Epsom backpack. The frame shows mostly the two shoulder straps and the back panel, not the front of the bag. Pick a front or 3/4 view from its 8 photos.",
+  "severity": "clear",
+  "to": 1,
+  "id": "6e27245c-9b89-401a-bef6-9be62702821e",
+  "slug": "balo-da-epsom-mau-xanh-navy-quai-deo-thao-roi",
+  "ten": "Balo da Epsom màu xanh navy quai đeo tháo rời",
+  "soAnh": 8,
+  "anhChinh": "2e2d95d0-6f19-488f-a29a-7f10ad26bef1"
+ },
+ {
+  "so": 112,
+  "problem": "The charm set (tiny silver mini backpack and teal lipstick case) is small in a dark Christmas scene. A nutcracker figure and a pine tree take up as much of the frame as the products, so the charms are hard to read at thumbnail size. 9 photos are available.",
+  "severity": "borderline",
+  "to": 4,
+  "id": "5c463562-e79f-406f-88c4-8e828d2c6cb1",
+  "slug": "bo-charm-deo-tui-da-bo-gom-bao-dung-son-va-balo-mini",
+  "ten": "Bộ charm đeo túi da bò gồm bao đựng son và balo mini",
+  "soAnh": 9,
+  "anhChinh": "2cafd1c8-83e9-4602-829b-e5dbeb6d98b3"
+ },
+ {
+  "so": 129,
+  "problem": "The title is a SET (orange Nubuck belt plus green ostrich-leg zip wallet), but the main photo shows only the coiled orange belt. The green wallet is not visible, so the photo does not represent the full set. 6 photos are available.",
+  "severity": "borderline",
+  "to": 5,
+  "id": "05c9588f-0b9f-4a75-8e28-6a99fb23cd30",
+  "slug": "bo-that-lung-da-nubuck-cam-va-vi-zip-chan-da-dieu-xanh",
+  "ten": "Bộ thắt lưng da Nubuck cam và ví zip chân đà điểu xanh",
+  "soAnh": 6,
+  "anhChinh": "59206b98-8072-40f4-89be-898a409cd158"
+ },
+ {
+  "so": 204,
+  "problem": "Main photo for 'Charm đeo túi dáng balo mini da bò ánh bạc' is a marketing banner with large burned-in text: a big orange 'Sơn' logo, a tagline, and 'Tiny balo charm' in pink. The product is visible, but the photo breaks the no-banner/text rule. There are 5 photos, so pick a clean product shot instead.",
+  "severity": "clear",
+  "to": 7,
+  "id": "abb41ab4-b635-46f7-9209-2161875060af",
+  "slug": "charm-deo-tui-dang-balo-mini-da-bo-anh-bac",
+  "ten": "Charm đeo túi dáng balo mini da bò ánh bạc",
+  "soAnh": 5,
+  "anhChinh": "7725179f-eb3b-4453-829d-cd4f0e9377bd"
+ },
+ {
+  "so": 182,
+  "problem": "Main photo for 'Charm da đeo túi hình đầu dê phối màu thủ công' shows the charm hanging on a large taupe Kelly-style handbag. The bag fills most of the frame and the goat-head charm is only a small part of it. There are 7 photos; a shot of the charm alone would likely be better.",
+  "severity": "borderline",
+  "to": 7,
+  "id": "f3d3ba23-30f4-409a-bd5a-31583cc429b7",
+  "slug": "charm-da-deo-tui-hinh-dau-de-phoi-mau-thu-cong",
+  "ten": "Charm da đeo túi hình đầu dê phối màu thủ công",
+  "soAnh": 7,
+  "anhChinh": "7771ec10-8d3d-4d6b-a706-47b91fbcddd6"
+ },
+ {
+  "so": 293,
+  "problem": "Main photo for 'Dây đồng hồ da cá sấu cho Raymond Weil màu nâu đậm' is a close-up where the watch face dominates. Both ends of the strap are cut off at the frame edges, so the strap's overall shape (tip and buckle) is not visible. There are 3 photos, so a fuller view of the strap may be available.",
+  "severity": "borderline",
+  "to": 10,
+  "id": "3f2dabe2-374f-4057-a433-7a80bffd3742",
+  "slug": "day-dong-ho-da-ca-sau-cho-raymond-weil-mau-nau-dam",
+  "ten": "Dây đồng hồ da cá sấu cho Raymond Weil màu nâu đậm",
+  "soAnh": 3,
+  "anhChinh": "b6568f59-b549-4eef-a7b6-b39cfc68fa63"
+ },
+ {
+  "so": 417,
+  "problem": "Đế bọc ly giữ nhiệt da veg-tan màu nâu đỏ (slug de-boc-ly-giu-nhiet-da-veg-tan-mau-nau-do, 6 photos): the current main photo (c6c0faba) is a vertical shot of a large black tumbler, and the leather sleeve is only a small band at the bottom. The tumbler, which is not the product being sold, takes up most of the frame. Photo 5 (sleeve standing alone, VG logo clear, fills the frame) or photo 2 (sleeve next to the tumbler) shows the product better. Marked borderline because the current photo does show how the sleeve is used.",
+  "severity": "borderline",
+  "to": 14,
+  "id": "9680450b-c0d1-4387-a4bd-6dfaaf48a792",
+  "slug": "de-boc-ly-giu-nhiet-da-veg-tan-mau-nau-do",
+  "ten": "Đế bọc ly giữ nhiệt da veg-tan màu nâu đỏ",
+  "soAnh": 6,
+  "anhChinh": "c6c0faba-23ca-42ef-9717-9685c9771f51"
+ }
+]

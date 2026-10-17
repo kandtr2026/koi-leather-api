@@ -1,0 +1,13 @@
+import fs from 'fs'; import pg from 'pg';
+const env = fs.readFileSync('.env','utf8').replace(/\r/g,'');
+const url = env.match(/^DATABASE_URL=(.*)$/m)[1].trim().replace(/^["']|["']$/g,'').replace(/[?&]sslmode=[^&]*/,'');
+const c = new pg.Client({ connectionString: url, ssl:{rejectUnauthorized:false} }); await c.connect();
+const q = async (l,s)=>{try{const r=await c.query(s);console.log('##',l);console.log(JSON.stringify(r.rows));}catch(e){console.log('##',l,'ERR',e.message)}};
+await q('bucket', `select b.name, count(o.id)::int n, pg_size_pretty(sum((o.metadata->>'size')::bigint)) dung_luong from storage.buckets b left join storage.objects o on o.bucket_id=b.id group by 1 order by 2 desc`);
+await q('products bucket - ban goc vs ban nho', `select case when name ~ '^w(400|800|1200)/' then 'ban-nho' else 'ban-goc' end loai, count(*)::int n from storage.objects where bucket_id='products' group by 1`);
+await q('blog bucket - ban goc vs nho', `select case when name ~ '^w(400|800|1200)/' then 'ban-nho' else 'ban-goc' end loai, count(*)::int n from storage.objects where bucket_id='blog' group by 1`);
+await q('duoi tep ban goc products', `select lower(regexp_replace(name,'^.*\.','')) ext, count(*)::int n from storage.objects where bucket_id='products' and name !~ '^w(400|800|1200)/' group by 1 order by 2 desc`);
+await q('koi img theo host', `select case when url like '%cloudinary%' then 'cloudinary' when url like '%supabase%' then 'supabase' else 'khac' end host, count(*)::int n, count(distinct url)::int u from koi_free_style.koi_product_images group by 1`);
+await q('tong URL duy nhat', `select count(*)::int tong_url_duy_nhat from (select distinct url from koi_free_style.koi_product_images) x`);
+await q('trung lap giua 2 bang', `with a as (select distinct split_part(url,'/public/products/',2) k from koi_free_style.koi_product_images where url like '%/public/products/%'), b as (select distinct storage_path k from public.product_images) select (select count(*) from a)::int a_supabase, (select count(*) from b)::int b_public, (select count(*) from a join b using(k))::int trung`);
+await c.end();
