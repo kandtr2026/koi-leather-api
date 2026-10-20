@@ -63,6 +63,21 @@ const NHA_MOT = [
   // Tên MẪU, không phải tên hãng — nhưng bảo hộ y như tên hãng.
   'Birkin', 'Kelly', 'Constance', 'Hammock', 'Lindy', 'Picotin', 'Evelyne',
   'Classic Flap', 'Rouge H', 'Santos de Cartier',
+  // Bổ sung 20/10/2026 — tên MẪU / IP còn nằm trong koi_products (đã tra trang hãng/nhà bán lớn).
+  // Cố ý KHÔNG thêm chữ chung (Alma, Pochette, Saddle, Box, 2.55, Monogram đứng một mình,
+  // "chữ H"): regex không phân biệt hoa thường sẽ dính Box Calf, giá 2.550.000, dịch vụ chữ lồng.
+  'Béarn', 'Bearn', 'Dogon', 'Garden Party', 'Halzan', 'Double Tour', // Hermès
+  'Zippy', 'Speedy', 'OnTheGo', 'On The Go', 'Bumbag', 'họa tiết Monogram', 'hoạ tiết Monogram', 'Monogram Canvas', // Louis Vuitton
+  'Wallet On Chain', 'WOC', 'logo CC', // Chanel
+  'Flamenco', // Loewe
+  'Andiamo', 'Intrecciato', // Bottega Veneta
+  'Solferino', 'Uptown', // Saint Laurent (Uptown: mức nhẹ, đọc câu quanh)
+  'Cleo', // Prada
+  'Salvatore Ferragamo', 'Ferragamo', 'Bvlgari', 'Bulgari', // nhà mốt còn thiếu
+  'Candy Crush', 'Hello Kitty', 'Batman', // IP trò chơi / nhân vật dùng làm tên hoặc hình SP
+  // Phòng xa — chưa có trong DB, tên riêng ít trùng nghĩa thường.
+  'Neverfull', 'Keepall', 'Capucines', 'Peekaboo', 'Dionysus', 'Marmont', 'Sac de Jour',
+  'Herbag', 'Bolide', 'Jypsière', 'Jypsiere', 'Goyardine',
 ];
 
 /** Hãng ngành khác — nhắc để nói món da VỪA VỚI máy nào thì hợp lệ. */
