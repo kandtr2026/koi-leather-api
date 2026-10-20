@@ -24,24 +24,52 @@ import {
  * trên trang đó. Không cảnh báo thì chủ shop bấm Áp dụng, thấy báo thành công,
  * mở trang ra thấy y như cũ, và không hiểu vì sao.
  *
- * Danh sách lấy từ `find src/app -maxdepth 1 -type d` của repo koi-storefront.
+ * Danh sách lấy từ thư mục con của src/app/ VÀ src/app/(vi)/ ở repo koi-storefront
+ * (route tiếng Việt nằm trong nhóm (vi)/ từ 09/2026; dựng lại 20/10/2026).
  * Thêm route cứng mới ở storefront thì thêm vào đây.
  */
 const ROUTE_CUNG = new Set([
+  "admin",
+  "api",
   "badge",
   "blog",
+  "cam-nang-loai-da",
   "category",
   "chinh-sach-giao-hang",
+  "chinh-sach-hoan-tien-doi-tra",
   "cua-hang",
+  "dat-lam-day-da-dong-ho-theo-yeu-cau",
+  "dat-lam-that-lung-da-theo-yeu-cau",
+  "dat-lam-vi-da-theo-yeu-cau",
   "dau-an-rieng",
+  "day-da-dong-ho",
+  "day-da-dong-ho-chiu-khi-hau-viet-nam",
+  "dich-vu-boc-da-tai-nghe-cao-cap",
   "dich-vu-lam-tui-da-theo-yeu-cau",
+  "dinh-vu-do-va-cat-day-lung-chuyen-nghiep",
+  "do-da-theo-yeu-cau",
   "huong-dan-thanh-toan",
+  "khac-ten-len-do-da",
+  "khach-hang-doanh-nghiep",
   "lien-he",
   "lookbook",
+  "qua-sinh-nhat-cho-vo",
+  "qua-tang-doanh-nghiep-bang-da",
   "qua-tang-doanh-nghiep-cuoi-nam",
+  "qua-tang-doanh-nghiep-in-logo",
   "qua-tang-doanh-nghiep-theo-yeu-cau",
+  "qua-tang-khach-hang-bang-da",
+  "qua-tang-nhan-vien-bang-da",
+  "qua-tang-sep-nam-cao-cap",
+  "qua-tang-sinh-nhat-sep-nu",
+  "qua-tang-su-kien-bang-da",
+  "qua-tang-tet-doanh-nghiep",
   "san-pham",
+  "spa-tui-hieu",
+  "sua-chua-do-da",
   "tag",
+  "thay-day-da-dong-ho-apple-watch",
+  "thay-day-da-dong-ho-seiko",
   "tim-kiem",
   "tu-khoa-san-pham",
 ]);
