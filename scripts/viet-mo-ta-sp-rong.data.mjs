@@ -18,11 +18,11 @@ export const MO_TA = [
     slug: 'moneyclip-e98a',
     metaTitle: 'Money clip da bê Epsom đen',
     metaDescription:
-      'Kẹp tiền money clip da bê Epsom đen, nam châm giấu trong da, khâu tay tại xưởng KOI Sài Gòn. Khắc tên theo yêu cầu, bảo hành đường chỉ 1 năm.',
+      'Kẹp tiền money clip da bê Epsom đen, nam châm giấu trong da, khâu tay tại xưởng KOI Sài Gòn. Khắc tên theo yêu cầu, bảo hành đường chỉ 6 tháng.',
     html:
       '<p>Kẹp tiền phom chuẩn của xưởng: hai mặt da bê vân Epsom màu đen, nam châm giấu trong lớp da, tờ tiền gập đôi kẹp giữa là xong. Không nắp, không khoá, để túi trước quần không cộm.</p>' +
       '<p>Đường may tay chạy viền quanh mép, cạnh da được đánh bo. Epsom vân hạt nhỏ, mặt đứng, ít lộ xước và giữ nét dấu khắc sắc nếu bạn muốn dập tên hoặc chữ ký lên mặt kẹp.</p>' +
-      '<ul><li>Chất liệu: da bê vân Epsom, màu đen</li><li>Kẹp nam châm, khâu tay tại xưởng KOI</li><li>Khắc tên, gắn tag kim loại theo yêu cầu</li><li>Bảo hành đường chỉ 1 năm</li></ul>',
+      '<ul><li>Chất liệu: da bê vân Epsom, màu đen</li><li>Kẹp nam châm, khâu tay tại xưởng KOI</li><li>Khắc tên, gắn tag kim loại theo yêu cầu</li><li>Bảo hành đường chỉ 6 tháng</li></ul>',
   },
   {
     slug: 'mimi-ly-tui-kelly-san-lam-day-de-kem',
